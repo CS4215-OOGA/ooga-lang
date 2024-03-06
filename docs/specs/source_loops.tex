@@ -1,0 +1,88 @@
+\subsection*{Loops}
+
+\subsubsection*{\href{https://sourceacademy.org/sicpjs/4.1.2\#ex_4.7}{while-loops}}
+
+Roughly speaking, while loops are seen as abbreviations for function applications as follows:
+
+\[
+\textbf{\texttt{while}}\ \textbf{\texttt{(}}\  \textit{expression} \ \textbf{\texttt{)}} \
+\textit{block}
+\]
+stands for
+
+\begin{center}
+  \begin{minipage}{90mm}
+$\textbf{\texttt{function}}$ \lstinline{_body()} $\textbf{\texttt{\{}}\  \textit{block} \ \textbf{\texttt{\}}}$\newline
+\lstinline{_while( () => } $\textit{expression}$ \lstinline{, _body );}
+  \end{minipage}
+\end{center}
+
+where \lstinline{_while} is defined as follows:
+
+\begin{lstlisting}
+function _while(test, body) {
+    if (test()) {
+        body(); 
+        _while(test, body); 
+    } else { 
+        undefined; 
+    }
+}
+\end{lstlisting}
+
+\subsubsection*{\href{https://sourceacademy.org/sicpjs/4.1.2\#ex_4.8}{Simple for-loops}}
+
+\[\textbf{\texttt{for}}\ \textbf{\texttt{(}} \ 
+                                          \textit{assignment}_1 \textbf{\texttt{;}} 
+\ \textit{expression} \ \textbf{\texttt{;}} \ \textit{assignment}_2 \ \textbf{\texttt{)}} \ 
+                                            \textit{block}
+\]
+stands for
+\begin{center}
+  \begin{minipage}{90mm}
+\begin{lstlisting}
+^$\textrm{\textit{assignment}}_1$^  
+while (^$\textrm{\textit{expression}}$^) {
+    ^$\textrm{\textit{block}}$^
+    ^$\textrm{\textit{assignment}}_2$^
+}
+\end{lstlisting}
+  \end{minipage}
+\end{center}
+
+\subsubsection*{\href{https://sourceacademy.org/sicpjs/4.1.2\#ex_4.9}{for-loops with loop control variable}}
+
+\[\textbf{\texttt{for}}\ \textbf{\texttt{(}} \ 
+\textbf{\texttt{let}}\ \textit{name}\ \texttt{=}\
+\textit{expression}_1 \textbf{\texttt{;}} 
+\ \textit{expression}_2 \ \textbf{\texttt{;}} \ \textit{assignment} \ \textbf{\texttt{)}} \ 
+                                            \textit{block}
+\]
+stands for
+\begin{center}
+  \begin{minipage}{90mm}
+  \begin{lstlisting}
+{
+    let ^$\textrm{\textit{name}}$^ = ^$\textrm{\textit{expression}}_1$^;
+    for (^$\textrm{\textit{name}}$^ = ^$\textrm{\textit{name}}$^; ^$\textrm{\textit{expression}}_2$^; ^$\textrm{\textit{assignment}}$^) {
+         const _copy_of_^$\textrm{\textit{name}}$^ = ^$\textrm{\textit{name}}$^;
+         {
+             const ^$\textrm{\textit{name}}$^ = _copy_of_^$\textrm{\textit{name}}$^;
+             ^$\textrm{\textit{block}}$^
+         }
+    }
+}
+  \end{lstlisting}
+  \end{minipage}
+
+\end{center}
+
+\subsubsection*{Return values, \lstinline{break} and \lstinline{continue}}
+
+Contrary to the simplified explanation above, \lstinline{while} and \lstinline{for} loops return
+the value of their last loop execution, or \lstinline{undefined} if there is no loop execution.
+Evaluation of a \href{https://sourceacademy.org/sicpjs/4.1.2\#ex_4.7}{\lstinline{break}} statement within a loop terminates the loop with the return value
+\lstinline{undefined} and evaluation of a \href{https://sourceacademy.org/sicpjs/4.1.2\#ex_4.7}{\lstinline{continue}} statement within a loop
+terminates the current loop iteration and evaluates the test.
+
+

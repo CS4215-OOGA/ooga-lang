@@ -1,0 +1,355 @@
+\section*{Reduction}
+
+The 
+\emph{program reducer} $\Rrightarrow$ is a partial function from
+programs to
+programs
+and $\Rrightarrow^*$ is its reflexive transitive closure.
+Within the definition of $\Rrightarrow$, we make use of
+the following two groups of analogous partial functions:
+The statement
+\emph{reducer} $\Rightarrow$ is a partial function from
+statements to statements
+and $\Rightarrow^*$ is its reflexive transitive closure.
+The expression
+\emph{reducer} $\rightarrow$ is a partial function from
+expressions to expressions
+and $\rightarrow^*$ is its reflexive transitive closure.
+
+A \emph{program reduction} is a sequence of programs
+$p_1 \Rrightarrow \cdots \Rrightarrow p_n$,
+where $p_n$ is not reducible, i.e. there is no
+program $q$ such that $p_n \Rightarrow q$.
+Here, the program $p_n$ is called the \emph{result
+of reducing} $p_1$.
+
+A \emph{value} is a primitive number expression,
+primitive boolean expression,
+a primitive string expression, a function definition
+expression or a function declaration statement.
+
+The \emph{substitution} function 
+$p [ n \leftarrow v ]$ on programs/statements/expressions
+replaces every free occurrence of the name $n$
+in statement $p$ by value $v$. Care must be taken to introduce
+and preserve
+co-references in this process; substitution can introduce
+cyclic references in the result of the substitution. For example,
+$n$ may occur free in $v$, in which case
+every occurrence of $n$ in $p$
+will be replaced by $v$ such that $n$ in $v$ refers cyclically
+to the node at which the replacement happens.
+
+In summary:
+
+\begin{enumerate}
+\item $\Rrightarrow$: \emph{program reducer}
+\item $\Rrightarrow^*$: transitive closure of \emph{program reducer}
+\item $\Rightarrow$: \emph{statement reducer}
+\item $\Rightarrow^*$: transitive closure of \emph{statement reducer}
+\item $\rightarrow$: \emph{expression reducer}
+\item $\rightarrow^*$: transitive closure of \emph{expression reducer}
+\item $p [ n \leftarrow v ]$: substitution function
+\end{enumerate}
+
+\subsection*{How to read inference rules}
+
+To read the rules below, think of each "fraction" as an
+"if we know X then we can infer Y" implication statement.
+For example,
+
+\[
+\frac{
+  X = 5
+}{
+  X + 1 = 5 + 1
+}
+\]
+
+corresponds to the statement
+"If we know $X$ is equal to $5$,
+then we can infer that $X + 1$ is equal to $5 + 1$".
+
+
+\subsection*{Programs}
+
+
+\textbf{First-statement}: In a sequence of statements, we can always
+reduce the first one.
+\[
+\frac{
+  \textit{statement}\ \Rightarrow\ \textit{statement}'
+}{  
+  \textit{statement} \ldots
+  \Rrightarrow 
+  \textit{statement}' \ldots
+}
+\]
+
+\vspace{10mm}
+
+\textbf{Eliminate-function-declaration}: Function declarations as first
+statements are substituted in the remaining statements.
+\[
+\frac{
+             f = \textbf{\texttt{function}}\  \textit{name} \ 
+                 \textbf{\texttt{(}}\  \textit{parameters}
+                 \ \textbf{\texttt{)}}\ \textit{block}
+}{
+f\ \textit{statement} \ldots\ 
+  \Rrightarrow\ 
+  \textit{statement} \ldots[\textit{name} \leftarrow f]
+}
+\]
+
+\vspace{10mm}
+\textbf{Eliminate-Values}: Values as first statemments are discarded, if
+they are preceding one or more statements in a statement sequence.
+\[
+\frac{
+v \ \mbox{is a value}  
+}{
+v \textbf{\texttt{;}} \textit{statement}+\ 
+   \Rrightarrow  \ 
+  \textit{statement}+
+}
+\]
+
+\subsection*{Statements: Expression statements}
+
+\textbf{Expression-statement-reduce}: An expression statement
+is reducible if its expression is reducible.
+\[
+\frac{
+  e\ \rightarrow\ e'
+}{  
+  e \textbf{\texttt{;}}
+  \ \Rightarrow \ 
+  e' \textbf{\texttt{;}}
+}
+\]
+
+
+\subsection*{Expressions: Binary operators}
+
+\textbf{Left-binary-reduce}: An expression with binary operator
+can be reduced if its left sub-expression can be reduced.
+\[
+\frac{
+  e_1 \ \rightarrow \ e_1'
+}{
+  e_1\  \textit{binary-operator} \ e_2
+  \ \rightarrow \ 
+  e_1'\  \textit{binary-operator} \ e_2
+}
+\]
+
+
+\vspace{10mm}
+\textbf{And-shortcut-false}: An expression with binary operator
+$\textbf{\texttt{\&\&}}$ whose left sub-expression is
+$\textbf{\texttt{false}}$ can be reduced to
+$\textbf{\texttt{false}}$.
+\[
+\frac{
+}{
+  \textbf{\texttt{false}}\  \textbf{\texttt{\&\&}}\ e
+  \ \rightarrow \ 
+  \textbf{\texttt{false}}
+}
+\]
+
+\vspace{10mm}
+\textbf{And-shortcut-true}: An expression with binary operator
+$\textbf{\texttt{\&\&}}$ whose left sub-expression is
+$\textbf{\texttt{true}}$ can be reduced to
+the right sub-expression.
+\[
+\frac{
+}{
+  \textbf{\texttt{true}}\  \textbf{\texttt{\&\&}}\ e
+  \ \rightarrow \ 
+  e
+}
+\]
+
+\vspace{10mm}
+\textbf{Or-shortcut-true}: An expression with binary operator
+$\textbf{\texttt{||}}$ whose left sub-expression is
+$\textbf{\texttt{true}}$ can be reduced to
+$\textbf{\texttt{true}}$.
+\[
+\frac{
+}{
+  \textbf{\texttt{true}}\  \textbf{\texttt{||}}\ e
+  \ \rightarrow \ 
+  \textbf{\texttt{true}}
+}
+\]
+
+\vspace{10mm}
+\textbf{Or-shortcut-false}: An expression with binary operator
+$\textbf{\texttt{||}}$ whose left sub-expression is
+$\textbf{\texttt{false}}$ can be reduced to
+the right sub-expression.
+\[
+\frac{
+}{
+  \textbf{\texttt{false}}\  \textbf{\texttt{||}}\ e
+  \ \rightarrow \ 
+  e
+}
+\]
+
+\vspace{10mm}
+\textbf{Right-binary-reduce}: An expression with binary operator
+can be reduced if its left sub-expression is a value and its right
+sub-expression can be reduced.
+\[
+\frac{
+  e_2\ \rightarrow\ e_2', \textrm{and}\ \textit{binary-operator}
+  \ \mbox{is not}\ \textbf{\texttt{\&\&}}\ \textrm{or}\ \texttt{\textbf{||}}
+}{
+  v\  \textit{binary-operator} \ e_2
+  \ \rightarrow \ 
+  v\  \textit{binary-operator} \ e_2'
+}
+\]
+
+\vspace{10mm}
+\textbf{Prim-binary-reduce}: An expression with binary operator
+can be reduced if its left and right sub-expressions are values and
+the corresponding function is defined for those values.
+\[
+\frac{
+  v\ \mbox{is result of}\ v_1\  \textit{binary-operator} \ v_2
+}{
+  v_1\  \textit{binary-operator} \ v_2
+  \ \rightarrow \ 
+  v
+}
+\]
+
+\subsection*{Expressions: Unary operators}
+
+\textbf{Unary-reduce}: An expression with unary operator
+can be reduced if its sub-expression can be reduced.
+\[
+\frac{
+  e \ \rightarrow \ e'
+}{
+  \textit{unary-operator} \ e
+  \ \rightarrow \ 
+  \textit{unary-operator} \ e'
+}
+\]
+
+\vspace{10mm}
+\textbf{Prim-unary-reduce}: An expression with unary operator
+can be reduced if its sub-expression is a value and
+the corresponding function is defined for that value.
+\[
+\frac{
+  v'\ \mbox{is result of}\ \textit{unary-operator} \ v
+}{
+  \textit{unary-operator} \ v
+  \ \rightarrow \ 
+  v'
+}
+\]
+
+\subsection*{Expressions: conditionals}
+
+\textbf{Conditional-predicate-reduce}: A conditional
+expression can be reduced, if its predicate can be reduced.
+\[
+\frac{
+  e_1 \ \rightarrow \ e_1'
+}{
+  e_1\  \textbf{\texttt{?}}\ e_2\ \textbf{\texttt{:}}\ e_3
+  \ \rightarrow \ 
+  e_1'\ \textbf{\texttt{?}}\ e_2\ \textbf{\texttt{:}}\ e_3
+}
+\]
+
+\vspace{10mm}
+\textbf{Conditional-true-reduce}: A conditional
+expression whose predicate is the value
+$\textbf{\texttt{true}}$
+can be reduced to its consequent expression.
+\[
+\frac{
+}{
+  \textbf{\texttt{true}}\  \textbf{\texttt{?}}\ e_1\ \textbf{\texttt{:}}\ e_2
+  \ \rightarrow \ 
+  e_1
+}
+\]
+
+\vspace{10mm}
+\textbf{Conditional-false-reduce}: A conditional
+expression whose predicate is the value
+$\textbf{\texttt{false}}$
+can be reduced to its alternative expression.
+\[
+\frac{
+}{
+  \textbf{\texttt{false}}\  \textbf{\texttt{?}}\ e_1\ \textbf{\texttt{:}}\ e_2
+  \ \rightarrow \ 
+  e_2
+}
+\]
+
+
+\subsection*{Expressions: function application}
+
+\textbf{Application-functor-reduce}: A function application
+can be reduced if its functor expression can be reduced.
+\[
+\frac{
+  e \ \rightarrow \ e'
+}{
+  e\  \textbf{\texttt{(}}\ \textit{expressions} \ \textbf{\texttt{)}}
+  \ \rightarrow \ 
+  e'\  \textbf{\texttt{(}}\ \textit{expressions} \ \textbf{\texttt{)}}
+}
+\]
+
+
+\vspace{10mm}
+\textbf{Application-argument-reduce}: A function application
+can be reduced if one of its argument expressions can be reduced and all
+preceding arguments are values.
+\[
+\frac{
+  e \ \rightarrow \ e'
+}{
+  v\  \textbf{\texttt{(}}\ v_1 \ldots v_i \ e \ldots\ \textbf{\texttt{)}}
+  \ \rightarrow \ 
+  v\  \textbf{\texttt{(}}\ v_1 \ldots v_i \ e' \ldots\ \textbf{\texttt{)}}
+}
+\]
+
+
+
+\vspace{10mm}
+\textbf{Function-declaration-application-reduce}:
+The application of a function declaration
+can be reduced, if all
+arguments are values. 
+\[
+\frac{
+  f = \textbf{\texttt{function}}\  \textit{n} \ 
+                 \textbf{\texttt{(}}\  x_1 \ldots x_n
+                 \ \textbf{\texttt{)\ \{\ return}}\ \textit{expression}
+                 \ \textbf{\texttt{;\ \}}}
+}{
+  f\ \textbf{\texttt{(}}\ v_1 \ldots v_n\ \textbf{\texttt{)}}
+  \ \rightarrow \ 
+  \textit{expression} [x_1 \leftarrow v_1]\ldots[x_n \leftarrow v_n]
+  [n \leftarrow f]
+}
+\]
+
+
+    \end{document}
