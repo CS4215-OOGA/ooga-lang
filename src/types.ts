@@ -67,6 +67,7 @@ export enum Chapter {
   SOURCE_2 = 2,
   SOURCE_3 = 3,
   SOURCE_4 = 4,
+  OOGA = 5,
   FULL_JS = -1,
   HTML = -2,
   FULL_TS = -3,

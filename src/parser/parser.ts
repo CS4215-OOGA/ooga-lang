@@ -7,6 +7,7 @@ import { FullTSParser } from './fullTS'
 import { PythonParser } from './python'
 import { SchemeParser } from './scheme'
 import { SourceParser } from './source'
+import { OogaParser } from './ooga'
 import { SourceTypedParser } from './source/typed'
 import { AcornOptions, Parser } from './types'
 
@@ -33,6 +34,9 @@ export function parse<TOptions extends AcornOptions>(
       break
     case Chapter.FULL_TS:
       parser = new FullTSParser()
+      break
+    case Chapter.OOGA:
+      parser = new OogaParser()
       break
     default:
       switch (context.variant) {
