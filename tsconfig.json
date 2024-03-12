@@ -34,6 +34,10 @@
     "node_modules",
     "dist",
     "sicp_publish",
+    "docs",
+    "scripts",
+    "src/py-slang/**",
+    "src/scm-slang/**",
   ],
   "types": [
     "typePatches",

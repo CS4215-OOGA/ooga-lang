@@ -44,6 +44,7 @@
     "js-base64": "^3.7.5",
     "lodash": "^4.17.21",
     "node-getopt": "^0.3.2",
+    "peggy": "^4.0.2",
     "source-map": "0.7.3",
     "xmlhttprequest-ts": "^1.0.1"
   },
@@ -51,7 +52,7 @@
     "**/gl": "^6.0.2"
   },
   "scripts": {
-    "build": "yarn docs && tsc --build --force",
+    "build": "tsc --build --force",
     "build:slang": "tsc --build --force",
     "eslint": "eslint --ext \".ts,.tsx\" src",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
