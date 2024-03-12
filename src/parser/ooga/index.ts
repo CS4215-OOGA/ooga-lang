@@ -4,8 +4,7 @@ import { Context } from '../../types'
 import { AcornOptions, Parser } from '../types'
 
 export class OogaParser implements Parser<AcornOptions> {
-  constructor() {
-  }
+  constructor() {}
   parse(
     programStr: string,
     context: Context,
