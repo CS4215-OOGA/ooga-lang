@@ -2,6 +2,7 @@ import { Program } from 'estree'
 
 import { Context } from '../../types'
 import { AcornOptions, Parser } from '../types'
+import { parse } from './ooga'
 
 export class OogaParser implements Parser<AcornOptions> {
   constructor() {}
@@ -11,7 +12,7 @@ export class OogaParser implements Parser<AcornOptions> {
     options?: Partial<AcornOptions>,
     throwOnError?: boolean
   ): any {
-    throw new Error('Not currently implemented')
+    return parse(programStr)
   }
 
   validate(_ast: Program, _context: Context, _throwOnError: boolean): boolean {

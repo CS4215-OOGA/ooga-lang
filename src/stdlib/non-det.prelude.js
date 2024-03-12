@@ -1,0 +1,4 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.nonDetPrelude = void 0;
+exports.nonDetPrelude = "\n    function require(predicate) {\n        return predicate ? \"Satisfied require\" : amb();\n    }\n\n    function an_element_of(items) {\n        require(!is_null(items));\n        return amb(head(items), an_element_of(tail(items)));\n    }\n\n    function an_integer_between(low, high) {\n        return low > high ? amb() : amb(low, an_integer_between(low + 1, high));\n    }\n\n    /* Material Conditional */\n    /* if P, then Q */\n    /* P --> Q */\n    function implication(P, Q) {\n        return !P || Q;\n    }\n\n    /* Material Biconditional */\n    /* (if P, then Q) AND (if Q, then P) */\n    /* P <--> Q */\n    function bi_implication(P, Q) {\n        return implication(P, Q) && implication(Q, P);\n    }\n";
