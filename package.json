@@ -16,6 +16,8 @@
   "type": "module",
   "scripts": {
     "build": "yarn swc ./src -d dist --copy-files",
-    "peggy": "peggy ./src/parser/ooga.pegjs --format es"
+    "peggy": "peggy ./src/parser/ooga.pegjs --format es",
+    "compile": "node ./dist/vm/oogavm-compiler.js booga.ooga",
+    "run": "node ./dist/vm/oogavm-machine.js booga.bm"
   }
 }

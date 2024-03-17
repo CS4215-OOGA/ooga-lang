@@ -8,7 +8,6 @@ export enum OpCodes {
   DIV,
   MOD,
   NOT,
-
 }
 
 export default OpCodes;
