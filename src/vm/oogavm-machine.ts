@@ -42,6 +42,12 @@ const microcode = {
   "BINOP": instr => {
     PC++;
     push(OS, apply_binop(instr.sym, OS.pop(), OS.pop()));
+  },
+  "JOF": instr => {
+    const val = OS.pop();
+    if (!val) {
+      PC = instr.addr;
+    }
   }
 }
 
