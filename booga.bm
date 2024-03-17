@@ -1,0 +1,9 @@
+{"tag":"LDC","val":5}
+{"tag":"LDC","val":5}
+{"tag":"BINOP","sym":"+"}
+{"tag":"LDC","val":5}
+{"tag":"LDC","val":6}
+{"tag":"BINOP","sym":"+"}
+{"tag":"LDC","val":5}
+{"tag":"BINOP","sym":"+"}
+{"tag":"DONE"}

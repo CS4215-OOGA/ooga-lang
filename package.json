@@ -7,13 +7,15 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "@babel/plugin-proposal-export-default-from": "^7.23.3",
     "@types/node": "^20.11.28",
     "eslint": "^8.57.0",
     "peggy": "^4.0.2",
     "swc": "^1.0.11"
   },
+  "type": "module",
   "scripts": {
     "build": "yarn swc ./src -d dist --copy-files",
-    "peggy": "yarn peggy ./src/parser/ooga.pegjs"
+    "peggy": "peggy ./src/parser/ooga.pegjs --format es"
   }
 }

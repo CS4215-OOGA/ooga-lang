@@ -24,7 +24,7 @@
   function buildBinaryExpression(head, tail) {
     return tail.reduce(function(result, element) {
       return {
-        action: "BinaryExpression",
+        tag: "BinaryExpression",
         operator: element[1],
         left: result,
         right: element[3]
@@ -34,7 +34,7 @@
   function buildLogicalExpression(head, tail) {
     return tail.reduce(function(result, element) {
       return {
-        action: "LogicalExpression",
+        tag: "LogicalExpression",
         operator: element[1],
         left: result,
         right: element[3]
@@ -376,7 +376,7 @@ function peg$parse(input, options) {
   var peg$f1 = function(name) { return name; };
   var peg$f2 = function(head, tail, type) {
       return {
-        action: "Name",
+        tag: "Name",
         name: head + tail.join(""),
         type: extractOptional(type, 1) ? extractOptional(type, 1) : "Null"
       };
@@ -393,20 +393,20 @@ function peg$parse(input, options) {
           return "Null";
       }
     };
-  var peg$f4 = function() { return { type: "Null", value: null }; };
-  var peg$f5 = function() { return { type: "Boolean", value: true  }; };
-  var peg$f6 = function() { return { type: "Boolean", value: false }; };
+  var peg$f4 = function() { return { tag: "Null", value: null }; };
+  var peg$f5 = function() { return { tag: "Boolean", value: true  }; };
+  var peg$f6 = function() { return { tag: "Boolean", value: false }; };
   var peg$f7 = function(literal) {
       return literal;
     };
   var peg$f8 = function() {
-      return { type: "Integer", value: parseFloat(text()) };
+      return { tag: "Integer", value: parseFloat(text()) };
     };
   var peg$f9 = function(chars) {
-      return { type: "String", value: chars.join("") };
+      return { tag: "String", value: chars.join("") };
     };
   var peg$f10 = function(chars) {
-      return { type: "String", value: chars.join("") };
+      return { tag: "String", value: chars.join("") };
     };
   var peg$f11 = function() { return text(); };
   var peg$f12 = function(sequence) { return sequence; };
@@ -424,19 +424,19 @@ function peg$parse(input, options) {
   var peg$f24 = function(expression) { return expression; };
   var peg$f25 = function(elision) {
       return {
-        type: "ArrayExpression",
+        tag: "ArrayExpression",
         elements: optionalList(extractOptional(elision, 0))
       };
     };
   var peg$f26 = function(elements) {
       return {
-        type: "ArrayExpression",
+        tag: "ArrayExpression",
         elements: elements
       };
     };
   var peg$f27 = function(elements, elision) {
       return {
-        type: "ArrayExpression",
+        tag: "ArrayExpression",
         elements: elements.concat(optionalList(extractOptional(elision, 0)))
       };
     };
@@ -454,7 +454,7 @@ function peg$parse(input, options) {
   var peg$f33 = function(head, tail) {
       return tail.reduce(function(result, element) {
         return {
-          action: "MemberExpression",
+          tag: "MemberExpression",
           object: result,
           property: element.property,
           computed: element.computed
@@ -462,14 +462,14 @@ function peg$parse(input, options) {
       }, head);
     };
   var peg$f34 = function(callee, args) {
-        return { action: "CallExpression", callee: callee, arguments: args };
+        return { tag: "CallExpression", callee: callee, arguments: args };
       };
   var peg$f35 = function(head, args) {
-          return { action: "CallExpression", arguments: args };
+          return { tag: "CallExpression", arguments: args };
         };
   var peg$f36 = function(head, property) {
           return {
-            action: "MemberExpression",
+            tag: "MemberExpression",
             property: property,
             computed: true
           };
@@ -491,7 +491,7 @@ function peg$parse(input, options) {
         ? "UpdateExpression"
         : "UnaryExpression";
       return {
-        action: type,
+        tag: type,
         operator: operator,
         argument: argument,
         prefix: true
@@ -505,7 +505,7 @@ function peg$parse(input, options) {
   var peg$f46 = function(head, tail) { return buildLogicalExpression(head, tail); };
   var peg$f47 = function(left, right) {
       return {
-        action: "AssignmentExpression",
+        tag: "AssignmentExpression",
         operator: "=",
         left: left,
         right: right
@@ -513,7 +513,7 @@ function peg$parse(input, options) {
     };
   var peg$f48 = function(left, operator, right) {
       return {
-        action: "AssignmentExpression",
+        tag: "AssignmentExpression",
         operator: operator,
         left: left,
         right: right
@@ -521,50 +521,50 @@ function peg$parse(input, options) {
     };
   var peg$f49 = function(head, tail) {
       return tail.length > 0
-        ? { action: "SequenceExpression", expressions: buildList(head, tail, 3) }
+        ? { tag: "SequenceExpression", expressions: buildList(head, tail, 3) }
         : head;
     };
   var peg$f50 = function(body) {
       return {
-        action: "BlockStatement",
+        tag: "BlockStatement",
         body: optionalList(extractOptional(body, 0))
       };
     };
   var peg$f51 = function(head, tail) { return buildList(head, tail, 1); };
   var peg$f52 = function(id, type, init) {
         return {
-            action: "VariableDeclaration",
+            tag: "VariableDeclaration",
             id: id,
             expression: extractOptional(init, 1)
         }
     };
   var peg$f53 = function(id, init) {
         return {
-            action: "VariableDeclaration",
+            tag: "VariableDeclaration",
             id: id,
             expression: extractOptional(init, 1)
         }
     };
   var peg$f54 = function(id, type, init) {
         return {
-            action: "ConstantDeclaration",
+            tag: "ConstantDeclaration",
             id: id,
             expression: extractOptional(init, 1)
         }
     };
   var peg$f55 = function(expression) { return expression; };
   var peg$f56 = function(expression) { return expression; };
-  var peg$f57 = function() { return { action: "EmptyStatement" }; };
+  var peg$f57 = function() { return { tag: "EmptyStatement" }; };
   var peg$f58 = function(expression) {
     return expression;
       // return {
-      //   type: "ExpressionStatement",
+      //   tag: "ExpressionStatement",
       //   expression: expression
       // };
     };
   var peg$f59 = function(test, consequent, alternate) {
       return {
-        action: "IfStatement",
+        tag: "IfStatement",
         test: test,
         consequent: consequent,
         alternate: alternate
@@ -572,37 +572,37 @@ function peg$parse(input, options) {
     };
   var peg$f60 = function(test, consequent) {
       return {
-        action: "IfStatement",
+        tag: "IfStatement",
         test: test,
         consequent: consequent,
         alternate: null
       };
     };
   var peg$f61 = function() {
-      return { action: "ContinueStatement", label: null };
+      return { tag: "ContinueStatement", label: null };
     };
   var peg$f62 = function(label) {
-      return { action: "ContinueStatement", label: label };
+      return { tag: "ContinueStatement", label: label };
     };
   var peg$f63 = function() {
-      return { action: "BreakStatement", label: null };
+      return { tag: "BreakStatement", label: null };
     };
   var peg$f64 = function(label) {
-      return { action: "BreakStatement", label: label };
+      return { tag: "BreakStatement", label: label };
     };
   var peg$f65 = function() {
-      return { action: "ReturnStatement", argument: null };
+      return { tag: "ReturnStatement", argument: null };
     };
   var peg$f66 = function(argument) {
-      return { action: "ReturnStatement", argument: argument };
+      return { tag: "ReturnStatement", argument: argument };
     };
   var peg$f67 = function(argument) {
-      return { action: "CallGoroutine", argument: argument }
+      return { tag: "CallGoroutine", argument: argument }
     };
   var peg$f68 = function(id, params, type, body) {
       return {
-        action: "FunctionDeclaration",
-        id: id,
+        tag: "FunctionDeclaration",
+        sym: id,
         params: optionalList(extractOptional(params, 0)),
         type: type,
         body: body
@@ -610,7 +610,7 @@ function peg$parse(input, options) {
     };
   var peg$f69 = function(id, params, type, body) {
       return {
-        action: "FunctionDeclaration",
+        tag: "FunctionDeclaration",
         id: id,
         params: optionalList(extractOptional(params, 0)),
         type: type,
@@ -619,7 +619,7 @@ function peg$parse(input, options) {
     };
   var peg$f70 = function(id, params, body) {
       return {
-        action: "FunctionExpression",
+        tag: "FunctionExpression",
         id: extractOptional(id, 0),
         params: optionalList(extractOptional(params, 0)),
         body: body
@@ -633,15 +633,12 @@ function peg$parse(input, options) {
   };
   var peg$f73 = function(body) {
       return {
-        action: "BlockStatement",
+        tag: "BlockStatement",
         body: optionalList(body)
       };
     };
   var peg$f74 = function(body) {
-      return {
-        action: "Program",
-        body: optionalList(body)
-      };
+      return optionalList(body);
     };
   var peg$f75 = function(head, tail) {
       return buildList(head, tail, 1);
@@ -4230,7 +4227,7 @@ function peg$parse(input, options) {
   function peg$parseStatement() {
     var s0;
 
-    s0 = peg$parseBlock();
+    s0 = peg$parseBlockStatement();
     if (s0 === peg$FAILED) {
       s0 = peg$parseVariableStatement();
       if (s0 === peg$FAILED) {
@@ -4262,7 +4259,7 @@ function peg$parse(input, options) {
     return s0;
   }
 
-  function peg$parseBlock() {
+  function peg$parseBlockStatement() {
     var s0, s1, s2, s3, s4, s5;
 
     s0 = peg$currPos;

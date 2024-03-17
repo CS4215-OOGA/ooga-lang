@@ -1,10 +1,19 @@
-// import * as fs from 'fs';
+import * as fs from 'fs';
+import * as util from "util";
+
+import { compile_program } from './oogavm-compiler.js';
+import { assemble } from './oogavm-assembler.js';
+import { parse } from '../parser/ooga.js';
+import {write} from "fs";
 
 interface CliOptions {
   compileTo: 'json'
   inputFilename: string
   outputFilename: string
 }
+
+const readFileAsync = util.promisify(fs.readFile);
+const writeFileAsync = util.promisify(fs.writeFile);
 
 function parseOptions(): CliOptions | null {
   const ret: CliOptions = {
@@ -76,7 +85,7 @@ function parseOptions(): CliOptions | null {
 async function main() {
   const options = parseOptions();
   if (options == null) {
-    console.error(`Usage: svmc [options...] <input file>
+    console.error(`Usage: oogavm [options...] <input file>
 
 Options:
 -t, --compile-to <option>: [binary]
@@ -92,6 +101,13 @@ Options:
     process.exitCode = 1;
     return;
   }
+  console.log("HELLO WORLD!!!!");
+  let source = await readFileAsync(options.inputFilename, 'utf8');
+  source = source.trimEnd();
+  const program = parse(source);
+  const instrs = compile_program(program);
+  const bytecode = assemble(instrs);
+  return writeFileAsync(options.outputFilename, bytecode);
 }
 
 main().catch(err => {
