@@ -63,6 +63,11 @@ function startRepl(
  * Returns true iff the given chapter and variant combination is supported.
  */
 function validChapterVariant(chapter: any, variant: any) {
+  // Accept ooga
+  if (chapter === 5) {
+    return true;
+  }
+  
   if (variant === 'interpreter') {
     return true
   }

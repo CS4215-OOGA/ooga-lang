@@ -1,25 +1,29 @@
-import { Program } from 'estree'
+import { FatalSyntaxError } from '../errors'
+import { Parser } from '../types'
+import { parse } from '../../ooga-slang/parser/ooga.js'
 
-import { Context } from '../../types'
-import { AcornOptions, Parser } from '../types'
-import { parse } from './ooga'
+export class OogaParser implements Parser<any> {
+  parse(programStr: string, context: any, options?: any, throwOnError?: boolean): any {
+    try {
+      return parse(programStr)
+    } catch (error) {
+      const location = error.location
+      error = new FatalSyntaxError(
+        {
+          start: { line: location.start.line, column: location.start.column },
+          end: { line: location.end.line, column: location.end.column },
+          source: location.source
+        },
+        error.toString()
+      )
 
-export class OogaParser implements Parser<AcornOptions> {
-  constructor() {}
-  parse(
-    programStr: string,
-    context: Context,
-    options?: Partial<AcornOptions>,
-    throwOnError?: boolean
-  ): any {
-    return parse(programStr)
+      if (throwOnError) throw error
+      context.errors.push(error)
+    }
+
+    return null
   }
-
-  validate(_ast: Program, _context: Context, _throwOnError: boolean): boolean {
-    throw new Error('Not currently implemented')
-  }
-
-  toString(): string {
-    return `OogaParser`
+  validate(ast: any, context: any, throwOnError?: boolean): boolean {
+    return true
   }
 }

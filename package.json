@@ -66,7 +66,7 @@
     "publish_sicp_package": "./scripts/publish_sicp_package.sh",
     "benchmark": "jest --runInBand --testPathPattern='.*benchmark.*' --testPathIgnorePatterns='/dist/'",
     "prepare": "husky install",
-    "peggy-ooga": "yarn peggy src/parser/ooga/ooga.pegjs"
+    "peggy-ooga": "yarn peggy src/ooga-slang/parser/ooga.pegjs"
   },
   "devDependencies": {
     "@types/jest": "^29.0.0",
