@@ -5,5 +5,12 @@
   "repository": "https://github.com/CS4215-OOGA/ooga-lang.git",
   "author": "JothamWong <45916998+JothamWong@users.noreply.github.com>",
   "license": "MIT",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "eslint": "^8.57.0",
+    "peggy": "^4.0.2"
+  },
+  "scripts": {
+    "peggy": "yarn peggy ./src/parser/ooga.pegjs"
+  }
 }
