@@ -146,7 +146,7 @@ const compileComp = {
   // TODO: The parser treats expressions of the form
   "AssignmentExpression": (comp, ce) => {
     compile(comp.right, ce);
-    instrs[wc++] = {tag: Opcodes.ASSIGN, pos: compileTimeEnvironmentPosition(ce, comp.id.name)};
+    instrs[wc++] = {tag: Opcodes.ASSIGN, pos: compileTimeEnvironmentPosition(ce, comp.left.name)};
   },
   "Name": (comp, ce) => {
     // TODO: Might have to do type check here?
