@@ -20,6 +20,6 @@
     "build": "yarn swc ./src -d dist --copy-files",
     "peggy": "peggy ./src/parser/ooga.pegjs --format es",
     "compile": "node dist/vm/oogavm.js booga.ooga -o booga.bm",
-    "run": "node ./dist/vm/oogavm-machine.js booga.bm"
+    "ooga": "node ./dist/vm/oogavm-machine.js booga.bm"
   }
 }
