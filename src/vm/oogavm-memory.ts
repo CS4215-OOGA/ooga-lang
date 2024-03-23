@@ -83,6 +83,14 @@ export class Heap {
     return heapBinStr;
   }
 
+  // Helper method that simply prints the string heap
+  debugVisualizeHeap() {
+    let heap = this.displayHeap();
+    for (let i = 0; i < heap.length; i++) {
+      console.log(heap[i]);
+    }
+  }
+
   /**
  * Given a word, return the binary form of it.
  * It's 8 bytes, so we expect 64 bits.
@@ -235,6 +243,15 @@ export class Heap {
   // [1 byte tag, 7 bytes unused]
   // followed by the previous OS entry (so that we can officially do a stack)
   // followed by the value of the OS entry (which is an address in the heap)
+
+  // Initializes a stack for either OS or RTS
+  initializeStack() {
+    const newAddress = this.allocate(Tag.STACK, 3);
+    // -1 for both to indicate that this is the very first stack entry (or a 'root')
+    this.setWord(newAddress + 1, -1);
+    this.setWord(newAddress + 2, -1);
+    return newAddress;
+  }
   allocateStack(address: number, value: number) {
     const newAddress = this.allocate(Tag.STACK, 3);
     this.setWord(newAddress + 1, address);

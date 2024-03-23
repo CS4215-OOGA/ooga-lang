@@ -23,6 +23,8 @@ export interface Scheduler {
   runThread(): [ThreadId, number] | null
   // Tell scheduler which thread should be paused and placed back into the idle threads.
   pauseThread(id: ThreadId): void
+  // get the max time quanta, useful when a single thread only
+  getMaxTimeQuanta(): number
 }
 
 export class RoundRobinScheduler implements Scheduler {
@@ -72,6 +74,10 @@ export class RoundRobinScheduler implements Scheduler {
       this._currentThreads.add(nextThread);
       return [nextThread, timeQuanta];
     }
+  }
+
+  getMaxTimeQuanta(): number {
+    return this._maxTimeQuanta;
   }
 
 }
