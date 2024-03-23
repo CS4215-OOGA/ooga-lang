@@ -19,7 +19,8 @@ export enum Tag {
   CALLFRAME,
   CLOSURE,
   FRAME,
-  ENVIRONMENT
+  ENVIRONMENT,
+  STACK,
 }
 
 /**
@@ -228,6 +229,33 @@ export class Heap {
   }
 
   // *******************
+  // Stack
+  // *******************
+  // Very wasteful, but the first byte was reserved for the header anyways
+  // [1 byte tag, 7 bytes unused]
+  // followed by the previous OS entry (so that we can officially do a stack)
+  // followed by the value of the OS entry (which is an address in the heap)
+  allocateStack(address: number, value: number) {
+    const newAddress = this.allocate(Tag.STACK, 3);
+    this.setWord(newAddress + 1, address);
+    this.setWord(newAddress + 2, value);
+    return newAddress;
+  }
+
+  // Pop the stack and return the new OS address as well as the value
+  popStack(address: number): [number, number] {
+    const prevAddress = this.getChild(address, 0);
+    const value = this.getStackValue(address);
+    this.freeMemory(address);
+    return [prevAddress, value]
+  }
+
+  // Used for peek OS
+  getStackValue(address: number) {
+    return this.getChild(address, 1);
+  }
+
+  // *******************
   // Closure
   // *******************
   // [1 byte tag, 1 byte arity, 2 bytes pc, 1 byte unused, 2 bytes #children, 1 byte unused]
@@ -401,6 +429,17 @@ export class Heap {
     } else {
       throw new Error("not implemented yet");
     }
+  }
+
+  // *******************
+  // Garbage collection
+  // *******************
+  // Use the mark and sweep algorithm
+  freeMemory(address: number) {
+    // this sets the next ptr to free
+    // then updates free to point to it, thus extending the linked list
+    this.setWord(address, this.free);
+    this.free = address;
   }
 }
 
