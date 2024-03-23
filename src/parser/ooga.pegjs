@@ -134,8 +134,8 @@ NullLiteral
   = NullToken { return { tag: "Null", value: null }; }
 
 BooleanLiteral
-  = TrueToken  { return { tag: "Literal", value: true  }; }
-  / FalseToken { return { tag: "Literal", value: false }; }
+  = TrueToken  { return { tag: "Boolean", value: true  }; }
+  / FalseToken { return { tag: "Boolean", value: false }; }
 
 NumericLiteral "number"
   = literal:DecimalLiteral !(IdentifierStart / DecimalDigit) {
@@ -144,7 +144,7 @@ NumericLiteral "number"
 
 DecimalLiteral
   = DecimalIntegerLiteral {
-      return { tag: "Literal", value: parseFloat(text()) };
+      return { tag: "Integer", value: parseFloat(text()) };
     }
 
 DecimalIntegerLiteral

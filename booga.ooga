@@ -6,3 +6,11 @@ if (true) {
 } else {
   6;
 }
+
+{
+  var x = nil;
+  var y string;
+  var z int = 5;
+  var w = 5;
+  x + w;
+}
