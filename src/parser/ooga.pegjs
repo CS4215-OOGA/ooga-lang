@@ -369,8 +369,12 @@ UnaryExpression
     }
 
 UnaryOperator
-  = $("-" !"=")
-  / "!"
+  = "!"
+  / "++"
+  / "--"
+  / $("+" !"=")
+  / $("-" !"=")
+  / "~"
 
 MultiplicativeExpression
   = head:UnaryExpression

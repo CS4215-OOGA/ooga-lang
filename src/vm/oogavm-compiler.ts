@@ -145,11 +145,30 @@ const compileComp = {
   },
   // TODO: The parser treats expressions of the form
   "AssignmentExpression": (comp, ce) => {
+    compile(comp.right, ce);
+    instrs[wc++] = {tag: Opcodes.ASSIGN, pos: compileTimeEnvironmentPosition(ce, comp.id.name)};
   },
   "Name": (comp, ce) => {
     // TODO: Might have to do type check here?
     instrs[wc++] = {tag: Opcodes.LD, sym: comp.name, pos: compileTimeEnvironmentPosition(ce, comp.name)};
-  }
+  },
+  // This handles expressions of the form
+  // ++x;
+  // --y;
+  // Note the postfix expression. yes, at the moment, idk how to make the other one valid. and also not a big deal.
+  "UpdateExpression": (comp, ce) => {
+    compile(comp.argument, ce);
+    switch (comp.operator) {
+      case "++":
+        instrs[wc++] = {tag: Opcodes.UADD};
+        break;
+      case "--":
+        instrs[wc++] = {tag: Opcodes.USUB};
+        break;
+      default:
+        throw Error("Invalid unary operator: " + comp.operator);
+    }
+  },
 };
 
 // TODO: Make everything proper classes so that its clearer

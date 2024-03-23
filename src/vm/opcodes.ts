@@ -4,6 +4,8 @@ export enum OpCodes {
   LDBI = "LDBI",
   LD = "LD",
   LDN = "LDN",  // load null
+  UADD = "UADD", // unary add ++
+  USUB = "USUB", // unary add ++
   ADD = "ADD",
   SUB = "SUB",
   MUL = "MUL",
