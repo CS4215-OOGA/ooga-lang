@@ -486,6 +486,7 @@ Statement
   / BreakStatement
   / ReturnStatement
   / GoroutineStatement
+  / FunctionDeclaration
 
 BlockStatement
   = "{" __ body:(StatementList __)? "}" {
