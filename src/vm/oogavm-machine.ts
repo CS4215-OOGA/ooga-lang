@@ -129,16 +129,33 @@ function apply_binop(sym, left, right) {
 // **********************************************
 // Helper methods for interfacing with heap
 // **********************************************
-function pushValueOS(value: any) {
+
+// NOTE to self: So we interface with the OS by pushing LDC which is using TSValueToAddress.
+// When we get back the values, to do any meaningful form of computation, we need to convert them back to TS value
+// and then convert it back to a heap address!
+
+// Push the raw heap address onto the OS
+function pushAddressOS(addr: any) {
+  OS = heap.pushStack(OS, addr);
+}
+// Convert TS Value to address and then push onto stack
+function pushTSValueOS(value: any) {
   OS = heap.pushStack(OS, heap.TSValueToAddress(value));
 }
 
+// NOTE: I'd really like to use the enum values but for some reason, they aren't allowed in the key of the map =.=
 const microcode = {
   "LDCI": instr => {
-    pushValueOS(instr.val);
+    pushTSValueOS(instr.val);
   },
   "LDBI": instr => {
-    pushValueOS(instr.val);
+    pushTSValueOS(instr.val);
+  },
+  "POP": instr => {
+    let _;
+    console.log(OS);
+    [OS, _] = heap.popStack(OS);
+    console.log(OS);
   },
   "ADD": instr => {
     let left;
@@ -149,19 +166,19 @@ const microcode = {
     left = heap.addressToTSValue(left);
     [OS, right] = heap.popStack(OS);
     right = heap.addressToTSValue(right);
-    pushValueOS(left + right);
+    pushTSValueOS(left + right);
   },
   "UADD": instr => {
     let value;
     [OS, value] = heap.popStack(OS);
     value = heap.addressToTSValue(value);
-    pushValueOS(value + 1);
+    pushTSValueOS(value + 1);
   },
   "USUB": instr => {
     let value;
     [OS, value] = heap.popStack(OS);
     value = heap.addressToTSValue(value);
-    pushValueOS(value - 1);
+    pushTSValueOS(value - 1);
   },
   "JOF": instr => {
     let value;
@@ -190,7 +207,7 @@ const microcode = {
     let frameIndex = instr.pos[0];
     let valueIndex = instr.pos[1];
     let value;
-    [OS, value] = heap.popStack(OS);
+    value = heap.peekStack(OS);
     heap.setEnvironmentValue(E, frameIndex, valueIndex, value);
   },
   "LD": instr => {
@@ -204,13 +221,67 @@ const microcode = {
   },
   "DONE": instr => {
     running = false;
+  },
+  "LDF": instr => {
+    console.log("Instr addr");
+    console.log(instr.addr);
+    const closureAddress = heap.allocateClosure(instr.arity, instr.addr, E);
+    pushAddressOS(closureAddress);
+  },
+  "CALL": instr => {
+    const arity = instr.arity;
+    // fun is the closure
+    const fun = heap.peekStackN(OS, arity);
+    let newPC = heap.getClosurePC(fun);
+    const newFrame = heap.allocateFrame(arity);
+    for (let i = arity - 1; i >= 0; i--) {
+      let value;
+      [OS, value] = heap.popStack(OS);
+      heap.setChild(newFrame, i, value);
+    }
+    RTS = heap.pushStack(RTS, heap.allocateCallframe(E, PC));
+    let _;  // wow can't do _ in typescript =.=
+    [OS, _] = heap.popStack(OS); // pop fun
+    E = heap.extendEnvironment(newFrame, heap.getClosureEnvironment(fun));
+    PC = newPC;
+  },
+  "TAIL_CALL": instr => {
+    const arity = instr.arity;
+    // fun is the closure
+    const fun = heap.peekStackN(OS, arity);
+    const newPC = heap.getClosurePC(fun);
+    const newFrame = heap.allocateFrame(arity);
+    for (let i = arity - 1; i >= 0; i--) {
+      let value;
+      [OS, value] = heap.popStack(OS);
+      heap.setChild(newFrame, i, value);
+    }
+    // No pushing onto RTS
+    let _;  // wow can't do _ in typescript =.=
+    [OS, _] = heap.popStack(OS); // pop fun
+    E = heap.extendEnvironment(newFrame, heap.getClosureEnvironment(fun));
+    PC = newPC;
+  },
+  "RESET": instr => {
+    let topFrame;
+    // keep popping until topFrame is a callFrame
+    // We cannot do it the same way as the homework because now we have time quantum, and resetting really isn't
+    // a thread operation.
+    do {
+      [RTS, topFrame] = heap.popStack(RTS);
+    } while (!heap.isCallframe(topFrame));
+    // At this point, either it is a call frame or our program has crashed.
+    PC = heap.getCallframePC(topFrame);
+    E = heap.getCallframeEnvironment(topFrame);
   }
+
 }
 
 // Called before the machine runs a program
 function initialize() {
   // TODO: Figure out an appropriate number of words
-  const numWords = 1000;
+  // There is definitely some bug with the memory management!
+  const numWords = 10000;
   heap = new Heap(numWords);
   PC = 0;
   OS = heap.initializeStack();
@@ -249,7 +320,7 @@ function run() {
     }
   }
   console.log(heap.addressToTSValue(heap.peekStack(OS)));
-  return;
+  return heap.addressToTSValue(heap.peekStack(OS));
 }
 
 function getErrorType(): string {
@@ -263,6 +334,22 @@ function getErrorType(): string {
       return "illegal error type";
   }
 }
+
+// ****************
+// Debug
+// ****************
+
+// Helper method to print the actual typescript value of the heap address
+function printHeapValue(addr: number) {
+
+}
+
+// Helper method to print all values of the OS
+function printOSStack() {
+
+}
+
+
 
 async function main() {
   if (process.argv.length != 3) {
@@ -281,7 +368,6 @@ async function main() {
     .replace(/\\t/g, "\\t")
     .replace(/\\b/g, "\\b")
     .replace(/\\f/g, "\\f");
-  console.log(bytecode);
   instrs = bytecode.split(/\r?\n/);
   instrs = instrs.map((line) => {
     try {
@@ -291,9 +377,9 @@ async function main() {
       console.error("Error parsing", line);
     }
   });
-  console.log(instrs);
-  console.log(run());
+  return run();
 }
+
 
 main().catch(err => {
   console.error(err);
