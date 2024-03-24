@@ -583,10 +583,10 @@ BreakStatement
 
 ReturnStatement
   = ReturnToken EOS {
-      return { tag: "ReturnStatement", argument: null };
+      return { tag: "ReturnStatement", expression: null };
     }
   / ReturnToken _ argument:Expression EOS {
-      return { tag: "ReturnStatement", argument: argument };
+      return { tag: "ReturnStatement", expression: argument };
     }
 
 GoroutineStatement

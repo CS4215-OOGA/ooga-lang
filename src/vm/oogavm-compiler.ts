@@ -185,6 +185,15 @@ const compileComp = {
     //   tag: "ConstantDeclaration",
     //
     // })
+    compile({
+      tag: "ConstantDeclaration",
+      id: comp.sym,
+      expression: {
+        tag: "Lambda",
+        params: comp.params,
+        body: comp.body,
+      }
+    }, ce);
   },
   "Lambda": (comp, ce) => {
     instrs[wc++] = {tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1};
@@ -203,7 +212,23 @@ const compileComp = {
     instrs[wc++] = {tag: Opcodes.RESET};
     gotoInstruction.addr = wc;
   },
-
+  "CallExpression": (comp, ce) => {
+    console.log(comp);
+    compile(comp.callee, ce);
+    for (let arg of comp.arguments) {
+      compile(arg, ce);
+    }
+    instrs[wc++] = {tag: Opcodes.CALL, arity: comp.arguments.length};
+  },
+  "ReturnStatement": (comp, ce) => {
+    compile(comp.expression, ce);
+    // TODO: Handle tail call recursion properly, (that is handle the other cases)
+    if (comp.expression.tag === "CallExpression") {
+      instrs[wc - 1].tag = Opcodes.TAIL_CALL;
+    } else {
+      instrs[wc - 1].tag = {tag: Opcodes.RESET};
+    }
+  }
 };
 
 // TODO: Make everything proper classes so that its clearer

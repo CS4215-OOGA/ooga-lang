@@ -20,6 +20,8 @@ const enum OpCodes {
   ENTER_SCOPE = "ENTER_SCOPE",
   EXIT_SCOPE = "EXIT_SCOPE",
   RESET = "RESET",
+  CALL = "CALL",
+  TAIL_CALL = "TAIL_CALL",
 }
 
 export default OpCodes;
