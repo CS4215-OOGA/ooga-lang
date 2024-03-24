@@ -120,6 +120,7 @@ const compileComp = {
     for (let i = 0; i < comp.body.length; i++) {
       compile(comp.body[i], ce);
     }
+    instrs[wc++] = {tag: Opcodes.EXIT_SCOPE};
   },
   // TODO: Our parser currently treats all the following equivalent
   //       var x int;
@@ -141,7 +142,14 @@ const compileComp = {
     // TODO: To handle the types here
   },
   "ConstantDeclaration": (comp, ce) => {
-
+    // Handles expressions of the form
+    // const x = 5;
+    // note that it is not possible for the RHS to be empty, so if it is, we will throw an error
+    if (comp.expression === null) {
+      throw Error("Cannot have a null RHS expression for a const declaration");
+    }
+    // TODO: Actually prevent constant reassignment
+    instrs[wc++] = {tag: Opcodes.ASSIGN, pos: compileTimeEnvironmentPosition(ce, comp.id.name)};
   },
   // TODO: The parser treats expressions of the form
   "AssignmentExpression": (comp, ce) => {
