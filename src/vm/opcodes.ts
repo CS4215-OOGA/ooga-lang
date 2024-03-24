@@ -7,14 +7,9 @@ const enum OpCodes {
   LD = "LD",
   LDN = "LDN",  // load null
   LDF = "LDF",  // load func
-  UADD = "UADD", // unary add ++
-  USUB = "USUB", // unary add ++
-  ADD = "ADD",
-  SUB = "SUB",
-  MUL = "MUL",
-  DIV = "DIV",
-  MOD = "MOD",
-  NOT = "NOT",
+  BINOP = "BINOP",
+  LOG = "LOG",
+  UNARY = "UNARY",
   JOF = "JOF",
   GOTO = "GOTO",
   ASSIGN = "ASSIGN",
