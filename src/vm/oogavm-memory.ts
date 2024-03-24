@@ -273,6 +273,15 @@ export class Heap {
     return this.getStackValue(address);
   }
 
+  // Return the n-th last value in the stack
+  peekStackN(address: number, n: number): number {
+    let currAddress = address;
+    for (let i = 0; i < n; i++) {
+      currAddress = this.getChild(currAddress, 0);
+    }
+    return this.getStackValue(currAddress);
+  }
+
   // Used for peek OS
   getStackValue(address: number) {
     return this.getChild(address, 1);

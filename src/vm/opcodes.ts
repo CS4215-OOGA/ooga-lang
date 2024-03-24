@@ -1,5 +1,6 @@
 const enum OpCodes {
   NOP = "NOP",
+  POP = "POP",
   LDCI = "LDCI",
   LDBI = "LDBI",
   LDU = "LDU", // load undefined
