@@ -110,7 +110,7 @@ const push = (array, ...items) => {
 // return last element without modifying array
 const peek = array => array.slice(-1)[0];
 
-function apply_binop(sym, left, right) {
+function apply_binop(sym: string, left: any, right: any) {
   switch (sym) {
     case "+":
       return left + right;
@@ -123,6 +123,32 @@ function apply_binop(sym, left, right) {
     default:
       // FIXME: Propagate error properly to the VM
       console.error("Unsupported type!");
+  }
+}
+
+function apply_logic(sym: string, left: any, right: any) {
+  switch (sym) {
+    case "!=":
+      return left != right;
+    case "==":
+      return left == right;
+      case ">=":
+      return left >= right;
+      case ">":
+      return left > right;
+      case "<=":
+      return left <= right;
+      case "<":
+      return left < right;
+    default:
+      throw Error("LOGIC ERROR");
+  }
+}
+
+function apply_unop(sym: string, value: any) {
+  switch (sym) {
+    default:
+      throw Error("UNOP ERROR");
   }
 }
 
@@ -157,28 +183,33 @@ const microcode = {
     [OS, _] = heap.popStack(OS);
     console.log(OS);
   },
-  "ADD": instr => {
+  "BINOP": instr => {
     let left;
     let right;
     // NOTE: At the moment, this is kinda wonky. There may be a cleaner way to express this
     // But the tuple return value is definitely necessary, so I am not so sure how to make this look nicer
-    [OS, left] = heap.popStack(OS);
-    left = heap.addressToTSValue(left);
     [OS, right] = heap.popStack(OS);
     right = heap.addressToTSValue(right);
-    pushTSValueOS(left + right);
+    [OS, left] = heap.popStack(OS);
+    left = heap.addressToTSValue(left);
+    console.log(left);
+    console.log(right);
+    const value = apply_binop(instr.operator, left, right);
+    pushTSValueOS(value);
   },
-  "UADD": instr => {
-    let value;
-    [OS, value] = heap.popStack(OS);
-    value = heap.addressToTSValue(value);
-    pushTSValueOS(value + 1);
-  },
-  "USUB": instr => {
-    let value;
-    [OS, value] = heap.popStack(OS);
-    value = heap.addressToTSValue(value);
-    pushTSValueOS(value - 1);
+  "LOG": instr => {
+    let left;
+    let right;
+    // NOTE: At the moment, this is kinda wonky. There may be a cleaner way to express this
+    // But the tuple return value is definitely necessary, so I am not so sure how to make this look nicer
+    [OS, right] = heap.popStack(OS);
+    right = heap.addressToTSValue(right);
+    [OS, left] = heap.popStack(OS);
+    left = heap.addressToTSValue(left);
+    console.log(left);
+    console.log(right);
+    const value = apply_logic(instr.operator, left, right);
+    pushTSValueOS(value);
   },
   "JOF": instr => {
     let value;

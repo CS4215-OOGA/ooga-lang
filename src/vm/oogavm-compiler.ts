@@ -68,25 +68,12 @@ const compileComp = {
   "BinaryExpression": (comp, ce) => {
     compile(comp.left, ce);
     compile(comp.right, ce);
-    switch (comp.operator) {
-      case "+":
-        instrs[wc++] = {tag: Opcodes.ADD};
-        break;
-      case "-":
-        instrs[wc++] = {tag: Opcodes.SUB};
-        break;
-      case "*":
-        instrs[wc++] = {tag: Opcodes.MUL};
-        break;
-      case "/":
-        instrs[wc++] = {tag: Opcodes.DIV};
-        break
-      case "%":
-        instrs[wc++] = {tag: Opcodes.MOD};
-        break;
-      default:
-        throw Error("Unsupported symbol for compilation");
-    }
+    instrs[wc++] = {tag: Opcodes.BINOP, operator: comp.operator};
+  },
+  "LogicalExpression": (comp, ce) => {
+    compile(comp.left, ce);
+    compile(comp.right, ce);
+    instrs[wc++] = {tag: Opcodes.LOG, operator: comp.operator};
   },
   "Integer": (comp, ce) => {
     instrs[wc++] = {tag: Opcodes.LDCI, val: comp.value};
@@ -173,16 +160,7 @@ const compileComp = {
   // Note the postfix expression. yes, at the moment, idk how to make the other one valid. and also not a big deal.
   "UpdateExpression": (comp, ce) => {
     compile(comp.argument, ce);
-    switch (comp.operator) {
-      case "++":
-        instrs[wc++] = {tag: Opcodes.UADD};
-        break;
-      case "--":
-        instrs[wc++] = {tag: Opcodes.USUB};
-        break;
-      default:
-        throw Error("Invalid unary operator: " + comp.operator);
-    }
+    instrs[wc++] = {tag: Opcodes.UNARY, operator: comp.operator};
   },
   "FunctionDeclaration": (comp, ce) => {
     // similarly, we treat function declaration as constant declarations for anonymous functions
@@ -234,7 +212,7 @@ const compileComp = {
     } else {
       instrs[wc - 1].tag = Opcodes.RESET;
     }
-  }
+  },
 };
 
 // TODO: Make everything proper classes so that its clearer
