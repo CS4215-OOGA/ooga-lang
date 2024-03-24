@@ -177,6 +177,9 @@ const microcode = {
   "LDBI": instr => {
     pushTSValueOS(instr.val);
   },
+  "LDU": instr => {
+    pushTSValueOS(heap.Undefined);
+  },
   "POP": instr => {
     let _;
     console.log(OS);
@@ -299,6 +302,7 @@ const microcode = {
     // We cannot do it the same way as the homework because now we have time quantum, and resetting really isn't
     // a thread operation.
     do {
+      console.log("Popping RTS");
       [RTS, topFrame] = heap.popStack(RTS);
     } while (!heap.isCallframe(topFrame));
     // At this point, either it is a call frame or our program has crashed.
@@ -339,6 +343,7 @@ function run() {
   while (running) {
     // Handle concurrency
     if (TimeQuanta > 0) {
+      printOSStack();
       runInstruction();
     } else if (TimeQuanta === 0) {
       timeoutThread();
@@ -377,7 +382,14 @@ function printHeapValue(addr: number) {
 
 // Helper method to print all values of the OS
 function printOSStack() {
-
+  let currOS = OS;
+  console.log("currOS");
+  console.log(currOS);
+  while (currOS != -1) {
+    const value: any = heap.addressToTSValue(heap.peekStack(currOS));
+    console.log(value);
+    currOS = heap.getChild(currOS, 0);
+  }
 }
 
 

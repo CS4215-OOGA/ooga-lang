@@ -604,7 +604,7 @@ FunctionDeclaration
     {
       return {
         tag: "FunctionDeclaration",
-        sym: id,
+        id: id,
         params: optionalList(extractOptional(params, 0)),
         type: type,
         body: body

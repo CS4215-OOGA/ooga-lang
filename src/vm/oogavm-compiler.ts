@@ -1,4 +1,3 @@
-import {ast} from "peggy";
 import Opcodes from "./opcodes.js";
 
 let wc;
@@ -39,7 +38,7 @@ function compileTimeEnvironmentExtend(vs: string[], e: CompileTimeEnvironment) {
 }
 
 // TODO: Add builtins and constants frame to this
-const globalCompileTimeEnvironment: CompileTimeEnvironment = [];
+const globalCompileTimeEnvironment: CompileTimeEnvironment = [[]];
 
 // TODO: Add type annotation here
 // scans out the declarations from the block, ignoring nested blocks
@@ -48,7 +47,7 @@ function scanForLocals(compBlock): string[] {
   let declarations: string[] = [];
   for (let i = 0; i < compBlock.length; i++) {
     let comp = compBlock[i];
-    if (comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration') {
+    if (comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration' || comp.tag === "FunctionDeclaration") {
       // could probably use an extra set but i rather have smaller code
       if (declarations.includes(comp.id.name)) {
         throw Error("Variable " + comp.id.name + " declared more than once in the same block!");
@@ -171,7 +170,7 @@ const compileComp = {
     // })
     compile({
       tag: "ConstantDeclaration",
-      id: comp.sym,
+      id: comp.id,
       expression: {
         tag: "Lambda",
         params: comp.params,

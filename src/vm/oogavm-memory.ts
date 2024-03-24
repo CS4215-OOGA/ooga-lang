@@ -437,6 +437,11 @@ export class Heap {
   // TODO: Add the other golang structures
   //       Also should add strings (using string pooling homework)
   addressToTSValue(address: number) {
+    // Error handling here
+    if (address == -1) {
+      return null;
+    }
+    console.log(address);
     if (this.isNull(address)) {
       return null;
     } else if (this.isBoolean(address)) {
@@ -447,6 +452,8 @@ export class Heap {
       return "<unassigned>"
     } else if (this.isNumber(address)) {
       return this.getWord(address + 1);
+    } else if (this.isClosure(address)) {
+      return "<closure>";
     } else {
       return "unknown word tag: " + this.wordToString(address);
     }
