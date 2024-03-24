@@ -1,8 +1,7 @@
 import * as fs from 'fs';
 import * as util from "util";
-import {RoundRobinScheduler, Scheduler, ThreadId} from "./oogavm-scheduler";
-import {threadId} from "worker_threads";
-import {Heap} from "./oogavm-memory";
+import {RoundRobinScheduler, Scheduler, ThreadId} from "./oogavm-scheduler.js";
+import {Heap} from "./oogavm-memory.js";
 
 const readFileAsync = util.promisify(fs.readFile);
 
@@ -43,11 +42,15 @@ enum ProgramState {
 // The operand and runtime stack are initialized to be empty stacks.
 class Thread {
   _OS: number;
-  _ENV: number;
+  _E: number;
   _PC: number;
   _RTS: number;
   // TODO: Do this properly
-  constructor() {
+  constructor(OS: number, E: number, PC: number, RTS: number) {
+    this._OS = OS;
+    this._E = E;
+    this._PC = PC;
+    this._RTS = RTS;
   }
 }
 
@@ -62,17 +65,18 @@ let currentThreadId: ThreadId;
 function initScheduler() {
   scheduler = new RoundRobinScheduler();
   threads.clear();
-  currentThreadId = -1;
+  currentThreadId = scheduler.newThread(); // main thread
+  TimeQuanta = scheduler.getMaxTimeQuanta();
 }
 
 function newThread() {
   const newThreadId = scheduler.newThread();
-  threads.set(newThreadId, new Thread());
+  threads.set(newThreadId, new Thread(OS, E, PC, RTS));
 }
 
 function pauseThread() {
   // save current state
-  threads.set(currentThreadId, new Thread());
+  threads.set(currentThreadId, new Thread(OS, E, PC, RTS));
   scheduler.pauseThread(currentThreadId);
 }
 
@@ -122,27 +126,91 @@ function apply_binop(sym, left, right) {
   }
 }
 
+// **********************************************
+// Helper methods for interfacing with heap
+// **********************************************
+function pushValueOS(value: any) {
+  OS = heap.pushStack(OS, heap.TSValueToAddress(value));
+}
+
 const microcode = {
-  "LDC": instr => {
-    PC++;
-    push(OS, instr.val);
+  "LDCI": instr => {
+    pushValueOS(instr.val);
   },
-  "BINOP": instr => {
-    PC++;
-    push(OS, apply_binop(instr.sym, OS.pop(), OS.pop()));
+  "LDBI": instr => {
+    pushValueOS(instr.val);
+  },
+  "ADD": instr => {
+    let left;
+    let right;
+    // NOTE: At the moment, this is kinda wonky. There may be a cleaner way to express this
+    // But the tuple return value is definitely necessary, so I am not so sure how to make this look nicer
+    [OS, left] = heap.popStack(OS);
+    left = heap.addressToTSValue(left);
+    [OS, right] = heap.popStack(OS);
+    right = heap.addressToTSValue(right);
+    pushValueOS(left + right);
+  },
+  "UADD": instr => {
+    let value;
+    [OS, value] = heap.popStack(OS);
+    value = heap.addressToTSValue(value);
+    pushValueOS(value + 1);
+  },
+  "USUB": instr => {
+    let value;
+    [OS, value] = heap.popStack(OS);
+    value = heap.addressToTSValue(value);
+    pushValueOS(value - 1);
   },
   "JOF": instr => {
-    const val = OS.pop();
-    if (!val) {
-      PC = instr.addr;
+    let value;
+    [OS, value] = heap.popStack(OS);
+    value = heap.addressToTSValue(value);
+    PC = (value) ? PC : instr.addr;
+  },
+  "ENTER_SCOPE": instr => {
+    RTS = heap.pushStack(RTS, heap.allocateBlockframe(E));
+    const frameAddress = heap.allocateFrame(instr.num);
+    E = heap.extendEnvironment(frameAddress, E);
+    for (let i = 0; i < instr.num; i++) {
+      // this is probably bad design because we are accessing the Unassigned
+      heap.setChild(frameAddress, i, heap.Unassigned);
     }
+  },
+  "EXIT_SCOPE": instr => {
+    let oldEnvAddr;
+    [RTS, oldEnvAddr] = heap.popStack(RTS);
+    E = heap.getBlockframeEnvironment(oldEnvAddr);
+  },
+  "GOTO": instr => {
+    PC = instr.addr;
+  },
+  "ASSIGN": instr => {
+    let frameIndex = instr.pos[0];
+    let valueIndex = instr.pos[1];
+    let value;
+    [OS, value] = heap.popStack(OS);
+    heap.setEnvironmentValue(E, frameIndex, valueIndex, value);
+  },
+  "LD": instr => {
+    let frameIndex = instr.pos[0];
+    let valueIndex = instr.pos[1];
+    const value = heap.getEnvironmentValue(E, frameIndex, valueIndex);
+    if (heap.isUnassigned(value)) {
+      throw Error("accessing an unassigned variable");
+    }
+    OS = heap.pushStack(OS, value);
+  },
+  "DONE": instr => {
+    running = false;
   }
 }
 
 // Called before the machine runs a program
 function initialize() {
   // TODO: Figure out an appropriate number of words
-  const numWords = 10000;
+  const numWords = 1000;
   heap = new Heap(numWords);
   PC = 0;
   OS = heap.initializeStack();
@@ -152,11 +220,14 @@ function initialize() {
   //       For example, we need built-ins for make(...)
   running = true;
   State = ProgramState.NORMAL;
+  initScheduler();
 }
 
 // Run a single instruction, for concurrent execution.
 function runInstruction() {
   const instr = instrs[PC++];
+  console.log("Running ");
+  console.log(instr);
   microcode[instr.tag](instr);
 }
 
@@ -177,7 +248,8 @@ function run() {
       throw Error("execution aborted due to: " + getErrorType());
     }
   }
-  return peek(OS);
+  console.log(heap.addressToTSValue(heap.peekStack(OS)));
+  return;
 }
 
 function getErrorType(): string {

@@ -1,4 +1,4 @@
-export enum OpCodes {
+const enum OpCodes {
   NOP = "NOP",
   LDCI = "LDCI",
   LDBI = "LDBI",
@@ -16,6 +16,7 @@ export enum OpCodes {
   GOTO = "GOTO",
   ASSIGN = "ASSIGN",
   ENTER_SCOPE = "ENTER_SCOPE",
+  EXIT_SCOPE = "EXIT_SCOPE",
 }
 
 export default OpCodes;

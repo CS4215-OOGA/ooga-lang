@@ -44,11 +44,11 @@ export class Heap {
   private readonly numWords: number;
 
   // The canonical literals assigned here
-  private False;
-  private True;
-  private Null;
-  private Unassigned;
-  private Undefined;
+  False;
+  True;
+  Null;
+  Unassigned;
+  Undefined;
 
   constructor(numWords: number) {
     this.numWords = numWords;
@@ -252,19 +252,25 @@ export class Heap {
     this.setWord(newAddress + 2, -1);
     return newAddress;
   }
-  allocateStack(address: number, value: number) {
+
+  // Really just allocateStack but called push to make it clearer
+  pushStack(address: number, value: number) {
     const newAddress = this.allocate(Tag.STACK, 3);
     this.setWord(newAddress + 1, address);
     this.setWord(newAddress + 2, value);
     return newAddress;
   }
 
-  // Pop the stack and return the new OS address as well as the value
+  // Pop the stack and return the new OS/RTS address as well as the value
   popStack(address: number): [number, number] {
     const prevAddress = this.getChild(address, 0);
     const value = this.getStackValue(address);
     this.freeMemory(address);
     return [prevAddress, value]
+  }
+
+  peekStack(address: number): number {
+    return this.getStackValue(address);
   }
 
   // Used for peek OS
@@ -368,6 +374,10 @@ export class Heap {
     this.setChild(frameAddress, valueIndex, value);
   }
 
+  allocateFrame(numValues: number): number {
+    return this.allocate(Tag.FRAME, numValues + 1);
+  }
+
   // extend a given environment by a new frame
   // creates a copy of an environment that is bigger by 1 frame slot than the previous env
   // and copies the frame addresses of the given env to the new env
@@ -426,6 +436,8 @@ export class Heap {
       return undefined;
     } else if (this.isUnassigned(address)) {
       return "<unassigned>"
+    } else if (this.isNumber(address)) {
+      return this.getWord(address + 1);
     } else {
       return "unknown word tag: " + this.wordToString(address);
     }
