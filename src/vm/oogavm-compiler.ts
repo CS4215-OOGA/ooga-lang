@@ -148,6 +148,7 @@ const compileComp = {
     if (comp.expression === null) {
       throw Error("Cannot have a null RHS expression for a const declaration");
     }
+    compile(comp.expression, ce);
     // TODO: Actually prevent constant reassignment
     instrs[wc++] = {tag: Opcodes.ASSIGN, pos: compileTimeEnvironmentPosition(ce, comp.id.name)};
   },
@@ -177,6 +178,32 @@ const compileComp = {
         throw Error("Invalid unary operator: " + comp.operator);
     }
   },
+  "FunctionDeclaration": (comp, ce) => {
+    // similarly, we treat function declaration as constant declarations for anonymous functions
+    // This allows us to treat functions as expressions themselves
+    // compile({
+    //   tag: "ConstantDeclaration",
+    //
+    // })
+  },
+  "Lambda": (comp, ce) => {
+    instrs[wc++] = {tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1};
+    const gotoInstruction = {tag: Opcodes.GOTO, addr: undefined};
+    instrs[wc++] = gotoInstruction;
+
+    // TODO: probably want to incorporate type information here in the short future
+    let paramNames: string[] = [];
+    for (let i = 0; i < comp.params.length; i++) {
+      paramNames.push(comp.params[i].name);
+    }
+
+    compile(comp.body, compileTimeEnvironmentExtend(paramNames, ce));
+    // TODO: Probably better way to handle LDC while incorporating type?
+    instrs[wc++] = {tag: Opcodes.LDU};
+    instrs[wc++] = {tag: Opcodes.RESET};
+    gotoInstruction.addr = wc;
+  },
+
 };
 
 // TODO: Make everything proper classes so that its clearer
