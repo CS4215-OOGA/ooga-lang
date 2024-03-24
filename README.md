@@ -25,6 +25,7 @@ When you want to compile the test file, run `yarn compile`. It will be outputted
 When you want to run the file on the VM, run `yarn run`.
 More info can be found on the `package.json` file but this should be sufficient for now.
 
+A convenient function that does compile and run is `yarn booga`.
 
 ## Structure
 
@@ -43,3 +44,13 @@ Some differences from the Homework VM that I know of
 3. I am thinking that we use oogavm-scheduler as in martin, with the main thread spawning a copy of itself for goroutines
 4. we would need to handle the goroutine case of binding to heap for closure (see cs3211)
 5. we need proper error handling and type system as in golang, return errors???
+
+
+## Concurrency
+
+To handle concurrency, each 
+
+
+## Parser
+
+Currently do not support nested functions (inside a {} block)
