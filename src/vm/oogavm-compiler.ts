@@ -117,7 +117,13 @@ const compileComp = {
     // For now, we simply compile as per normal
     // For Block statement, we should put a POP instruction after every statement
     // except for the last statement???
+    let first = true;
     for (let i = 0; i < comp.body.length; i++) {
+      if (first) {
+        first = false;
+      } else {
+        instrs[wc++] = {tag: Opcodes.POP};
+      }
       compile(comp.body[i], ce);
     }
     instrs[wc++] = {tag: Opcodes.EXIT_SCOPE};
@@ -226,7 +232,7 @@ const compileComp = {
     if (comp.expression.tag === "CallExpression") {
       instrs[wc - 1].tag = Opcodes.TAIL_CALL;
     } else {
-      instrs[wc - 1].tag = {tag: Opcodes.RESET};
+      instrs[wc - 1].tag = Opcodes.RESET;
     }
   }
 };
@@ -251,10 +257,9 @@ function compile(component, ce) {
 export function compile_program(program) {
   wc = 0;
   instrs = [];
-  // FIXME: Right now, we are not popping properly after each sequence
-  for (let i = 0; i < program.length; i++) {
-    compile(program[i], globalCompileTimeEnvironment);
-  }
+  // wrap up the entire ast in a block tag
+  program = {tag: "BlockStatement", body: program};
+  compile(program, globalCompileTimeEnvironment);
   instrs[wc++] = {tag: "DONE"};
   return instrs;
 }
