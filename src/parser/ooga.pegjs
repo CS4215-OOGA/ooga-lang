@@ -492,12 +492,20 @@ BlockStatement
   = "{" __ body:(StatementList __)? "}" {
       return {
         tag: "BlockStatement",
-        body: optionalList(extractOptional(body, 0))
+        body: extractOptional(body, 0)
       };
     }
 
 StatementList
-  = head:Statement tail:(__ Statement)* { return buildList(head, tail, 1); }
+  = SequenceStatement
+
+SequenceStatement
+  = head:Statement tail:(__ Statement)* {
+      return {
+        tag: "SequenceStatement",
+        body: buildList(head, tail, 1)
+      };
+    }
 
 VariableStatement
     = VarToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser)? EOS {
@@ -551,8 +559,8 @@ IfStatement
       return {
         tag: "IfStatement",
         test: test,
-        consequent: consequent,
-        alternate: alternate
+        consequent: consequent.tag === "BlockStatement" ? consequent.body : consequent,
+        alternate: alternate.tag === "BlockStatement" ? alternate.body : alternate
       };
     }
   / IfToken __ test:Expression __
@@ -560,8 +568,8 @@ IfStatement
       return {
         tag: "IfStatement",
         test: test,
-        consequent: consequent,
-        alternate: null
+        consequent: consequent.tag === "BlockStatement" ? consequent.body : consequent,
+        alternate: { tag: "SequenceStatement", body: [] }
       };
     }
 
@@ -650,14 +658,17 @@ ReturnTypeList
 FunctionBody
   = body:SourceElements? {
       return {
-        tag: "BlockStatement",
+        tag: "SequenceStatement",
         body: optionalList(body)
       };
     }
 
 Program
   = body:SourceElements? {
-      return optionalList(body);
+      return {
+        tag: "SequenceStatement",
+        body: optionalList(body)
+      };
     }
 
 SourceElements

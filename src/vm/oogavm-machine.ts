@@ -110,6 +110,52 @@ const push = (array, ...items) => {
 // return last element without modifying array
 const peek = array => array.slice(-1)[0];
 
+// *******************************
+// Built-ins: binops, unops
+// *******************************
+
+// builtin_mappings is exported to allow compile time environment position look up
+// at compile time. They pop directly from the OS to avoid having to create an extra
+// frame call.
+// oogavm differs from the javascript hw impl in that we do a "hacky" compile time env
+// in that its not actually compiled.
+export const builtinMappings = {
+  "print": () => {
+    let value: any;
+    console.log("print sys call");
+    [OS, value] = heap.popStack(OS);
+    console.log(heap.addressToTSValue(value));
+    return value;
+  },
+  // "make": () => {
+  //   // TODO: Support channels as priority number 1
+  // }
+}
+
+let builtins = {};
+// The array is required cos we are using CTE which is indexed by integers
+let builtinArray = [];
+
+{
+  console.log("Initializing builtin");
+  let i = 0;
+  for (const key in builtinMappings) {
+    builtins[key] = {
+      tag: "BUILTIN",
+      id: i,
+      arity: builtinMappings[key].length
+    }
+    builtinArray[i++] = builtinMappings[key];
+  }
+}
+
+function applyBuiltin(builtinId: number) {
+  const result = builtinArray[builtinId]();
+  let _;
+  [OS, _] = heap.popStack(OS); // pop fun
+  OS = heap.pushStack(OS, result);
+}
+
 function apply_binop(sym: string, left: any, right: any) {
   switch (sym) {
     case "+":
@@ -182,9 +228,7 @@ const microcode = {
   },
   "POP": instr => {
     let _;
-    console.log(OS);
     [OS, _] = heap.popStack(OS);
-    console.log(OS);
   },
   "BINOP": instr => {
     let left;
@@ -195,8 +239,6 @@ const microcode = {
     right = heap.addressToTSValue(right);
     [OS, left] = heap.popStack(OS);
     left = heap.addressToTSValue(left);
-    console.log(left);
-    console.log(right);
     const value = apply_binop(instr.operator, left, right);
     pushTSValueOS(value);
   },
@@ -209,8 +251,6 @@ const microcode = {
     right = heap.addressToTSValue(right);
     [OS, left] = heap.popStack(OS);
     left = heap.addressToTSValue(left);
-    console.log(left);
-    console.log(right);
     const value = apply_logic(instr.operator, left, right);
     pushTSValueOS(value);
   },
@@ -248,17 +288,17 @@ const microcode = {
     let frameIndex = instr.pos[0];
     let valueIndex = instr.pos[1];
     const value = heap.getEnvironmentValue(E, frameIndex, valueIndex);
+    console.log("Value inside LD");
+    console.log(value);
     if (heap.isUnassigned(value)) {
       throw Error("accessing an unassigned variable");
     }
-    OS = heap.pushStack(OS, value);
+    pushAddressOS(value);
   },
   "DONE": instr => {
     running = false;
   },
   "LDF": instr => {
-    console.log("Instr addr");
-    console.log(instr.addr);
     const closureAddress = heap.allocateClosure(instr.arity, instr.addr, E);
     pushAddressOS(closureAddress);
   },
@@ -266,7 +306,15 @@ const microcode = {
     const arity = instr.arity;
     // fun is the closure
     const fun = heap.peekStackN(OS, arity);
+    if (heap.isBuiltin(fun)) {
+      return applyBuiltin(heap.getBuiltinId(fun));
+    }
+
+    console.log("fun");
+    console.log(fun);
     let newPC = heap.getClosurePC(fun);
+    console.log("newPC");
+    console.log(newPC);
     const newFrame = heap.allocateFrame(arity);
     for (let i = arity - 1; i >= 0; i--) {
       let value;
@@ -283,6 +331,9 @@ const microcode = {
     const arity = instr.arity;
     // fun is the closure
     const fun = heap.peekStackN(OS, arity);
+    if (heap.isBuiltin(fun)) {
+      return applyBuiltin(heap.getBuiltinId(fun));
+    }
     const newPC = heap.getClosurePC(fun);
     const newFrame = heap.allocateFrame(arity);
     for (let i = arity - 1; i >= 0; i--) {
@@ -312,7 +363,11 @@ const microcode = {
 
 }
 
+// ****************************************
+// Initialization
+// ****************************************
 // Called before the machine runs a program
+
 function initialize() {
   // TODO: Figure out an appropriate number of words
   // There is definitely some bug with the memory management!
@@ -321,12 +376,26 @@ function initialize() {
   PC = 0;
   OS = heap.initializeStack();
   RTS = heap.initializeStack();
+  const builtinsFrame = initializeBuiltins();
   E = heap.allocateEnvironment(0);
+  E = heap.extendEnvironment(builtinsFrame, E);
   // TODO: Allocate built-in function frames
   //       For example, we need built-ins for make(...)
   running = true;
   State = ProgramState.NORMAL;
   initScheduler();
+}
+
+function initializeBuiltins() {
+  const builtinValues = Object.values(builtins);
+  const frameAddress = heap.allocateFrame(builtinValues.length);
+  for (let i = 0; i < builtinValues.length; i++) {
+    const builtin = builtinValues[i];
+    console.log(builtin);
+    // @ts-ignore
+    heap.setChild(frameAddress, i, heap.allocateBuiltin(builtin.id));
+  }
+  return frameAddress;
 }
 
 // Run a single instruction, for concurrent execution.
@@ -355,6 +424,7 @@ function run() {
       throw Error("execution aborted due to: " + getErrorType());
     }
   }
+  console.log("DONE");
   console.log(heap.addressToTSValue(heap.peekStack(OS)));
   return heap.addressToTSValue(heap.peekStack(OS));
 }
@@ -382,14 +452,20 @@ function printHeapValue(addr: number) {
 
 // Helper method to print all values of the OS
 function printOSStack() {
+  console.log("Printing OS Stack...");
   let currOS = OS;
-  console.log("currOS");
-  console.log(currOS);
   while (currOS != -1) {
-    const value: any = heap.addressToTSValue(heap.peekStack(currOS));
+    console.log("currOS");
+    console.log(currOS);
+    let value: any = heap.addressToTSValue(heap.peekStack(currOS));
+    console.log("TS Value");
+    console.log(value);
+    console.log("Raw Value");
+    value = heap.peekStack(currOS);
     console.log(value);
     currOS = heap.getChild(currOS, 0);
   }
+  console.log("Done printing OS Stack...");
 }
 
 
@@ -397,6 +473,7 @@ function printOSStack() {
 async function main() {
   if (process.argv.length != 3) {
     console.error("Usage: ogoavm-machine <input-file>");
+    return;
   }
   const inputFilename = process.argv[2];
   let bytecode = await readFileAsync(inputFilename, 'utf8');

@@ -21,6 +21,7 @@ export enum Tag {
   FRAME,
   ENVIRONMENT,
   STACK,
+  BUILTIN,
 }
 
 /**
@@ -207,6 +208,10 @@ export class Heap {
 
   isUndefined(address: number) {
     return this.getTag(address) === Tag.UNDEFINED;
+  }
+
+  isBuiltin(address: number) {
+    return this.getTag(address) === Tag.BUILTIN;
   }
 
   // *****************
@@ -411,6 +416,21 @@ export class Heap {
   }
 
   // *******************
+  // Built-ins
+  // *******************
+  // [1 byte tag, 1 byte id, 3 bytes unused, 2 bytes #children, 1 byte unused]
+  allocateBuiltin(id: number) {
+    const address = this.allocate(Tag.BUILTIN, 1);
+    this.setByteAtOffset(address, 1, id);
+    return address;
+  }
+
+  getBuiltinId(address: number) {
+    return this.getByteAtOffset(address, 1);
+  }
+
+
+  // *******************
   // Golang structures
   // *******************
 
@@ -441,7 +461,6 @@ export class Heap {
     if (address == -1) {
       return null;
     }
-    console.log(address);
     if (this.isNull(address)) {
       return null;
     } else if (this.isBoolean(address)) {
@@ -452,6 +471,8 @@ export class Heap {
       return "<unassigned>"
     } else if (this.isNumber(address)) {
       return this.getWord(address + 1);
+    } else if (this.isBuiltin(address)) {
+      return "<builtin>";
     } else if (this.isClosure(address)) {
       return "<closure>";
     } else {

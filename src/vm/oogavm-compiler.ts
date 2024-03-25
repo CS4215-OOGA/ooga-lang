@@ -1,4 +1,5 @@
 import Opcodes from "./opcodes.js";
+import {builtinMappings} from "./oogavm-machine.js";
 
 let wc;
 let instrs;
@@ -37,16 +38,22 @@ function compileTimeEnvironmentExtend(vs: string[], e: CompileTimeEnvironment) {
   return push([...e], vs);
 }
 
+const builtinFrame = Object.keys(builtinMappings);
 // TODO: Add builtins and constants frame to this
-const globalCompileTimeEnvironment: CompileTimeEnvironment = [[]];
+const globalCompileTimeEnvironment: CompileTimeEnvironment = [builtinFrame];
 
 // TODO: Add type annotation here
 // scans out the declarations from the block, ignoring nested blocks
 // throws an error if the same variable is declared more than once
 function scanForLocals(compBlock): string[] {
+  if (compBlock.tag !== "SequenceStatement") {
+    return [];
+  }
   let declarations: string[] = [];
-  for (let i = 0; i < compBlock.length; i++) {
-    let comp = compBlock[i];
+  for (let i = 0; i < compBlock.body.length; i++) {
+    let comp = compBlock.body[i];
+    console.log("OOGA");
+    console.log(comp);
     if (comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration' || comp.tag === "FunctionDeclaration") {
       // could probably use an extra set but i rather have smaller code
       if (declarations.includes(comp.id.name)) {
@@ -91,7 +98,9 @@ const compileComp = {
     const goto_instr = {tag: Opcodes.GOTO, addr: undefined};
     instrs[wc++] = goto_instr;
     jof.addr = wc;
-    compile(comp.alternate, ce);
+    if (comp.alternate != null) {
+      compile(comp.alternate, ce);
+    }
     goto_instr.addr = wc;
   },
   "BlockStatement": (comp, ce) => {
@@ -103,6 +112,14 @@ const compileComp = {
     // For now, we simply compile as per normal
     // For Block statement, we should put a POP instruction after every statement
     // except for the last statement???
+    compile(comp.body, ce);
+    instrs[wc++] = {tag: Opcodes.EXIT_SCOPE};
+  },
+  "SequenceStatement": (comp, ce) => {
+    if (comp.body.length === 0) {
+      instrs[wc++] = {tag: Opcodes.LDU};
+      return;
+    }
     let first = true;
     for (let i = 0; i < comp.body.length; i++) {
       if (first) {
@@ -112,7 +129,6 @@ const compileComp = {
       }
       compile(comp.body[i], ce);
     }
-    instrs[wc++] = {tag: Opcodes.EXIT_SCOPE};
   },
   // TODO: Our parser currently treats all the following equivalent
   //       var x int;
@@ -190,13 +206,11 @@ const compileComp = {
     }
 
     compile(comp.body, compileTimeEnvironmentExtend(paramNames, ce));
-    // TODO: Probably better way to handle LDC while incorporating type?
     instrs[wc++] = {tag: Opcodes.LDU};
     instrs[wc++] = {tag: Opcodes.RESET};
     gotoInstruction.addr = wc;
   },
   "CallExpression": (comp, ce) => {
-    console.log(comp);
     compile(comp.callee, ce);
     for (let arg of comp.arguments) {
       compile(arg, ce);
@@ -209,7 +223,7 @@ const compileComp = {
     if (comp.expression.tag === "CallExpression") {
       instrs[wc - 1].tag = Opcodes.TAIL_CALL;
     } else {
-      instrs[wc - 1].tag = Opcodes.RESET;
+      instrs[wc++] = {tag: Opcodes.RESET};
     }
   },
 };
