@@ -61,17 +61,24 @@ class Thread {
 let scheduler: Scheduler;
 const threads: Map<ThreadId, Thread> = new Map<ThreadId, Thread>();
 let currentThreadId: ThreadId;
+let mainThreadId: ThreadId;
 
 function initScheduler() {
   scheduler = new RoundRobinScheduler();
   threads.clear();
-  currentThreadId = scheduler.newThread(); // main thread
-  TimeQuanta = scheduler.getMaxTimeQuanta();
+  mainThreadId = scheduler.newThread(); // main thread
+  [mainThreadId, TimeQuanta] = scheduler.runThread(); // main thread
+  threads.set(mainThreadId, new Thread(OS, E, PC, RTS));
+  currentThreadId = mainThreadId;
+  console.log("current thread id is ");
+  console.log(currentThreadId);
 }
 
-function newThread() {
+function newThread(newOS: number, newRTS: number, newPC: number) {
   const newThreadId = scheduler.newThread();
-  threads.set(newThreadId, new Thread(OS, E, PC, RTS));
+  console.log("newThreadId");
+  console.log(newThreadId);
+  threads.set(newThreadId, new Thread(newOS, E, newPC, newRTS));
 }
 
 function pauseThread() {
@@ -89,6 +96,11 @@ function deleteThread() {
 function runThread() {
   [currentThreadId, TimeQuanta] = scheduler.runThread();
   // TODO: Load thread state
+  let thread = threads.get(currentThreadId);
+  OS = thread._OS;
+  PC = thread._PC;
+  RTS = thread._RTS;
+  E = thread._E;
 }
 
 function timeoutThread() {
@@ -296,7 +308,14 @@ const microcode = {
     pushAddressOS(value);
   },
   "DONE": instr => {
-    running = false;
+    // Stop the program if the main thread reaches the DONE. Else terminate the thread
+    // and switch over to the next available one.
+    if (currentThreadId === mainThreadId) {
+      running = false;
+    } else {
+      deleteThread();
+      runThread();
+    }
   },
   "LDF": instr => {
     const closureAddress = heap.allocateClosure(instr.arity, instr.addr, E);
@@ -310,11 +329,7 @@ const microcode = {
       return applyBuiltin(heap.getBuiltinId(fun));
     }
 
-    console.log("fun");
-    console.log(fun);
     let newPC = heap.getClosurePC(fun);
-    console.log("newPC");
-    console.log(newPC);
     const newFrame = heap.allocateFrame(arity);
     for (let i = arity - 1; i >= 0; i--) {
       let value;
@@ -359,6 +374,33 @@ const microcode = {
     // At this point, either it is a call frame or our program has crashed.
     PC = heap.getCallframePC(topFrame);
     E = heap.getCallframeEnvironment(topFrame);
+  },
+  "NEW_THREAD": instr => {
+    // Expects a closure on operand stack
+    let closure;
+    [OS, closure] = heap.popStack(OS);
+    if (!heap.isClosure(closure)) {
+      throw Error("NOT A CLOSURE!!!!!!!!!!!!!!!");
+    }
+    // allocate new OS and RTS for the new thread
+    let newOS = heap.initializeStack();
+    let newRTS = heap.initializeStack();
+    // call closure using new operand and runtime stack
+    let newPC = heap.getClosurePC(closure);
+    let arity = heap.getClosureArity(closure);
+    const newFrame = heap.allocateFrame(arity);
+    // pop values from the old OS
+    for (let i = arity - 1; i >= 0; i--) {
+      let value;
+      [OS, value] = heap.popStack(OS);
+      heap.setChild(newFrame, i, value);
+    }
+    // Setting the goroutine to jump to current PC which is not incremented by 1
+    // means it will kill itself when it reaches RESET
+    newRTS = heap.pushStack(newRTS, heap.allocateCallframe(E, PC));
+    newThread(newOS, newRTS, newPC);
+    PC++; // avoid stepping onto DONE as the original thread.
+    timeoutThread();
   }
 
 }
@@ -371,7 +413,7 @@ const microcode = {
 function initialize() {
   // TODO: Figure out an appropriate number of words
   // There is definitely some bug with the memory management!
-  const numWords = 10000;
+  const numWords = 100000;
   heap = new Heap(numWords);
   PC = 0;
   OS = heap.initializeStack();
@@ -404,6 +446,7 @@ function runInstruction() {
   console.log("Running ");
   console.log(instr);
   microcode[instr.tag](instr);
+  TimeQuanta--;
 }
 
 // TODO: Switch to low level memory representation

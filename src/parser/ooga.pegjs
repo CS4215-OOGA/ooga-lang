@@ -559,8 +559,8 @@ IfStatement
       return {
         tag: "IfStatement",
         test: test,
-        consequent: consequent.tag === "BlockStatement" ? consequent.body : consequent,
-        alternate: alternate.tag === "BlockStatement" ? alternate.body : alternate
+        consequent: consequent,
+        alternate: alternate
       };
     }
   / IfToken __ test:Expression __
@@ -568,7 +568,7 @@ IfStatement
       return {
         tag: "IfStatement",
         test: test,
-        consequent: consequent.tag === "BlockStatement" ? consequent.body : consequent,
+        consequent: consequent,
         alternate: { tag: "SequenceStatement", body: [] }
       };
     }
@@ -599,10 +599,30 @@ ReturnStatement
 
 GoroutineStatement
   = GoroutineToken _ argument:CallExpression EOS {
-      return { tag: "CallGoroutine", argument: argument }
+      return { tag: "CallGoroutine", expression: argument }
+    }
+  / GoroutineToken _ lambda:LambdaDeclaration
+    {
+      return {
+        tag: "GoroutineDeclaration",
+        expression: lambda
+      }
     }
 
 // ----- A.5 Functions and Programs -----
+
+LambdaDeclaration
+  = FunctionToken __ "(" __ params:(FormalParameterList __)? ")" __
+    type:(InitType)? __
+    "{" __ body:FunctionBody __ "}"
+    {
+      return {
+        tag: "LambdaDeclaration",
+        params: optionalList(extractOptional(params, 0)),
+        type: type,
+        body: body
+      }
+    }
 
 FunctionDeclaration
   = FunctionToken __ id:Identifier __
@@ -658,8 +678,11 @@ ReturnTypeList
 FunctionBody
   = body:SourceElements? {
       return {
-        tag: "SequenceStatement",
-        body: optionalList(body)
+        tag: "BlockStatement",
+        body: {
+          tag: "SequenceStatement",
+          body: optionalList(body)
+        }
       };
     }
 

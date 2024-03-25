@@ -1,16 +1,15 @@
-5 + 5;
-5 + 6;
-true;
-if (true) {
-  5;
-} else {
-  6;
+func foo(x int) {
+  return x;
 }
 
-{
-  var x = nil;
-  var y string;
-  var z int = 5;
-  var w = 5;
-  x + w;
+go func() int {
+  var x = 5;
+  var y = 6;
+  print(x + y);
 }
+
+x := 5;
+y := 5;
+z := 5;
+a := 5;
+b := 10;

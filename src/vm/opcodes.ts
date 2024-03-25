@@ -18,6 +18,8 @@ const enum OpCodes {
   RESET = "RESET",
   CALL = "CALL",
   TAIL_CALL = "TAIL_CALL",
+  NEW_THREAD = "NEW_THREAD",
+  DONE = "DONE",
 }
 
 export default OpCodes;

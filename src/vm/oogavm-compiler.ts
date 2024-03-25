@@ -105,6 +105,10 @@ const compileComp = {
   },
   "BlockStatement": (comp, ce) => {
     const declarations = scanForLocals(comp.body);
+    // Only enter and exit scope if there are actually declarations.
+    if (declarations.length == 0) {
+      return compile(comp.body, ce);
+    }
     instrs[wc++] = {tag: Opcodes.ENTER_SCOPE, num: declarations.length };
     ce = compileTimeEnvironmentExtend(declarations, ce);
     // TODO: Add enclosing environment
@@ -188,13 +192,14 @@ const compileComp = {
       tag: "ConstantDeclaration",
       id: comp.id,
       expression: {
-        tag: "Lambda",
+        tag: "LambdaDeclaration",
         params: comp.params,
         body: comp.body,
+        type: null,
       }
     }, ce);
   },
-  "Lambda": (comp, ce) => {
+  "LambdaDeclaration": (comp, ce) => {
     instrs[wc++] = {tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1};
     const gotoInstruction = {tag: Opcodes.GOTO, addr: undefined};
     instrs[wc++] = gotoInstruction;
@@ -226,6 +231,11 @@ const compileComp = {
       instrs[wc++] = {tag: Opcodes.RESET};
     }
   },
+  "GoroutineDeclaration": (comp, ce) => {
+    compile(comp.expression, ce);
+    instrs[wc++] = {tag: Opcodes.NEW_THREAD};
+    instrs[wc++] = {tag: Opcodes.DONE};
+  }
 };
 
 // TODO: Make everything proper classes so that its clearer
@@ -251,6 +261,6 @@ export function compile_program(program) {
   // wrap up the entire ast in a block tag
   program = {tag: "BlockStatement", body: program};
   compile(program, globalCompileTimeEnvironment);
-  instrs[wc++] = {tag: "DONE"};
+  instrs[wc++] = {tag: Opcodes.DONE};
   return instrs;
 }
