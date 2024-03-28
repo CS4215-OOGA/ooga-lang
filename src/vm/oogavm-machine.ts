@@ -70,20 +70,15 @@ function initScheduler() {
   [mainThreadId, TimeQuanta] = scheduler.runThread(); // main thread
   threads.set(mainThreadId, new Thread(OS, E, PC, RTS));
   currentThreadId = mainThreadId;
-  console.log("current thread id is ");
-  console.log(currentThreadId);
 }
 
 function newThread(newOS: number, newRTS: number, newPC: number, newE: number) {
   const newThreadId = scheduler.newThread();
-  console.log("newThreadId");
-  console.log(newThreadId);
   threads.set(newThreadId, new Thread(newOS, newE, newPC, newRTS));
 }
 
 function pauseThread() {
   // save current state
-  console.log("PAUSING current thread " + currentThreadId);
   threads.set(currentThreadId, new Thread(OS, E, PC, RTS));
   scheduler.pauseThread(currentThreadId);
 }
@@ -110,12 +105,8 @@ function timeoutThread() {
     TimeQuanta = scheduler.getMaxTimeQuanta();
     return;
   }
-  console.log("OS Stack before for current thread id " + currentThreadId);
-  printOSStack();
   pauseThread();
   runThread();
-  console.log("OS Stack after for current thread id " + currentThreadId);
-  printOSStack()
 }
 
 
@@ -156,7 +147,6 @@ let builtinArray = [];
 
 // This method is called by both Compilation and Machine at runtime
 export function initializeBuiltinTable() {
-  console.log("Initializing builtin");
   let i = 0;
   for (const key in builtinMappings) {
     builtins[key] = {
@@ -307,9 +297,6 @@ const microcode = {
     let frameIndex = instr.pos[0];
     let valueIndex = instr.pos[1];
     const value = heap.getEnvironmentValue(E, frameIndex, valueIndex);
-    console.log("Value inside LD");
-    console.log(value);
-    console.log(heap.addressToTSValue(value));
     if (heap.isUnassigned(value)) {
       throw Error("accessing an unassigned variable");
     }
@@ -376,7 +363,6 @@ const microcode = {
     // We cannot do it the same way as the homework because now we have time quantum, and resetting really isn't
     // a thread operation.
     do {
-      console.log("Popping RTS");
       [RTS, topFrame] = heap.popStack(RTS);
     } while (!heap.isCallframe(topFrame));
     // At this point, either it is a call frame or our program has crashed.
@@ -386,8 +372,6 @@ const microcode = {
   "NEW_THREAD": instr => {
     // Expects a closure on operand stack
     let closure = heap.peekStackN(OS, instr.arity);
-    console.log(closure);
-    console.log(heap.addressToTSValue(closure));
     if (!heap.isClosure(closure)) {
       throw Error("NOT A CLOSURE!!!!!!!!!!!!!!!");
     }
@@ -397,13 +381,11 @@ const microcode = {
     // call closure using new operand and runtime stack
     let newPC = heap.getClosurePC(closure);
     let arity = heap.getClosureArity(closure);
-    console.log("Arity of instr is " + arity);
     const newFrame = heap.allocateFrame(arity);
     // pop values from the old OS
     for (let i = arity - 1; i >= 0; i--) {
       let value;
       [OS, value] = heap.popStack(OS);
-      console.log(value);
       heap.setChild(newFrame, i, value);
     }
     let newE = heap.extendEnvironment(newFrame, E);
@@ -449,7 +431,6 @@ function initializeBuiltins() {
   const frameAddress = heap.allocateFrame(builtinValues.length);
   for (let i = 0; i < builtinValues.length; i++) {
     const builtin = builtinValues[i];
-    console.log(builtin);
     // @ts-ignore
     heap.setChild(frameAddress, i, heap.allocateBuiltin(builtin.id));
   }
@@ -459,8 +440,8 @@ function initializeBuiltins() {
 // Run a single instruction, for concurrent execution.
 function runInstruction() {
   const instr = instrs[PC++];
-  console.log("Running ");
-  console.log(instr);
+  // console.log("Running ");
+  // console.log(instr);
   microcode[instr.tag](instr);
   TimeQuanta--;
 }
@@ -471,7 +452,7 @@ export function run() {
   while (running) {
     // Handle concurrency
     if (TimeQuanta > 0) {
-      printOSStack();
+      // printOSStack();
       runInstruction();
     } else if (TimeQuanta === 0) {
       timeoutThread();
@@ -483,8 +464,6 @@ export function run() {
       throw Error("execution aborted due to: " + getErrorType());
     }
   }
-  console.log("DONE");
-  console.log(heap.addressToTSValue(heap.peekStack(OS)));
   return heap.addressToTSValue(heap.peekStack(OS));
 }
 
