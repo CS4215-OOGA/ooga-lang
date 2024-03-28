@@ -95,7 +95,7 @@ Options:
   ast: Parse and pretty-print the AST. For debugging the parser.
 -o, --out <filename>: [see below]
   Sets the output filename.
-  Defaults to the input filename, minus any '.js' extension, plus '.svm'.
+  Defaults to the input filename, minus any '.ooga' extension, plus '.bm'.
 --:
   Signifies the end of arguments, in case your input filename starts with -.`)
     process.exitCode = 1;

@@ -466,7 +466,7 @@ function runInstruction() {
 }
 
 // TODO: Switch to low level memory representation
-function run() {
+export function run() {
   initialize();
   while (running) {
     // Handle concurrency
@@ -527,15 +527,7 @@ function printOSStack() {
   console.log("Done printing OS Stack...");
 }
 
-
-
-async function main() {
-  if (process.argv.length != 3) {
-    console.error("Usage: ogoavm-machine <input-file>");
-    return;
-  }
-  const inputFilename = process.argv[2];
-  let bytecode = await readFileAsync(inputFilename, 'utf8');
+export function processByteCode(bytecode: string) {
   bytecode = bytecode.trimStart();
   bytecode = bytecode.trimEnd();
   // Preserve newlines, etc. - use valid JSON
@@ -556,6 +548,16 @@ async function main() {
       console.error("Error parsing", line);
     }
   });
+}
+
+async function main() {
+  if (process.argv.length != 3) {
+    console.error("Usage: ogoavm-machine <input-file>");
+    return;
+  }
+  const inputFilename = process.argv[2];
+  let bytecode = await readFileAsync(inputFilename, 'utf8');
+  processByteCode(bytecode);
   return run();
 }
 
