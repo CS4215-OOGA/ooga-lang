@@ -1,5 +1,5 @@
 import Opcodes from "./opcodes.js";
-import {builtinMappings} from "./oogavm-machine.js";
+import {builtinMappings, initializeBuiltinTable} from "./oogavm-machine.js";
 
 let wc;
 let instrs;
@@ -264,6 +264,7 @@ function compile(component, ce) {
 //        can be reserved to indicating the start location for the PC.
 //        But this seems like a band-aid fix.
 export function compile_program(program) {
+  initializeBuiltinTable();
   wc = 0;
   instrs = [];
   // wrap up the entire ast in a block tag

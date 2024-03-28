@@ -154,7 +154,8 @@ let builtins = {};
 // The array is required cos we are using CTE which is indexed by integers
 let builtinArray = [];
 
-{
+// This method is called by both Compilation and Machine at runtime
+export function initializeBuiltinTable() {
   console.log("Initializing builtin");
   let i = 0;
   for (const key in builtinMappings) {
@@ -443,6 +444,7 @@ function initialize() {
 }
 
 function initializeBuiltins() {
+  initializeBuiltinTable();
   const builtinValues = Object.values(builtins);
   const frameAddress = heap.allocateFrame(builtinValues.length);
   for (let i = 0; i < builtinValues.length; i++) {
