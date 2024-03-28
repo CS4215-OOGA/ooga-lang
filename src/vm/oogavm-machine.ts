@@ -74,15 +74,16 @@ function initScheduler() {
   console.log(currentThreadId);
 }
 
-function newThread(newOS: number, newRTS: number, newPC: number) {
+function newThread(newOS: number, newRTS: number, newPC: number, newE: number) {
   const newThreadId = scheduler.newThread();
   console.log("newThreadId");
   console.log(newThreadId);
-  threads.set(newThreadId, new Thread(newOS, E, newPC, newRTS));
+  threads.set(newThreadId, new Thread(newOS, newE, newPC, newRTS));
 }
 
 function pauseThread() {
   // save current state
+  console.log("PAUSING current thread " + currentThreadId);
   threads.set(currentThreadId, new Thread(OS, E, PC, RTS));
   scheduler.pauseThread(currentThreadId);
 }
@@ -109,8 +110,12 @@ function timeoutThread() {
     TimeQuanta = scheduler.getMaxTimeQuanta();
     return;
   }
+  console.log("OS Stack before for current thread id " + currentThreadId);
+  printOSStack();
   pauseThread();
   runThread();
+  console.log("OS Stack after for current thread id " + currentThreadId);
+  printOSStack()
 }
 
 
@@ -379,8 +384,7 @@ const microcode = {
   },
   "NEW_THREAD": instr => {
     // Expects a closure on operand stack
-    let closure;
-    [OS, closure] = heap.popStack(OS);
+    let closure = heap.peekStackN(OS, instr.arity);
     console.log(closure);
     console.log(heap.addressToTSValue(closure));
     if (!heap.isClosure(closure)) {
@@ -392,17 +396,23 @@ const microcode = {
     // call closure using new operand and runtime stack
     let newPC = heap.getClosurePC(closure);
     let arity = heap.getClosureArity(closure);
+    console.log("Arity of instr is " + arity);
     const newFrame = heap.allocateFrame(arity);
     // pop values from the old OS
     for (let i = arity - 1; i >= 0; i--) {
       let value;
       [OS, value] = heap.popStack(OS);
+      console.log(value);
       heap.setChild(newFrame, i, value);
     }
+    let newE = heap.extendEnvironment(newFrame, E);
+    let _;
+    [OS, _] = heap.popStack(OS); // pop fun
+    pushTSValueOS(true);
     // Setting the goroutine to jump to current PC which is not incremented by 1
     // means it will kill itself when it reaches RESET
     newRTS = heap.pushStack(newRTS, heap.allocateCallframe(E, PC));
-    newThread(newOS, newRTS, newPC);
+    newThread(newOS, newRTS, newPC, newE);
     PC++; // avoid stepping onto DONE as the original thread.
     timeoutThread();
   }
@@ -417,7 +427,7 @@ const microcode = {
 function initialize() {
   // TODO: Figure out an appropriate number of words
   // There is definitely some bug with the memory management!
-  const numWords = 100000;
+  const numWords = 1000000;
   heap = new Heap(numWords);
   PC = 0;
   OS = heap.initializeStack();
