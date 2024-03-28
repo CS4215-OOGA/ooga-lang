@@ -12,13 +12,41 @@ export function testProgram(program: string, expectedValue: any) {
   processByteCode(bytecode);
   let value = run();
   if (value !== expectedValue) {
-    console.log(`Expected ${expectedValue} but got ${value}`);
+    throw Error(`Expected ${expectedValue} but got ${value}`);
   }
 }
 
+// Testing simple identity function
 testProgram(`
 func foo(n) {
   return n;
 }
 foo(5);
+`, 5);
+
+// Testing recursive function
+testProgram(`
+func factorial(n) {
+  if (n == 1) {
+    return 1;
+  } else {
+    return n * factorial(n-1);
+  }
+}
+factorial(5);
+`, 120);
+
+// Testing goroutine
+testProgram(`
+var a = 1;
+var b = 2;
+go func() {
+  a = 2;
+}
+
+go func() {
+  b = 3;
+}
+
+a + b;
 `, 5);

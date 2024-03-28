@@ -22,6 +22,7 @@
     "compile": "node dist/vm/oogavm.js booga.ooga -o booga.bm",
     "ooga": "node ./dist/vm/oogavm-machine.js booga.bm",
     "booga": "yarn compile && yarn ooga",
-    "test": "node ./dist/tests/test.js"
+    "test": "node ./dist/tests/test.js",
+    "tooga": "yarn build && yarn test"
   }
 }
