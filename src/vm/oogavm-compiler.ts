@@ -222,6 +222,13 @@ const compileComp = {
     }
     instrs[wc++] = {tag: Opcodes.CALL, arity: comp.arguments.length};
   },
+  "GoroutineCallExpression": (comp, ce) => {
+    for (let arg of comp.arguments) {
+      compile(arg, ce);
+    }
+    compile(comp.callee, ce);
+    // Expects a NEW_THREAD AFTER
+  },
   "ReturnStatement": (comp, ce) => {
     compile(comp.expression, ce);
     // TODO: Handle tail call recursion properly, (that is handle the other cases)
@@ -232,6 +239,11 @@ const compileComp = {
     }
   },
   "GoroutineDeclaration": (comp, ce) => {
+    compile(comp.expression, ce);
+    instrs[wc++] = {tag: Opcodes.NEW_THREAD};
+    instrs[wc++] = {tag: Opcodes.DONE};
+  },
+  "CallGoroutine": (comp, ce) => {
     compile(comp.expression, ce);
     instrs[wc++] = {tag: Opcodes.NEW_THREAD};
     instrs[wc++] = {tag: Opcodes.DONE};

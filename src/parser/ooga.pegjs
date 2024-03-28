@@ -322,6 +322,46 @@ CallExpression
         __ args:Arguments {
           return { tag: "CallExpression", arguments: args };
         }
+      / lambda:LambdaDeclaration "(" __ ")" {
+          return {
+            tag: "CallExpression",
+            callee: lambda,
+            arguments: []
+          };
+        }
+      / __ "[" __ property:Expression __ "]" {
+          return {
+            tag: "MemberExpression",
+            object: head,
+            property: property,
+            computed: true
+          };
+        }
+    )*
+    {
+      return tail.reduce(function(result, element) {
+        element[TYPES_TO_PROPERTY_NAMES[element.type]] = result;
+        return element;
+      }, head);
+    }
+
+GoroutineCallExpression
+  = head:(
+      callee:MemberExpression __ args:Arguments {
+        return { tag: "GoroutineCallExpression", callee: callee, arguments: args };
+      }
+    )
+    tail:(
+        __ args:Arguments {
+          return { tag: "GoroutineCallExpression", arguments: args };
+        }
+      / lambda:LambdaDeclaration "(" __ ")" {
+          return {
+            tag: "GoroutineCallExpression",
+            callee: lambda,
+            arguments: []
+          };
+        }
       / __ "[" __ property:Expression __ "]" {
           return {
             tag: "MemberExpression",
@@ -542,7 +582,7 @@ EmptyStatement
   = ";" { return { tag: "EmptyStatement" }; }
 
 ExpressionStatement
-  = !("{" / FunctionToken) expression:Expression EOS {
+  = expression:Expression EOS {
     return expression;
       // return {
       //   tag: "ExpressionStatement",
@@ -598,7 +638,7 @@ ReturnStatement
     }
 
 GoroutineStatement
-  = GoroutineToken _ argument:CallExpression EOS {
+  = GoroutineToken _ argument:GoroutineCallExpression EOS {
       return { tag: "CallGoroutine", expression: argument }
     }
   / GoroutineToken _ lambda:LambdaDeclaration
@@ -658,7 +698,7 @@ FunctionExpression
     "{" __ body:FunctionBody __ "}"
     {
       return {
-        tag: "FunctionExpression",
+        tag: "LambdaDeclaration",
         id: extractOptional(id, 0),
         params: optionalList(extractOptional(params, 0)),
         body: body

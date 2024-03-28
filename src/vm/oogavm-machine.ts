@@ -136,6 +136,7 @@ export const builtinMappings = {
     let value: any;
     console.log("print sys call");
     [OS, value] = heap.popStack(OS);
+    console.log(value);
     console.log(heap.addressToTSValue(value));
     return value;
   },
@@ -302,6 +303,7 @@ const microcode = {
     const value = heap.getEnvironmentValue(E, frameIndex, valueIndex);
     console.log("Value inside LD");
     console.log(value);
+    console.log(heap.addressToTSValue(value));
     if (heap.isUnassigned(value)) {
       throw Error("accessing an unassigned variable");
     }
@@ -379,6 +381,8 @@ const microcode = {
     // Expects a closure on operand stack
     let closure;
     [OS, closure] = heap.popStack(OS);
+    console.log(closure);
+    console.log(heap.addressToTSValue(closure));
     if (!heap.isClosure(closure)) {
       throw Error("NOT A CLOSURE!!!!!!!!!!!!!!!");
     }
