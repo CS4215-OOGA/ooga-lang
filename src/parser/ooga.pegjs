@@ -95,7 +95,6 @@ IdentifierStart
 IdentifierPart
     = [a-zA-Z0-9]
     / "_"
-    / "-"
 
 ReservedWord
   = Keyword
@@ -582,7 +581,7 @@ EmptyStatement
   = ";" { return { tag: "EmptyStatement" }; }
 
 ExpressionStatement
-  = expression:Expression EOS {
+  = !("{" / FunctionToken) expression:Expression EOS {
     return expression;
       // return {
       //   tag: "ExpressionStatement",
