@@ -1,0 +1,46 @@
+import { assemble } from '../vm/oogavm-assembler.js'
+import { parse } from '../parser/ooga.js'
+import { processByteCode } from '../vm/oogavm-machine.js'
+import { compile_program } from '../vm/oogavm-compiler.js'
+import { run } from '../vm/oogavm-machine.js'
+
+/**
+ * Executes the given ooga-lang code and captures the output.
+ * @param {string} code The ooga-lang code to execute.
+ * @returns {Promise<string>} The captured output (including any errors).
+ */
+export function runOogaLangCode(code: string): Promise<string> {
+  console.log(code)
+  return new Promise((resolve, reject) => {
+    // Redirect console.log to capture output
+    const originalConsoleLog = console.log
+    let capturedOutput = ''
+    console.log = (message: string): void => {
+      capturedOutput += JSON.stringify(message) + '\n'
+    }
+
+    try {
+      // Trim the code
+      code = code.trim()
+
+      // Execute the ooga-lang code
+      let program = parse(code)
+      const instrs = compile_program(program)
+      let bytecode = assemble(instrs)
+      processByteCode(bytecode)
+      let value = run()
+      capturedOutput += 'Output: ' + value + '\n'
+      // Restore console.log
+      console.log = originalConsoleLog
+
+      // Resolve the promise with the captured output
+      resolve(capturedOutput)
+    } catch (error) {
+      // Restore console.log before rejecting
+      console.log = originalConsoleLog
+      console.log(error)
+      // Reject the promise with the error message
+      reject(`Error: ${error.message}\n${capturedOutput}`)
+    }
+  })
+}

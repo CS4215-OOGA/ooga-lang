@@ -9,7 +9,10 @@
   "dependencies": {
     "@babel/plugin-proposal-export-default-from": "^7.23.3",
     "@types/node": "^20.11.28",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
     "eslint": "^8.57.0",
+    "express": "^4.19.2",
     "peggy": "^4.0.2",
     "swc": "^1.0.11",
     "ts-node": "^10.9.2",
@@ -17,12 +20,13 @@
   },
   "type": "module",
   "scripts": {
-    "build": "yarn swc ./src -d dist --copy-files",
+    "build": "yarn swc ./src -d dist --copy-files ",
     "peggy": "peggy ./src/parser/ooga.pegjs --format es",
     "compile": "node dist/vm/oogavm.js booga.ooga -o booga.bm",
     "ooga": "node ./dist/vm/oogavm-machine.js booga.bm",
     "booga": "yarn compile && yarn ooga",
     "test": "node ./dist/tests/test.js",
-    "tooga": "yarn build && yarn test"
+    "tooga": "yarn build && yarn test",
+    "server": "node ./dist/server/server.js"
   }
 }
