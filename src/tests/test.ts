@@ -1,31 +1,50 @@
-import {assemble} from "../vm/oogavm-assembler.js";
-import { parse } from '../parser/ooga.js';
-import { processByteCode } from "../vm/oogavm-machine.js";
-import {compile_program} from "../vm/oogavm-compiler.js";
-import {run} from "../vm/oogavm-machine.js";
+import { assemble } from '../vm/oogavm-assembler.js'
+import { parse } from '../parser/ooga.js'
+import { processByteCode } from '../vm/oogavm-machine.js'
+import { compile_program } from '../vm/oogavm-compiler.js'
+import { run } from '../vm/oogavm-machine.js'
 
 export function testProgram(program: string, expectedValue: any) {
-  program = program.trimEnd();
-  program = parse(program);
-  const instrs = compile_program(program);
-  let bytecode = assemble(instrs);
-  processByteCode(bytecode);
-  let value = run();
+  console.log('--------------------------------------------')
+  console.log('Running program:\n```')
+  console.log(program)
+  console.log('```\nExpected value: ' + expectedValue)
+  let cl = console.log
+  console.log = () => {}
+  program = program.trimEnd()
+  program = parse(program)
+  const instrs = compile_program(program)
+  let bytecode = assemble(instrs)
+  processByteCode(bytecode)
+  let value = run()
+
+  console.log = cl
   if (value !== expectedValue) {
-    throw Error(`Expected ${expectedValue} but got ${value}`);
+    // print "Test failed" in red
+    console.log('\x1b[31m%s\x1b[0m', 'Test failed')
+    console.log(`Expected ${expectedValue} but got ${value}`)
+    throw new Error('Test failed')
+  } else {
+    // print "Test passed" in green
+    console.log('\x1b[32m%s\x1b[0m', 'Test passed')
   }
+  console.log('--------------------------------------------')
 }
 
 // Testing simple identity function
-testProgram(`
+testProgram(
+  `
 func foo(n) {
   return n;
 }
 foo(5);
-`, 5);
+`,
+  5
+)
 
 // Testing recursive function
-testProgram(`
+testProgram(
+  `
 func factorial(n) {
   if (n == 1) {
     return 1;
@@ -34,10 +53,13 @@ func factorial(n) {
   }
 }
 factorial(5);
-`, 120);
+`,
+  120
+)
 
 // Testing goroutine
-testProgram(`
+testProgram(
+  `
 var a = 1;
 var b = 2;
 go func() {
@@ -49,4 +71,6 @@ go func() {
 }
 
 a + b;
-`, 5);
+`,
+  5
+)

@@ -1,15 +1,7 @@
-func foo(x int) {
-  return x;
+func foo(y int) {
+    if (y == 0) {
+        return y;
+    }
+    print(y);
+    foo(y - 1);
 }
-
-go func() int {
-  var x = 5;
-  var y = 6;
-  print(x + y);
-}
-
-x := 5;
-y := 5;
-z := 5;
-a := 5;
-b := 10;
