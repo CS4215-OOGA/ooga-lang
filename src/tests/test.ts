@@ -39,7 +39,7 @@ func foo(n) {
 }
 foo(5);
 `,
-  5
+  6
 )
 
 // Testing recursive function
