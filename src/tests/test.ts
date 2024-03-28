@@ -41,7 +41,56 @@ x;
   5
 );
 
+testProgram(
+  `
+var x = 5;
+x + 2;
+`,
+  7
+);
 
+testProgram(
+  `
+var x = 5;
+x - 2;
+`,
+  3
+);
+
+testProgram(
+  `
+var x = 4;
+x / 2;
+`,
+  2
+);
+
+testProgram(
+  `
+var x = 5;
+x * 3;
+`,
+  15
+);
+
+// Test blocks and scope
+testProgram(`
+var x = 5;
+{
+  x = 6;
+}
+x;
+`, 6);
+
+testProgram(`
+var x = 5;
+var y = 10;
+{
+  var x = 6;
+  var y = 6;
+}
+x + y;
+`, 15);
 
 // Testing simple identity function
 testProgram(
@@ -53,6 +102,30 @@ foo(5);
 `,
   5
 );
+
+// Testing literals
+testProgram(`
+5
+`, 5);
+
+// Testing conditionals
+testProgram(`
+var x = 5;
+if (x == 5) {
+  6;
+} else {
+  7;
+}
+`, 6);
+
+testProgram(`
+var x = 6;
+if (x == 5) {
+  6;
+} else {
+  7;
+}
+`, 7);
 
 // Testing recursive function
 testProgram(
