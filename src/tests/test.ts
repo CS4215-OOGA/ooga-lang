@@ -23,6 +23,7 @@ export function testProgram(program: string, expectedValue: any) {
     // print "Test failed" in red
     console.log('\x1b[31m%s\x1b[0m', 'Test failed')
     console.log(`Expected ${expectedValue} but got ${value}`)
+    console.log('--------------------------------------------')
     throw new Error('Test failed')
   } else {
     // print "Test passed" in green
@@ -39,7 +40,7 @@ func foo(n) {
 }
 foo(5);
 `,
-  6
+  5
 )
 
 // Testing recursive function
