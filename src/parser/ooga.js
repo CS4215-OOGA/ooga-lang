@@ -585,7 +585,7 @@ function peg$parse(input, options) {
     };
   var peg$f59 = function(id, init) {
         return {
-            tag: "VariableDeclaration",
+            tag: "Name",
             id: id,
             expression: extractOptional(init, 1)
         }
