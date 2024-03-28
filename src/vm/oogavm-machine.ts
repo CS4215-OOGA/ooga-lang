@@ -202,6 +202,10 @@ function apply_logic(sym: string, left: any, right: any) {
 
 function apply_unop(sym: string, value: any) {
   switch (sym) {
+    case "++":
+      return value+1;
+    case "--":
+      return value-1;
     default:
       throw Error("UNOP ERROR");
   }
@@ -238,6 +242,14 @@ const microcode = {
   "POP": instr => {
     let _;
     [OS, _] = heap.popStack(OS);
+  },
+  "UNARY": instr => {
+    let value;
+    [OS, value] = heap.popStack(OS);
+    value = heap.addressToTSValue(value);
+    value = apply_unop(instr.operator, value);
+    console.log("Value of unop is " + value);
+    pushTSValueOS(value);
   },
   "BINOP": instr => {
     let left;
@@ -440,8 +452,8 @@ function initializeBuiltins() {
 // Run a single instruction, for concurrent execution.
 function runInstruction() {
   const instr = instrs[PC++];
-  // console.log("Running ");
-  // console.log(instr);
+  console.log("Running ");
+  console.log(instr);
   microcode[instr.tag](instr);
   TimeQuanta--;
 }
@@ -464,6 +476,7 @@ export function run() {
       throw Error("execution aborted due to: " + getErrorType());
     }
   }
+  console.log(heap.addressToTSValue(heap.peekStack(OS)));
   return heap.addressToTSValue(heap.peekStack(OS));
 }
 

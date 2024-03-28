@@ -45,7 +45,7 @@ const globalCompileTimeEnvironment: CompileTimeEnvironment = [builtinFrame];
 // TODO: Add type annotation here
 // scans out the declarations from the block, ignoring nested blocks
 // throws an error if the same variable is declared more than once
-function scanForLocals(compBlock): string[] {
+function scanForLocalsBlock(compBlock): string[] {
   if (compBlock.tag !== "SequenceStatement") {
     return [];
   }
@@ -63,6 +63,15 @@ function scanForLocals(compBlock): string[] {
     }
   }
   return declarations;
+}
+
+// Helper function to scan for declaration within a for init component
+function scanForLocalsSingle(comp): string[] {
+  if (comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration') {
+    return [comp.id.name];
+  } else {
+    return [];
+  }
 }
 
 // ******************
@@ -104,7 +113,7 @@ const compileComp = {
     goto_instr.addr = wc;
   },
   "BlockStatement": (comp, ce) => {
-    const declarations = scanForLocals(comp.body);
+    const declarations = scanForLocalsBlock(comp.body);
     // Only enter and exit scope if there are actually declarations.
     if (declarations.length == 0) {
       return compile(comp.body, ce);
@@ -176,10 +185,10 @@ const compileComp = {
   // This handles expressions of the form
   // ++x;
   // --y;
-  // Note the postfix expression. yes, at the moment, idk how to make the other one valid. and also not a big deal.
   "UpdateExpression": (comp, ce) => {
-    compile(comp.argument, ce);
+    compile(comp.id, ce);
     instrs[wc++] = {tag: Opcodes.UNARY, operator: comp.operator};
+    instrs[wc++] = {tag: Opcodes.ASSIGN, pos: compileTimeEnvironmentPosition(ce, comp.id.name)};
   },
   "FunctionDeclaration": (comp, ce) => {
     // similarly, we treat function declaration as constant declarations for anonymous functions
@@ -243,6 +252,38 @@ const compileComp = {
     }
     instrs[wc++] = {tag: Opcodes.NEW_THREAD, arity: comp.expression.arguments.length};
     instrs[wc++] = {tag: Opcodes.DONE};
+  },
+  // ForStatements are just syntactic sugar for while loops
+  // The difference is that in ooga-lang, all three components are optional!
+  // We handle the ForRange statement separately
+  "ForStatement": (comp, ce) => {
+    // We also need to possibly enter scope if there was a variable declaration
+    // in the init component
+    let declarations = [];
+    if (comp.init !== null) {
+      declarations = scanForLocalsSingle(comp.init);
+      if (declarations.length > 0) {
+        instrs[wc++] = {tag: Opcodes.ENTER_SCOPE, num: declarations.length };
+        ce = compileTimeEnvironmentExtend(declarations, ce);
+      }
+      compile(comp.init, ce);
+    }
+    const loopStart = wc;
+    if (comp.test !== null) {
+      compile(comp.test, ce);
+    }
+    const jof = {tag: Opcodes.JOF, addr: undefined};
+    instrs[wc++] = jof;
+    compile(comp.body, ce);
+    instrs[wc++] = {tag: Opcodes.POP};
+    if (comp.update !== null) {
+      compile(comp.update, ce);
+    }
+    instrs[wc++] = {tag: Opcodes.GOTO, addr: loopStart};
+    jof.addr = wc;
+    if (declarations.length > 0) {
+      instrs[wc++] = {tag: Opcodes.EXIT_SCOPE };
+    }
   }
 };
 

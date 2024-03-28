@@ -111,7 +111,6 @@ Keyword
   / ReturnToken
   / ThisToken
   / VarToken
-  / WhileToken
   / ConstToken
   / IntegerToken
   / BooleanToken
@@ -220,7 +219,6 @@ ReturnToken     = "return"     !IdentifierPart
 ThisToken       = "this"       !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 VarToken        = "var"        !IdentifierPart
-WhileToken      = "while"      !IdentifierPart
 IntegerToken    = "int"        !IdentifierPart
 BooleanToken    = "bool"       !IdentifierPart
 StringToken     = "string"     !IdentifierPart
@@ -391,7 +389,24 @@ LeftHandSideExpression
   / NewExpression
 
 PostfixExpression
-  = LeftHandSideExpression
+  = head:LeftHandSideExpression
+    tail:(__ UpdateOperator)?
+    {
+      if (tail) {
+        return {
+          tag: "UpdateExpression",
+          operator: tail[1],
+          id: head,
+          prefix: false
+        };
+      } else {
+        return head;
+      }
+    }
+
+UpdateOperator
+  = "++"
+  / "--"
 
 UnaryExpression
   = PostfixExpression
@@ -402,7 +417,7 @@ UnaryExpression
       return {
         tag: type,
         operator: operator,
-        argument: argument,
+        id: argument,
         prefix: true
       };
     }
@@ -434,6 +449,16 @@ AdditiveOperator
   = $("+" ![+=])
   / $("-" ![-=])
 
+ShiftExpression
+  = head:AdditiveExpression
+    tail:(__ ShiftOperator __ AdditiveExpression)*
+    { return buildBinaryExpression(head, tail); }
+
+ShiftOperator
+  = $("<<"  !"=")
+  / $(">>>" !"=")
+  / $(">>"  !"=")
+
 RelationalExpression
   = head:AdditiveExpression
     tail:(__ RelationalOperator __ AdditiveExpression)*
@@ -453,6 +478,30 @@ EqualityExpression
 EqualityOperator
   = "=="
   / "!="
+
+BitwiseANDExpression
+  = head:EqualityExpression
+    tail:(__ BitwiseANDOperator __ EqualityExpression)*
+    { return buildBinaryExpression(head, tail); }
+
+BitwiseANDOperator
+  = $("&" ![&=])
+
+BitwiseXORExpression
+  = head:BitwiseANDExpression
+    tail:(__ BitwiseXOROperator __ BitwiseANDExpression)*
+    { return buildBinaryExpression(head, tail); }
+
+BitwiseXOROperator
+  = $("^" !"=")
+
+BitwiseORExpression
+  = head:BitwiseXORExpression
+    tail:(__ BitwiseOROperator __ BitwiseXORExpression)*
+    { return buildBinaryExpression(head, tail); }
+
+BitwiseOROperator
+  = $("|" ![|=])
 
 LogicalANDExpression
   = head:EqualityExpression
@@ -526,6 +575,8 @@ Statement
   / ReturnStatement
   / GoroutineStatement
   / FunctionDeclaration
+  / ForStatement
+  / ForInitStatement
 
 BlockStatement
   = "{" __ body:(StatementList __)? "}" {
@@ -607,6 +658,42 @@ IfStatement
         alternate: { tag: "SequenceStatement", body: [] }
       };
     }
+
+ForStatement
+  = ForToken __
+    "(" __
+    init:(ForInitStatement __)? __
+    test:(Expression __)? __ ";" __
+    update:(Expression __)? __ ")" __
+    "{" __ body: Statement __ "}" __
+    {
+      return {
+        tag: "ForStatement",
+        init: extractOptional(init, 0),
+        test: extractOptional(test, 0),
+        update: extractOptional(update, 0),
+        body: body
+      };
+    }
+  / ForToken __
+    "(" __
+    init:(ForInitStatement __)? ";" __
+    test:(Expression __)? ";" __
+    update: (Expression __)? ")" __
+    __ "{" __ body: Statement __ "}" __
+    {
+      return {
+        tag: "ForStatement",
+        init: extractOptional(init, 0),
+        test: extractOptional(test, 0),
+        update: extractOptional(update, 0),
+        body: body
+      };
+    }
+
+ForInitStatement
+  = VariableStatement
+  / Expression
 
 ContinueStatement
   = ContinueToken EOS {
