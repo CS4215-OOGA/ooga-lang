@@ -23,7 +23,11 @@ type CompileTimeEnvironment = CompileTimeFrame[];
 function compileTimeEnvironmentPosition(env: CompileTimeEnvironment, x: string) {
   let frameIndex = env.length;
   while (frameIndex > 0 && valueIndex(env[--frameIndex], x) === -1) {}
-  return [frameIndex, valueIndex(env[frameIndex], x)]
+  let vIndex = valueIndex(env[frameIndex], x);
+  if (vIndex === -1) {
+    throw Error("unbound name: " + x);
+  }
+  return [frameIndex, vIndex];
 }
 
 function valueIndex(frame: CompileTimeFrame, x: string) {
