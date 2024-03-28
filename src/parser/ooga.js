@@ -584,11 +584,7 @@ function peg$parse(input, options) {
         }
     };
   var peg$f59 = function(id, init) {
-        return {
-            tag: "Name",
-            id: id,
-            expression: extractOptional(init, 1)
-        }
+        return id;
     };
   var peg$f60 = function(id, type, init) {
         return {

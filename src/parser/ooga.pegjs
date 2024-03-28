@@ -555,11 +555,7 @@ VariableStatement
         }
     }
     / id:Identifier init:(__ ShorthandInitialiser)? EOS {
-        return {
-            tag: "Name",
-            id: id,
-            expression: extractOptional(init, 1)
-        }
+        return id;
     }
 
 ConstantStatement

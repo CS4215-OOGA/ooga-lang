@@ -32,6 +32,17 @@ export function testProgram(program: string, expectedValue: any) {
   console.log('--------------------------------------------')
 }
 
+// Testing simple var expressions
+testProgram(
+  `
+var x = 5;
+x;
+`,
+  5
+);
+
+
+
 // Testing simple identity function
 testProgram(
   `
@@ -41,7 +52,7 @@ func foo(n) {
 foo(5);
 `,
   5
-)
+);
 
 // Testing recursive function
 testProgram(
@@ -56,7 +67,7 @@ func factorial(n) {
 factorial(5);
 `,
   120
-)
+);
 
 // Testing goroutine
 testProgram(
@@ -74,4 +85,4 @@ go func() {
 a + b;
 `,
   5
-)
+);

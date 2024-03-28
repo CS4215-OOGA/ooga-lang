@@ -65,14 +65,11 @@ export class RoundRobinScheduler implements Scheduler {
   }
 
   runThread(): [ThreadId, number] | null {
-    console.log("Changing thread");
     if (this._idleThreads.length === 0) {
       return null;
     } else {
       // The ! is a non-null assertion operator
       const nextThread = this._idleThreads.shift()!
-      console.log("nextThread inside scheduler is ");
-      console.log(nextThread);
       // const timeQuanta = Math.ceil(0.5 + Math.random() * 0.5) * this._maxTimeQuanta;
       const timeQuanta = this._maxTimeQuanta + 5;
       this._currentThreads.add(nextThread);
