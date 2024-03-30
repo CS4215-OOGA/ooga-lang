@@ -662,25 +662,10 @@ IfStatement
 ForStatement
   = ForToken __
     "(" __
-    init:(ForInitStatement __)? __
-    test:(Expression __)? __ ";" __
-    update:(Expression __)? __ ")" __
+    init:(ForInitStatement __)
+    test:(ForTest __)
+    update:(Expression __) ")" __
     "{" __ body: Statement __ "}" __
-    {
-      return {
-        tag: "ForStatement",
-        init: extractOptional(init, 0),
-        test: extractOptional(test, 0),
-        update: extractOptional(update, 0),
-        body: body
-      };
-    }
-  / ForToken __
-    "(" __
-    init:(ForInitStatement __)? ";" __
-    test:(Expression __)? ";" __
-    update: (Expression __)? ")" __
-    __ "{" __ body: Statement __ "}" __
     {
       return {
         tag: "ForStatement",
@@ -693,7 +678,14 @@ ForStatement
 
 ForInitStatement
   = VariableStatement
-  / Expression
+
+ForTest
+  = LogicalORExpression
+  / LogicalANDExpression
+  / EqualityExpression
+  / RelationalExpression
+  / UnaryExpression
+  / BooleanLiteral
 
 ContinueStatement
   = ContinueToken EOS {
