@@ -50,6 +50,15 @@ x;
     5
 );
 
+// Test shorthand
+testProgram(
+    `
+x := 5;
+x;
+`,
+    5
+);
+
 testProgram(
     `
 var x = 5;
@@ -196,17 +205,17 @@ sum;
     45
 );
 
-// Testing for loop with init; condition; update using shorthand - this currently fails for some reason
-// testProgram(
-//     `
-// var sum = 0;
-// for i := 0; i < 10; i := i + 1 {
-//   sum = sum + i;
-// }
-// sum;
-// `,
-//     45
-// );
+// Testing for loop with init; condition; update using shorthand
+testProgram(
+    `
+var sum = 0;
+for i := 0; i < 10; i = i + 1 {
+  sum = sum + i;
+}
+sum;
+`,
+    45
+);
 
 // Testing for loop with init; condition; update using var and ++
 testProgram(
