@@ -598,7 +598,7 @@ SequenceStatement
     }
 
 VariableStatement
-    = VarToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser)? EOS? {
+    = VarToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser)? EOS {
         return {
             tag: "VariableDeclaration",
             id: id,
@@ -606,7 +606,11 @@ VariableStatement
         }
     }
     / id:Identifier init:(__ ShorthandInitialiser)? EOS {
-        return id;
+        return {
+            tag: "VariableDeclaration",
+            id: id,
+            expression: extractOptional(init, 1)
+        }
     }
 
 ConstantStatement
@@ -720,8 +724,12 @@ ForInitStatement
             expression: extractOptional(init, 1)
         }
     }
-    / id:Identifier init:(__ ShorthandInitialiser) ";" {
-        return id;
+    / id:Identifier init:(__ ShorthandInitialiser) {
+        return {
+            tag: "VariableDeclaration",
+            id: id,
+            expression: extractOptional(init, 1)
+        }
     }
 
 ForTest

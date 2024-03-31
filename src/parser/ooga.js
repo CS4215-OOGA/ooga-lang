@@ -687,7 +687,11 @@ function peg$parse(input, options) {
         }
     };
   var peg$f76 = function(id, init) {
-        return id;
+        return {
+            tag: "VariableDeclaration",
+            id: id,
+            expression: extractOptional(init, 1)
+        }
     };
   var peg$f77 = function() {
       return { tag: "ContinueStatement", label: null };
@@ -5373,11 +5377,13 @@ function peg$parse(input, options) {
           s6 = null;
         }
         s7 = peg$parseEOS();
-        if (s7 === peg$FAILED) {
-          s7 = null;
+        if (s7 !== peg$FAILED) {
+          peg$savedPos = s0;
+          s0 = peg$f63(s3, s5, s6);
+        } else {
+          peg$currPos = s0;
+          s0 = peg$FAILED;
         }
-        peg$savedPos = s0;
-        s0 = peg$f63(s3, s5, s6);
       } else {
         peg$currPos = s0;
         s0 = peg$FAILED;
@@ -5953,20 +5959,8 @@ function peg$parse(input, options) {
           s2 = peg$FAILED;
         }
         if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 59) {
-            s3 = peg$c30;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$e47); }
-          }
-          if (s3 !== peg$FAILED) {
-            peg$savedPos = s0;
-            s0 = peg$f76(s1, s2);
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
+          peg$savedPos = s0;
+          s0 = peg$f76(s1, s2);
         } else {
           peg$currPos = s0;
           s0 = peg$FAILED;
