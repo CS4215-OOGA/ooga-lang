@@ -15,3 +15,5 @@ jobs:
       run: yarn install
     - name: Run yarn tooga
       run: yarn tooga
+      env:
+        DEBUG: '*'

@@ -605,7 +605,7 @@ VariableStatement
             expression: extractOptional(init, 1)
         }
     }
-    / id:Identifier init:(__ ShorthandInitialiser)? EOS {
+    / id:Identifier init:(__ ShorthandInitialiser) EOS {
         return {
             tag: "VariableDeclaration",
             id: id,

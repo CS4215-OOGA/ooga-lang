@@ -5808,13 +5808,15 @@ function peg$parse(input, options) {
                     peg$currPos = s2;
                     s2 = peg$FAILED;
                 }
-                if (s2 === peg$FAILED) {
-                    s2 = null;
-                }
-                s3 = peg$parseEOS();
-                if (s3 !== peg$FAILED) {
-                    peg$savedPos = s0;
-                    s0 = peg$f64(s1, s2);
+                if (s2 !== peg$FAILED) {
+                    s3 = peg$parseEOS();
+                    if (s3 !== peg$FAILED) {
+                        peg$savedPos = s0;
+                        s0 = peg$f64(s1, s2);
+                    } else {
+                        peg$currPos = s0;
+                        s0 = peg$FAILED;
+                    }
                 } else {
                     peg$currPos = s0;
                     s0 = peg$FAILED;

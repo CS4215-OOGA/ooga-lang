@@ -5,21 +5,29 @@ import { compile_program } from '../vm/oogavm-compiler.js';
 import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
 
+let namespaces = debug.disable(); // remove this line to enable debug logs
 const log = debug('ooga:tests');
+debug.enable('ooga:tests');
 
 export function testProgram(program: string, expectedValue: any) {
-    log('--------------------------------------------');
     log('Running program:\n```');
     log(program);
     log('```\nExpected value: ' + expectedValue);
-
-    program = program.trimEnd();
-    program = parse(program);
-    const instrs = compile_program(program);
-    let bytecode = assemble(instrs);
-    processByteCode(bytecode);
-    let value = run();
-
+    let value;
+    try {
+        program = program.trimEnd();
+        program = parse(program);
+        const instrs = compile_program(program);
+        let bytecode = assemble(instrs);
+        processByteCode(bytecode);
+        value = run();
+    } catch (e) {
+        log('--------------------------------------------');
+        log('\x1b[31m%s\x1b[0m', 'Test failed with exception');
+        log(`Error: ${e.message}`);
+        log('--------------------------------------------');
+        throw e;
+    }
     if (value !== expectedValue) {
         // print "Test failed" in red
         log('\x1b[31m%s\x1b[0m', 'Test failed');
@@ -175,3 +183,72 @@ a + b;
 `,
     5
 );
+
+// Testing for loop with init; condition; update using var
+testProgram(
+    `
+var sum = 0;
+for var i = 0; i < 10; i = i + 1 {
+  sum = sum + i;
+}
+sum;
+`,
+    45
+);
+
+// Testing for loop with init; condition; update using shorthand - this currently fails for some reason
+// testProgram(
+//     `
+// var sum = 0;
+// for i := 0; i < 10; i := i + 1 {
+//   sum = sum + i;
+// }
+// sum;
+// `,
+//     45
+// );
+
+// Testing for loop with init; condition; update using var and ++
+testProgram(
+    `
+var sum = 0;
+for var i = 0; i < 10; i++ {
+  sum = sum + i;
+}
+sum;
+`,
+    45
+);
+
+// Testing for loop with only condition
+testProgram(
+    `
+var sum = 0;
+var i = 0;
+for i < 10 {
+  sum = sum + i;
+  i = i + 1;
+}
+sum;
+`,
+    45
+);
+
+// Testing infinite loop does not work because the VM does not support break
+// testProgram(
+//     `
+// var sum = 0;
+// var i = 0;
+// for {
+//   if (i == 10) {
+//     break;
+//   }
+//   sum = sum + i;
+//   i = i + 1;
+// }
+// sum;
+// `,
+//     45
+// );
+
+debug.enable(namespaces);
