@@ -598,7 +598,7 @@ SequenceStatement
     }
 
 VariableStatement
-    = VarToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser)? EOS {
+    = VarToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser)? EOS? {
         return {
             tag: "VariableDeclaration",
             id: id,
@@ -660,24 +660,69 @@ IfStatement
     }
 
 ForStatement
+  = ForWithInitTestUpdate
+  / ForWithTest
+  / ForInfinite
+
+ForWithInitTestUpdate
   = ForToken __
-    "(" __
-    init:(ForInitStatement __)
-    test:(ForTest __)
-    update:(Expression __) ")" __
-    "{" __ body: Statement __ "}" __
+    init:ForInitStatement ";" __
+    test:Expression ";" __
+    update:Expression __
+    "{" __ body: StatementList __ "}" __
     {
       return {
         tag: "ForStatement",
-        init: extractOptional(init, 0),
-        test: extractOptional(test, 0),
-        update: extractOptional(update, 0),
+        type: "ForWithInitTestUpdate",
+        init: init,
+        test: test,
+        update: update,
+        body: body
+      };
+    }
+
+
+ForWithTest
+  = ForToken __
+    test:Expression __
+    "{" __ body: StatementList __ "}" __
+    {
+      return {
+        tag: "ForStatement",
+        type: "ForWithTest",
+        init: null,
+        test: test,
+        update: null,
+        body: body
+      };
+    }
+
+
+ForInfinite
+  = ForToken __
+    "{" __ body: StatementList __ "}" __
+    {
+      return {
+        tag: "ForStatement",
+        type: "ForInfinite",
+        init: null,
+        test: null,
+        update: null,
         body: body
       };
     }
 
 ForInitStatement
-  = VariableStatement
+  = VarToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser) {
+        return {
+            tag: "VariableDeclaration",
+            id: id,
+            expression: extractOptional(init, 1)
+        }
+    }
+    / id:Identifier init:(__ ShorthandInitialiser) ";" {
+        return id;
+    }
 
 ForTest
   = LogicalORExpression

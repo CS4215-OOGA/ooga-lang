@@ -27,7 +27,7 @@
     "booga": "yarn compile && yarn ooga",
     "test": "node ./dist/tests/test.js",
     "tooga": "yarn build && yarn test",
-    "pooga": "yarn peggy && yarn build"
+    "pooga": "yarn peggy && yarn build",
     "tooga": "yarn build && yarn test",
     "server": "node ./dist/server/server.js"
   }

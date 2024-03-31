@@ -1,7 +1,6 @@
-func foo(y int) {
-    if (y == 0) {
-        return y;
-    }
-    print(y);
-    foo(y - 1);
+var j = 5
+for var i = 5; i < 10; i = i + 1 {
+    print (i);
 }
+
+print(j)
