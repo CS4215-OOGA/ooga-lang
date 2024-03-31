@@ -1,88 +1,93 @@
-import { assemble } from '../vm/oogavm-assembler.js'
-import { parse } from '../parser/ooga.js'
-import { processByteCode } from '../vm/oogavm-machine.js'
-import { compile_program } from '../vm/oogavm-compiler.js'
-import { run } from '../vm/oogavm-machine.js'
+import { assemble } from '../vm/oogavm-assembler.js';
+import { parse } from '../parser/ooga.js';
+import { processByteCode } from '../vm/oogavm-machine.js';
+import { compile_program } from '../vm/oogavm-compiler.js';
+import { run } from '../vm/oogavm-machine.js';
+import debug from 'debug';
+
+const log = debug('ooga:tests');
 
 export function testProgram(program: string, expectedValue: any) {
-  console.log('--------------------------------------------')
-  console.log('Running program:\n```')
-  console.log(program)
-  console.log('```\nExpected value: ' + expectedValue)
-  let cl = console.log
-  console.log = () => {}
-  program = program.trimEnd()
-  program = parse(program)
-  const instrs = compile_program(program)
-  let bytecode = assemble(instrs)
-  processByteCode(bytecode)
-  let value = run()
+    log('--------------------------------------------');
+    log('Running program:\n```');
+    log(program);
+    log('```\nExpected value: ' + expectedValue);
 
-  console.log = cl
-  if (value !== expectedValue) {
-    // print "Test failed" in red
-    console.log('\x1b[31m%s\x1b[0m', 'Test failed')
-    console.log(`Expected ${expectedValue} but got ${value}`)
-    console.log('--------------------------------------------')
-    throw new Error('Test failed')
-  } else {
-    // print "Test passed" in green
-    console.log('\x1b[32m%s\x1b[0m', 'Test passed')
-  }
-  console.log('--------------------------------------------')
+    program = program.trimEnd();
+    program = parse(program);
+    const instrs = compile_program(program);
+    let bytecode = assemble(instrs);
+    processByteCode(bytecode);
+    let value = run();
+
+    if (value !== expectedValue) {
+        // print "Test failed" in red
+        log('\x1b[31m%s\x1b[0m', 'Test failed');
+        log(`Expected ${expectedValue} but got ${value}`);
+        log('--------------------------------------------');
+        throw new Error('Test failed');
+    } else {
+        // print "Test passed" in green
+        log('\x1b[32m%s\x1b[0m', 'Test passed');
+    }
+    log('--------------------------------------------');
 }
 
 // Testing simple var expressions
 testProgram(
-  `
+    `
 var x = 5;
 x;
 `,
-  5
+    5
 );
 
 testProgram(
-  `
+    `
 var x = 5;
 x + 2;
 `,
-  7
+    7
 );
 
 testProgram(
-  `
+    `
 var x = 5;
 x - 2;
 `,
-  3
+    3
 );
 
 testProgram(
-  `
+    `
 var x = 4;
 x / 2;
 `,
-  2
+    2
 );
 
 testProgram(
-  `
+    `
 var x = 5;
 x * 3;
 `,
-  15
+    15
 );
 
 // Test blocks and scope
-testProgram(`
+testProgram(
+    `
 var x = 5;
 {
   x = 6;
 }
 x;
-`, 6);
+`,
+    6
+);
 
-testProgram(`
+testProgram(
+    `
 var x = 5;
 var y = 10;
 {
@@ -90,46 +95,57 @@ var y = 10;
   var y = 6;
 }
 x + y;
-`, 15);
+`,
+    15
+);
 
 // Testing simple identity function
 testProgram(
-  `
+    `
 func foo(n) {
   return n;
 }
 foo(5);
 `,
-  5
+    5
 );
 
 // Testing literals
-testProgram(`
+testProgram(
+    `
 5
-`, 5);
+`,
+    5
+);
 
 // Testing conditionals
-testProgram(`
+testProgram(
+    `
 var x = 5;
 if (x == 5) {
   6;
 } else {
   7;
 }
-`, 6);
+`,
+    6
+);
 
-testProgram(`
+testProgram(
+    `
 var x = 6;
 if (x == 5) {
   6;
 } else {
   7;
 }
-`, 7);
+`,
+    7
+);
 
 // Testing recursive function
 testProgram(
-  `
+    `
 func factorial(n) {
   if (n == 1) {
     return 1;
@@ -139,12 +155,12 @@ func factorial(n) {
 }
 factorial(5);
 `,
-  120
+    120
 );
 
 // Testing goroutine
 testProgram(
-  `
+    `
 var a = 1;
 var b = 2;
 go func() {
@@ -157,5 +173,5 @@ go func() {
 
 a + b;
 `,
-  5
+    5
 );

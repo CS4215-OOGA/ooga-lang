@@ -417,7 +417,7 @@ UnaryExpression
       return {
         tag: type,
         operator: operator,
-        id: argument,
+        argument: argument,
         prefix: true
       };
     }

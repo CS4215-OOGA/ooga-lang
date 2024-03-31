@@ -1,5 +1,3 @@
-export type Operand = number | string | boolean | undefined | null
+export type Operand = number | string | boolean | undefined | null;
 
-export interface Instruction {
-
-}
+export interface Instruction {}
