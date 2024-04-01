@@ -267,6 +267,12 @@ const compileComp = {
         instrs[wc++] = { tag: Opcodes.CALL, arity: comp.arguments.length };
     },
     ReturnStatement: (comp, ce) => {
+        if (comp.expression === null) {
+            instrs[wc++] = { tag: Opcodes.LDCI, val: null };
+            instrs[wc++] = { tag: Opcodes.RESET };
+            return;
+        }
+
         compile(comp.expression, ce);
         // TODO: Handle tail call recursion properly, (that is handle the other cases)
         if (comp.expression.tag === 'CallExpression') {

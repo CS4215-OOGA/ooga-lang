@@ -160,6 +160,16 @@ foo;
     5
 );
 
+// Testing function with no return type
+testProgram(
+    `
+func foo(n int) {
+    return;
+}
+foo(5);
+`,
+    null
+);
 
 // Testing literals
 testProgram(

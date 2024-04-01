@@ -1,14 +1,6 @@
-var x int = 5;
-x;
-
-func y(a int, b int) int, int {
-    return b;
+func p(i int) {
+    print(i);
+    return;
 }
 
-y(1,2);
-
-var add = func(x int, y int) (int) {
-  z := 5;
-  print(z);
-  return x + y;
-}(1,3);
+print(p(1));
