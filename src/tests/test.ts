@@ -44,7 +44,7 @@ export function testProgram(program: string, expectedValue: any) {
 // Testing simple var expressions
 testProgram(
     `
-var x = 5;
+var x int = 5;
 x;
 `,
     5
@@ -61,7 +61,7 @@ x;
 
 testProgram(
     `
-var x = 5;
+var x int = 5;
 x + 2;
 `,
     7
@@ -69,7 +69,7 @@ x + 2;
 
 testProgram(
     `
-var x = 5;
+var x int = 5;
 x - 2;
 `,
     3
@@ -77,7 +77,7 @@ x - 2;
 
 testProgram(
     `
-var x = 4;
+var x int = 4;
 x / 2;
 `,
     2
@@ -85,7 +85,7 @@ x / 2;
 
 testProgram(
     `
-var x = 5;
+var x int = 5;
 x * 3;
 `,
     15
@@ -94,7 +94,7 @@ x * 3;
 // Test blocks and scope
 testProgram(
     `
-var x = 5;
+var x int = 5;
 {
   x = 6;
 }
@@ -105,11 +105,11 @@ x;
 
 testProgram(
     `
-var x = 5;
-var y = 10;
+var x int = 5;
+var y int = 10;
 {
-  var x = 6;
-  var y = 6;
+  var x int = 6;
+  var y int = 6;
 }
 x + y;
 `,
@@ -119,13 +119,47 @@ x + y;
 // Testing simple identity function
 testProgram(
     `
-func foo(n) {
+func foo(n int) int {
   return n;
 }
 foo(5);
 `,
     5
 );
+
+// Testing function with brackets around return
+testProgram(
+    `
+func foo(n int) (int) {
+    return n;
+    }
+foo(5);
+`,
+    5
+);
+
+// Testing function as lambda
+testProgram(
+    `
+var foo = func(n int) int {
+    return n;
+    };
+foo(5);
+`,
+    5
+);
+
+// Testing function as lambda with invocation
+testProgram(
+    `
+var foo = func(n int) int {
+    return n;
+    }(5);
+foo;
+`,
+    5
+);
+
 
 // Testing literals
 testProgram(
@@ -163,7 +197,7 @@ if (x == 5) {
 // Testing recursive function
 testProgram(
     `
-func factorial(n) {
+func factorial(n int) {
   if (n == 1) {
     return 1;
   } else {

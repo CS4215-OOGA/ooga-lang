@@ -1,3 +1,14 @@
-for i := 5; i < 10; i = i + 1 {
-    print (i);
+var x int = 5;
+x;
+
+func y(a int, b int) int, int {
+    return b;
 }
+
+y(1,2);
+
+var add = func(x int, y int) (int) {
+  z := 5;
+  print(z);
+  return x + y;
+}(1,3);

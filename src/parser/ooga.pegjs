@@ -67,11 +67,10 @@ Identifier
   = !ReservedWord name:IdentifierName { return name; }
 
 IdentifierName "Name"
-  = head:IdentifierStart tail:IdentifierPart* type:(__ InitType)?{
+  = head:IdentifierStart tail:IdentifierPart*{
       return {
         tag: "Name",
         name: head + tail.join(""),
-        type: extractOptional(type, 1) ? extractOptional(type, 1) : "Null"
       };
     }
 
@@ -602,7 +601,8 @@ VariableStatement
         return {
             tag: "VariableDeclaration",
             id: id,
-            expression: extractOptional(init, 1)
+            expression: extractOptional(init, 1),
+            type: type
         }
     }
     / id:Identifier init:(__ ShorthandInitialiser) EOS {
@@ -780,7 +780,7 @@ GoroutineStatement
 
 LambdaDeclaration
   = FunctionToken __ "(" __ params:(FormalParameterList __)? ")" __
-    type:(InitType)? __
+    "("? __ type:(ReturnTypeList)? __ ")"? __
     "{" __ body:FunctionBody __ "}"
     {
       return {
@@ -794,20 +794,7 @@ LambdaDeclaration
 FunctionDeclaration
   = FunctionToken __ id:Identifier __
     "(" __ params:(FormalParameterList __)? ")" __
-    type:(InitType)? __
-    "{" __ body:FunctionBody __ "}"
-    {
-      return {
-        tag: "FunctionDeclaration",
-        id: id,
-        params: optionalList(extractOptional(params, 0)),
-        type: type,
-        body: body
-      };
-    }
-  / FunctionToken __ id:Identifier __
-    "(" __ params:(FormalParameterList __)? ")" __
-    "(" __ type:(ReturnTypeList) __ ")" __
+    "("? __ type:(ReturnTypeList)? __ ")"? __
     "{" __ body:FunctionBody __ "}"
     {
       return {
@@ -822,6 +809,7 @@ FunctionDeclaration
 FunctionExpression
   = FunctionToken __ id:(Identifier __)?
     "(" __ params:(FormalParameterList __)? ")" __
+    "("? __ type:(ReturnTypeList) __ ")"? __
     "{" __ body:FunctionBody __ "}"
     {
       return {
@@ -833,9 +821,15 @@ FunctionExpression
     }
 
 FormalParameterList
-  = head:Identifier tail:(__ "," __ Identifier)* {
+  = head:FormalParameter tail:(__ "," __ FormalParameter)* {
       return buildList(head, tail, 3);
     }
+
+FormalParameter
+  = id:Identifier __ type:InitType {
+      return { tag: id.tag, name: id.name, type: type };
+    }
+
 
 ReturnTypeList
   = head:InitType tail:(__ "," __ InitType)* {
