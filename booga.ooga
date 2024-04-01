@@ -1,6 +1,5 @@
-func p(i int) {
-    print(i);
-    return;
+func x(y int) int{
+    return y;
 }
 
-print(p(1));
+x(4);

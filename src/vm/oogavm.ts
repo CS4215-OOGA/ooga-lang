@@ -107,7 +107,15 @@ Options:
     let source = await readFileAsync(options.inputFilename, 'utf8');
     source = source.trimEnd();
     const program = parse(source);
+    log('--------------------------------------------');
+    log('Parsed program:');
+    log(JSON.stringify(program, null, 2));
+    log('--------------------------------------------');
     const instrs = compile_program(program);
+    log('--------------------------------------------');
+    log('Compiled program:');
+    log(instrs);
+    log('--------------------------------------------');
     const bytecode = assemble(instrs);
     return writeFileAsync(options.outputFilename, bytecode);
 }
