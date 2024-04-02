@@ -566,7 +566,6 @@ Statement
   = BlockStatement
   / VariableStatement
   / ConstantStatement
-  / EmptyStatement
   / ExpressionStatement
   / IfStatement
   / ContinueStatement
@@ -597,7 +596,7 @@ SequenceStatement
     }
 
 VariableStatement
-    = VarToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser)? EOS {
+    = VarToken __ id:Identifier __ type:(InitType) init:(__ Initialiser)? EOS {
         return {
             tag: "VariableDeclaration",
             id: id,
@@ -609,16 +608,18 @@ VariableStatement
         return {
             tag: "VariableDeclaration",
             id: id,
-            expression: extractOptional(init, 1)
+            expression: extractOptional(init, 1),
+            type: "Unknown"
         }
     }
 
 ConstantStatement
-    = ConstToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser) EOS {
+    = ConstToken __ id:Identifier __ init:(__ Initialiser) EOS {
         return {
             tag: "ConstantDeclaration",
             id: id,
-            expression: extractOptional(init, 1)
+            expression: extractOptional(init, 1),
+            type: "Unknown"
         }
     }
 
@@ -628,8 +629,6 @@ Initialiser
 ShorthandInitialiser
   = ":=" __ expression:AssignmentExpression { return expression; }
 
-EmptyStatement
-  = ";" { return { tag: "EmptyStatement" }; }
 
 ExpressionStatement
   = !("{" / FunctionToken) expression:Expression EOS {
@@ -673,7 +672,7 @@ ForWithInitTestUpdate
     init:ForInitStatement ";" __
     test:Expression ";" __
     update:Expression __
-    "{" __ body: StatementList __ "}" __
+    "{" __ body: StatementList? __ "}" __
     {
       return {
         tag: "ForStatement",
@@ -689,7 +688,7 @@ ForWithInitTestUpdate
 ForWithTest
   = ForToken __
     test:Expression __
-    "{" __ body: StatementList __ "}" __
+    "{" __ body: StatementList? __ "}" __
     {
       return {
         tag: "ForStatement",
@@ -704,31 +703,33 @@ ForWithTest
 
 ForInfinite
   = ForToken __
-    "{" __ body: StatementList __ "}" __
+    "{" __ body: StatementList? __ "}" __
     {
       return {
         tag: "ForStatement",
         type: "ForInfinite",
         init: null,
-        test: null,
+        test: { tag: "Boolean", value: true },
         update: null,
         body: body
       };
     }
 
 ForInitStatement
-  = VarToken __ id:Identifier __ type:(InitType)? init:(__ Initialiser) {
+  = VarToken __ id:Identifier __ type:(InitType) init:(__ Initialiser) {
         return {
             tag: "VariableDeclaration",
             id: id,
-            expression: extractOptional(init, 1)
+            expression: extractOptional(init, 1),
+            type: type
         }
     }
     / id:Identifier init:(__ ShorthandInitialiser) {
         return {
             tag: "VariableDeclaration",
             id: id,
-            expression: extractOptional(init, 1)
+            expression: extractOptional(init, 1),
+            type: "Unknown"
         }
     }
 
@@ -786,7 +787,7 @@ LambdaDeclaration
       return {
         tag: "LambdaDeclaration",
         params: optionalList(extractOptional(params, 0)),
-        type: type,
+        type: type || ["Null"],
         body: body
       }
     }
@@ -801,11 +802,12 @@ FunctionDeclaration
         tag: "FunctionDeclaration",
         id: id,
         params: optionalList(extractOptional(params, 0)),
-        type: type,
+        type: type || ["Null"],
         body: body
       };
     }
 
+// Arnav: Not sure what this is for!!
 FunctionExpression
   = FunctionToken __ id:(Identifier __)?
     "(" __ params:(FormalParameterList __)? ")" __
@@ -816,7 +818,8 @@ FunctionExpression
         tag: "LambdaDeclaration",
         id: extractOptional(id, 0),
         params: optionalList(extractOptional(params, 0)),
-        body: body
+        body: body,
+        type: type || ["Null"]
       };
     }
 

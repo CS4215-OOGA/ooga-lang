@@ -4,6 +4,7 @@ import * as util from 'util';
 import { compile_program } from './oogavm-compiler.js';
 import { assemble } from './oogavm-assembler.js';
 import { parse } from '../parser/ooga.js';
+import { checkTypes } from './oogavm-typechecker.js';
 import { write } from 'fs';
 import debug from 'debug';
 
@@ -106,7 +107,9 @@ Options:
 
     let source = await readFileAsync(options.inputFilename, 'utf8');
     source = source.trimEnd();
-    const program = parse(source);
+    let program = parse(source);
+    // wrap up the entire ast in a block tag
+    program = { tag: 'BlockStatement', body: program };
     log('--------------------------------------------');
     log('Parsed program:');
     log(JSON.stringify(program, null, 2));
@@ -116,6 +119,7 @@ Options:
     log('Compiled program:');
     log(instrs);
     log('--------------------------------------------');
+    checkTypes(program);
     const bytecode = assemble(instrs);
     return writeFileAsync(options.outputFilename, bytecode);
 }

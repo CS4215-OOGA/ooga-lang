@@ -32,6 +32,8 @@ let running: boolean;
 let heap: Heap;
 // State of the machine. Used to handle runtime errors reporting.
 let State: ProgramState;
+// Start time of the program
+let startTime: number;
 
 enum ProgramState {
     NORMAL,
@@ -441,6 +443,7 @@ function initialize() {
     //       For example, we need built-ins for make(...)
     running = true;
     State = ProgramState.NORMAL;
+    startTime = Date.now();
     initScheduler();
 }
 
@@ -458,6 +461,10 @@ function initializeBuiltins() {
 
 // Run a single instruction, for concurrent execution.
 function runInstruction() {
+    if (Date.now() - startTime > 60000) {
+        throw Error('Execution time exceeded 60 seconds');
+    }
+
     const instr = instrs[PC++];
     log('Running ');
     log(instr);

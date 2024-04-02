@@ -115,6 +115,9 @@ const compileComp = {
     Null: (comp, ce) => {
         instrs[wc++] = { tag: Opcodes.LDCI, val: comp.value };
     },
+    String: (comp, ce) => {
+        instrs[wc++] = { tag: Opcodes.LDCS, val: comp.value };
+    },
     IfStatement: (comp, ce) => {
         compile(comp.test, ce);
         const jof = { tag: Opcodes.JOF, addr: undefined };
@@ -315,8 +318,10 @@ const compileComp = {
         }
         const jof = { tag: Opcodes.JOF, addr: undefined };
         instrs[wc++] = jof;
-        compile(comp.body, ce);
-        instrs[wc++] = { tag: Opcodes.POP };
+        if (comp.body !== null) {
+            compile(comp.body, ce);
+            instrs[wc++] = { tag: Opcodes.POP };
+        }
         if (comp.update !== null) {
             compile(comp.update, ce);
         }
@@ -349,8 +354,6 @@ export function compile_program(program) {
     initializeBuiltinTable();
     wc = 0;
     instrs = [];
-    // wrap up the entire ast in a block tag
-    program = { tag: 'BlockStatement', body: program };
     compile(program, globalCompileTimeEnvironment);
     instrs[wc++] = { tag: Opcodes.DONE };
     return instrs;

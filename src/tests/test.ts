@@ -4,6 +4,7 @@ import { processByteCode } from '../vm/oogavm-machine.js';
 import { compile_program } from '../vm/oogavm-compiler.js';
 import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
+import { checkTypes } from '../vm/oogavm-typechecker.js';
 
 let namespaces = debug.disable(); // remove this line to enable debug logs
 const log = debug('ooga:tests');
@@ -16,8 +17,11 @@ export function testProgram(program: string, expectedValue: any) {
     let value;
     try {
         program = program.trimEnd();
-        program = parse(program);
-        const instrs = compile_program(program);
+        let program_obj: Object = parse(program);
+        program_obj = { tag: 'BlockStatement', body: program_obj };
+        log(JSON.stringify(program_obj, null, 2));
+        const instrs = compile_program(program_obj);
+        checkTypes(program_obj);
         let bytecode = assemble(instrs);
         processByteCode(bytecode);
         value = run();
@@ -141,7 +145,7 @@ foo(5);
 // Testing function as lambda
 testProgram(
     `
-var foo = func(n int) int {
+foo := func(n int) int {
     return n;
     };
 foo(5);
@@ -152,7 +156,7 @@ foo(5);
 // Testing function as lambda with invocation
 testProgram(
     `
-var foo = func(n int) int {
+foo := func(n int) int {
     return n;
     }(5);
 foo;
@@ -182,7 +186,7 @@ testProgram(
 // Testing conditionals
 testProgram(
     `
-var x = 5;
+var x int = 5;
 if (x == 5) {
   6;
 } else {
@@ -194,7 +198,7 @@ if (x == 5) {
 
 testProgram(
     `
-var x = 6;
+var x int = 6;
 if (x == 5) {
   6;
 } else {
@@ -207,7 +211,7 @@ if (x == 5) {
 // Testing recursive function
 testProgram(
     `
-func factorial(n int) {
+func factorial(n int) int {
   if (n == 1) {
     return 1;
   } else {
@@ -222,8 +226,8 @@ factorial(5);
 // Testing goroutine
 testProgram(
     `
-var a = 1;
-var b = 2;
+var a int = 1;
+var b int = 2;
 go func() {
   a = 2;
 }
@@ -240,8 +244,8 @@ a + b;
 // Testing for loop with init; condition; update using var
 testProgram(
     `
-var sum = 0;
-for var i = 0; i < 10; i = i + 1 {
+var sum int = 0;
+for var i int = 0; i < 10; i = i + 1 {
   sum = sum + i;
 }
 sum;
@@ -252,7 +256,7 @@ sum;
 // Testing for loop with init; condition; update using shorthand
 testProgram(
     `
-var sum = 0;
+var sum int = 0;
 for i := 0; i < 10; i = i + 1 {
   sum = sum + i;
 }
@@ -264,8 +268,8 @@ sum;
 // Testing for loop with init; condition; update using var and ++
 testProgram(
     `
-var sum = 0;
-for var i = 0; i < 10; i++ {
+var sum int = 0;
+for var i int = 0; i < 10; i++ {
   sum = sum + i;
 }
 sum;
@@ -276,8 +280,8 @@ sum;
 // Testing for loop with only condition
 testProgram(
     `
-var sum = 0;
-var i = 0;
+var sum int = 0;
+var i int= 0;
 for i < 10 {
   sum = sum + i;
   i = i + 1;
