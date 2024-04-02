@@ -1,44 +1,14 @@
-import { equal } from 'assert';
+import { pair, head, tail, error } from '../utils/utils.js';
 import debug from 'debug';
-
 const log = debug('ooga:typechecker');
 
-function array_test(x) {
-    if (Array.isArray === undefined) {
-        return x instanceof Array;
-    } else {
-        return Array.isArray(x);
-    }
-}
-
-function pair(x, xs) {
-    return [x, xs];
-}
-
-function is_pair(x) {
-    return array_test(x) && x.length === 2;
-}
-
-function head(xs) {
-    if (is_pair(xs)) {
-        return xs[0];
-    } else {
-        throw new Error('head(xs) expects a pair as argument xs, but encountered ' + xs);
-    }
-}
-
-function tail(xs) {
-    if (is_pair(xs)) {
-        return xs[1];
-    } else {
-        throw new Error('tail(xs) expects a pair as argument xs, but encountered ' + xs);
-    }
-}
-
-function error(value, ...strs) {
-    const output = strs.length === 0 ? value : value + ' ' + strs.join(' ');
-    throw new Error(output);
-}
+const types = {
+    Any: 'Any',
+    Integer: 'Integer',
+    Boolean: 'Boolean',
+    String: 'String',
+    Null: 'Null',
+};
 
 function is_integer(x) {
     return typeof x === 'number' && x % 1 === 0;
@@ -46,10 +16,6 @@ function is_integer(x) {
 
 function is_boolean(x) {
     return typeof x === 'boolean';
-}
-
-function is_undefined(x) {
-    return x === undefined;
 }
 
 function is_null(x) {
@@ -66,19 +32,19 @@ const unparse_types = t => {
 
 const equal_type = (ts1, ts2) => {
     // ts1 and ts2 can be either a string or an array of strings
-    // 'Any' is a special type that can be used to match any type
+    // types.Any is a special type that can be used to match any type
     log('equal_type', ts1, ts2);
     if (ts1 === ts2) {
         return true;
     }
     if (typeof ts1 === 'string' && typeof ts2 === 'string') {
-        return ts1 === 'Any' || ts2 === 'Any';
+        return ts1 === types.Any || ts2 === types.Any;
     }
     if (typeof ts1 === 'string') {
-        return ts2.length === 1 && (ts2[0] === ts1 || ts2[0] === 'Any');
+        return ts2.length === 1 && (ts2[0] === ts1 || ts2[0] === types.Any);
     }
     if (typeof ts2 === 'string') {
-        return ts1.length === 1 && (ts1[0] === ts2 || ts1[0] === 'Any');
+        return ts1.length === 1 && (ts1[0] === ts2 || ts1[0] === types.Any);
     }
     if (ts1.length !== ts2.length) {
         return false;
@@ -91,32 +57,32 @@ const equal_type = (ts1, ts2) => {
     return true;
 };
 
-const unary_arith_type = { tag: 'Function', args: ['Integer'], res: ['Integer'] };
+const unary_arith_type = { tag: 'Function', args: [types.Integer], res: [types.Integer] };
 
 const binary_arith_type = {
     tag: 'Function',
-    args: ['Integer', 'Integer'],
-    res: ['Integer'],
+    args: [types.Integer, types.Integer],
+    res: [types.Integer],
 };
 
 const number_comparison_type = {
     tag: 'Function',
-    args: ['Integer', 'Integer'],
-    res: ['Boolean'],
+    args: [types.Integer, types.Integer],
+    res: [types.Boolean],
 };
 
 const binary_bool_type = {
     tag: 'Function',
-    args: ['Boolean', 'Boolean'],
-    res: ['Boolean'],
+    args: [types.Boolean, types.Boolean],
+    res: [types.Boolean],
 };
 
-const unary_bool_type = { tag: 'Function', args: ['Boolean'], res: ['Boolean'] };
+const unary_bool_type = { tag: 'Function', args: [types.Boolean], res: [types.Boolean] };
 
 const binary_equal_type = {
     tag: 'Function',
-    args: ['Any', 'Any'],
-    res: ['Boolean'],
+    args: [types.Any, types.Any],
+    res: [types.Boolean],
 };
 
 const global_type_frame = {
@@ -139,7 +105,7 @@ const global_type_frame = {
     '++': unary_arith_type,
     '--': unary_arith_type,
     '==': binary_equal_type,
-    print: { tag: 'Function', args: ['Any'], res: ['Null'] },
+    print: { tag: 'Function', args: [types.Any], res: [types.Null] },
 };
 
 // A type environment is null or a pair
@@ -180,12 +146,13 @@ let expected_ret;
 // functions for each component tag
 const type_comp = {
     Integer: (comp, te) =>
-        is_integer(comp.value) ? 'Integer' : error('expected number, got ' + comp.value),
+        is_integer(comp.value) ? types.Integer : error('expected number, got ' + comp.value),
     Boolean: (comp, te) =>
-        is_boolean(comp.value) ? 'Boolean' : error('expected bool, got ' + comp.value),
+        is_boolean(comp.value) ? types.Boolean : error('expected bool, got ' + comp.value),
     String: (comp, te) =>
-        is_string(comp.value) ? 'String' : error('expected string, got ' + comp.value),
-    Null: (comp, te) => (is_null(comp.value) ? 'Null' : error('expected null, got ' + comp.value)),
+        is_string(comp.value) ? types.String : error('expected string, got ' + comp.value),
+    Null: (comp, te) =>
+        is_null(comp.value) ? types.Null : error('expected null, got ' + comp.value),
     Name: (comp, te) => {
         log('Name');
         log(JSON.stringify(comp, null, 2));
@@ -214,7 +181,7 @@ const type_comp = {
     IfStatement: (comp, te) => {
         const t0 = type(comp.test, te);
         log('IfStatement: t0', t0);
-        if (!equal_type(t0, 'Boolean')) error('expected predicate type: Boolean, got ' + t0);
+        if (!equal_type(t0, types.Boolean)) error('expected predicate type: Boolean, got ' + t0);
         const t1 = type(comp.consequent, te);
         log('IfStatement: t1', t1);
         const t2 = type(comp.alternate, te);
@@ -239,7 +206,7 @@ const type_comp = {
         let ret_type = type(comp.body, new_te);
         log('FunctionDeclaration: Got ret_type: ', ret_type, 'Expected ret_type: ', expected_ret);
         if (ret_type?.tag !== 'ret') {
-            ret_type = { tag: 'ret', type: ['Null'] };
+            ret_type = { tag: 'ret', type: [types.Null] };
         }
 
         if (!equal_type(ret_type.type, expected_ret)) {
@@ -269,7 +236,7 @@ const type_comp = {
         let ret_type = type(comp.body, new_te);
         log('LambdaDeclaration: Got ret_type: ', ret_type, 'Expected ret_type: ', expected_ret);
         if (ret_type?.tag !== 'ret') {
-            ret_type = { tag: 'ret', type: ['Null'] };
+            ret_type = { tag: 'ret', type: [types.Null] };
         }
 
         if (!equal_type(ret_type.type, expected_ret)) {
@@ -346,7 +313,7 @@ const type_comp = {
     SequenceStatement: (comp, te) => {
         log('SequenceStatement');
         log(JSON.stringify(comp, null, 2));
-        let latest_type = 'Null';
+        let latest_type = types.Null;
         let stmt;
         let new_type;
         for (let i = 0; i < comp.body.length; i++) {
@@ -398,7 +365,7 @@ const type_comp = {
     },
     ReturnStatement: (comp, te) => {
         if (comp.expression === null) {
-            return { tag: 'ret', type: ['Null'] };
+            return { tag: 'ret', type: [types.Null] };
         }
         let ret_type = type(comp.expression, te);
         if (in_func) {
@@ -465,20 +432,21 @@ const type_comp = {
             : te;
         log('ForStatement: extended_te', extended_te);
         // check the test expression, this can be null as well
-        const t0 = comp.test ? type(comp.test, extended_te) : 'Boolean';
+        const t0 = comp.test ? type(comp.test, extended_te) : types.Boolean;
         log('ForStatement: t0', t0);
-        if (!equal_type(t0, 'Boolean')) {
+        if (!equal_type(t0, types.Boolean)) {
             error('expected predicate type: Boolean, got ' + t0);
         }
         // check the update expression, this can be null as well
         // the update expression should either be a CallExpression or an AssignmentExpression
-        const t1 = comp.update ? type(comp.update, extended_te) : 'Null';
-
+        const t1 = comp.update ? type(comp.update, extended_te) : types.Null;
+        log('ForStatement: t1', t1);
         const t2 = type(comp.body, extended_te);
-        return 'Null';
+        log('ForStatement: t2', t2);
+        return types.Null;
     },
-    BreakStatement: (comp, te) => 'Null',
-    ContinueStatement: (comp, te) => 'Null',
+    BreakStatement: (comp, te) => types.Null,
+    ContinueStatement: (comp, te) => types.Null,
 };
 
 const type = (comp, te) => {

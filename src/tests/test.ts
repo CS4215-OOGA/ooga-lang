@@ -19,7 +19,7 @@ export function testProgram(program: string, expectedValue: any) {
         program = program.trimEnd();
         let program_obj: Object = parse(program);
         program_obj = { tag: 'BlockStatement', body: program_obj };
-        log(JSON.stringify(program_obj, null, 2));
+        // log(JSON.stringify(program_obj, null, 2));
         const instrs = compile_program(program_obj);
         checkTypes(program_obj);
         let bytecode = assemble(instrs);
