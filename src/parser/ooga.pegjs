@@ -223,14 +223,16 @@ BooleanToken    = "bool"       !IdentifierPart
 StringToken     = "string"     !IdentifierPart
 GoroutineToken  = "go"         !IdentifierPart
 
+SingleLineComment
+  = "//" (!LineTerminatorSequence .)* (LineTerminatorSequence / !.)
+
 __
-  = (WhiteSpace / LineTerminatorSequence)*
+  = (WhiteSpace / LineTerminatorSequence / SingleLineComment)*
 
 _
   = WhiteSpace*
 
 // Automatic Semicolon Insertion
-
 EOS
   = __ ";"
   / _ LineTerminatorSequence
@@ -743,19 +745,14 @@ ForTest
 
 ContinueStatement
   = ContinueToken EOS {
-      return { tag: "ContinueStatement", label: null };
-    }
-  / ContinueToken _ label:Identifier EOS {
-      return { tag: "ContinueStatement", label: label };
+      return { tag: "ContinueStatement"};
     }
 
 BreakStatement
   = BreakToken EOS {
-      return { tag: "BreakStatement", label: null };
+      return { tag: "BreakStatement" };
     }
-  / BreakToken _ label:Identifier EOS {
-      return { tag: "BreakStatement", label: label };
-    }
+
 
 ReturnStatement
   = ReturnToken EOS {

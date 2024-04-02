@@ -139,6 +139,7 @@ const global_type_frame = {
     '++': unary_arith_type,
     '--': unary_arith_type,
     '==': binary_equal_type,
+    print: { tag: 'Function', args: ['Any'], res: ['Null'] },
 };
 
 // A type environment is null or a pair
@@ -157,6 +158,7 @@ const lookup_type = (x, e) =>
 const extend_type_environment = (xs, ts, e) => {
     if (ts.length > xs.length) error('too few parameters in function declaration');
     if (ts.length < xs.length) error('too many parameters in function declaration');
+    if (xs.length === 0) return e;
     log('Extending type environment with', xs, ts);
     const new_frame = {};
     for (let i = 0; i < xs.length; i++) new_frame[xs[i]] = ts[i];
@@ -461,7 +463,7 @@ const type_comp = {
         const extended_te = comp.init
             ? extend_type_environment([comp.init.id.name], [type(comp.init.expression, te)], te)
             : te;
-        log('ForStatement: extended_te', extended_te)
+        log('ForStatement: extended_te', extended_te);
         // check the test expression, this can be null as well
         const t0 = comp.test ? type(comp.test, extended_te) : 'Boolean';
         log('ForStatement: t0', t0);
@@ -475,6 +477,8 @@ const type_comp = {
         const t2 = type(comp.body, extended_te);
         return 'Null';
     },
+    BreakStatement: (comp, te) => 'Null',
+    ContinueStatement: (comp, te) => 'Null',
 };
 
 const type = (comp, te) => {

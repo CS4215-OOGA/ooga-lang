@@ -5,7 +5,7 @@ const log = debug('ooga:compiler');
 
 let wc;
 let instrs;
-
+let loopMarkers: any[] = []; // For loop markers
 const push = (array, ...items) => {
     for (let item of items) {
         array.push(item);
@@ -312,24 +312,67 @@ const compileComp = {
             }
             compile(comp.init, ce);
         }
+
+        // Mark the start of the loop for continues to jump back to the update or the test
         const loopStart = wc;
+        loopMarkers.push({ breaks: [], continues: [] }); // Push new loop marker
+
         if (comp.test !== null) {
             compile(comp.test, ce);
         }
         const jof = { tag: Opcodes.JOF, addr: undefined };
         instrs[wc++] = jof;
+
         if (comp.body !== null) {
             compile(comp.body, ce);
             instrs[wc++] = { tag: Opcodes.POP };
         }
+
+        // This marks where a continue statement should jump to, if present
+        const continueTarget = wc;
         if (comp.update !== null) {
             compile(comp.update, ce);
+        } else {
+            // If there's no update part, continue should jump back to the test
+            // If there's no test, it effectively jumps to the start of the body
+            loopMarkers[loopMarkers.length - 1].continues.forEach(index => {
+                instrs[index].addr = loopStart;
+            });
         }
+
         instrs[wc++] = { tag: Opcodes.GOTO, addr: loopStart };
-        jof.addr = wc;
+        jof.addr = wc; // Update the jump-on-false address to the instruction after the loop
+
+        // Update break and continue statements within the loop
+        const loopMarker = loopMarkers.pop(); // Remove the current loop marker
+        loopMarker.breaks.forEach(breakIndex => {
+            instrs[breakIndex].addr = wc; // Set the break GOTO address to loop end
+        });
+        loopMarker.continues.forEach(continueIndex => {
+            instrs[continueIndex].addr = continueTarget; // Set the continue GOTO address to the update part or the test
+        });
+
         if (declarations.length > 0) {
             instrs[wc++] = { tag: Opcodes.EXIT_SCOPE };
         }
+    },
+    BreakStatement: (comp, ce) => {
+        if (loopMarkers.length === 0) {
+            throw new Error('Break statement not within loop');
+        }
+        const breakInstr = { tag: Opcodes.GOTO, addr: null }; // Placeholder for now
+        instrs[wc++] = breakInstr;
+        // Record this break instruction's address to fix up later
+        loopMarkers[loopMarkers.length - 1].breaks.push(wc - 1);
+    },
+    ContinueStatement: (comp, ce) => {
+        if (loopMarkers.length === 0) {
+            throw new Error('Continue statement not within loop');
+        }
+        const continueInstr = { tag: Opcodes.GOTO, addr: null }; // Placeholder for now
+        instrs[wc++] = continueInstr;
+        // Record this continue instruction's address to fix up later
+        loopMarkers[loopMarkers.length - 1].continues.push(wc - 1);
     },
 };
 

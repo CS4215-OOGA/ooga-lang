@@ -291,21 +291,60 @@ sum;
     45
 );
 
-// Testing infinite loop does not work because the VM does not support break
-// testProgram(
-//     `
-// var sum = 0;
-// var i = 0;
-// for {
-//   if (i == 10) {
-//     break;
-//   }
-//   sum = sum + i;
-//   i = i + 1;
-// }
-// sum;
-// `,
-//     45
-// );
+// Testing infinite loop with break
+testProgram(
+    `
+var sum int = 0;
+var i int = 0;
+for {
+  if (i == 10) {
+    break;
+  }
+  sum = sum + i;
+  i = i + 1;
+}
+sum;
+`,
+    45
+);
+
+// Testing nested for loop - one with var and one with shorthand
+testProgram(
+    `
+var sum int = 0;
+for var i int = 0; i < 10; i = i + 1 {
+  for j := 0; j < 10; j++ {
+    sum = sum + i + j;
+  }
+}
+sum;
+`,
+    900
+);
+
+// Test continue in for loop
+testProgram(
+    `
+var sum int = 0;
+for var i int = 0; i < 10; i = i + 1 {
+  if (i == 5) {
+    continue;
+  }
+  sum = sum + i;
+}
+sum;
+`,
+    40
+);
+
+// Testing comments
+testProgram(
+    `
+// This is a comment
+var x int = 5; // This is another comment
+x;
+`,
+    5
+);
 
 debug.enable(namespaces);
