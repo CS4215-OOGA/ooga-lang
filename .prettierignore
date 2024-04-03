@@ -1,4 +1,1 @@
-/src/scm-slang/
-/src/py-slang/
-/src/**/__tests__/**/__snapshots__
 /src/parser/ooga.pegjs

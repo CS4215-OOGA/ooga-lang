@@ -30,7 +30,7 @@
     "tooga": "export DEBUG=* && yarn build && yarn test",
     "pooga": "yarn peggy && yarn build",
     "server": "node ./dist/server/server.js",
-    "format": "npx prettier --write ./src/"
+    "format": "npx prettier --write ./src/**/*.ts"
   },
   "devDependencies": {
     "typescript": "^5.4.3",
