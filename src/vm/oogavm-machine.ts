@@ -4,6 +4,7 @@ import { RoundRobinScheduler, Scheduler, ThreadId } from './oogavm-scheduler.js'
 import { Heap } from './oogavm-memory.js';
 import { fileURLToPath } from 'url';
 import debug from 'debug';
+import { HeapDeadError, HeapOutOfMemoryError } from './oogavm-errors.js';
 
 const log = debug('ooga:vm');
 
@@ -32,8 +33,16 @@ let running: boolean;
 let heap: Heap;
 // State of the machine. Used to handle runtime errors reporting.
 let State: ProgramState;
-// Start time of the program
-let startTime: number;
+// Built-in-frame environment
+let builtinsFrame: number;
+// Temporary value stored as a root to prevent freeing!
+// Using a list doesn't work for some reason...
+// Javascript is retarded
+let tempRoot0: number = -1;
+let tempRoot1: number = -1;
+let tempRoot2: number = -1;
+let tempRoot3: number = -1;
+let tempRoot4: number = -1;
 
 enum ProgramState {
     NORMAL,
@@ -45,7 +54,7 @@ enum ProgramState {
 // The Thread class holds its own local copies of OS, PC
 // When instantiated, it expects a closure on the Operand stack as described in the lecture notes.
 // The operand and runtime stack are initialized to be empty stacks.
-class Thread {
+export class Thread {
     _OS: number;
     _E: number;
     _PC: number;
@@ -138,8 +147,7 @@ export const builtinMappings = {
         let value: any;
         log('print sys call');
         [OS, value] = heap.popStack(OS);
-        log(value);
-        console.log(heap.addressToTSValue(value));
+        log(heap.addressToTSValue(value));
         return value;
     },
     // "make": () => {
@@ -229,13 +237,37 @@ function apply_unop(sym: string, value: any) {
 // When we get back the values, to do any meaningful form of computation, we need to convert them back to TS value
 // and then convert it back to a heap address!
 
+// There are also a suite of GC safe allocations here.
+
 // Push the raw heap address onto the OS
 function pushAddressOS(addr: any) {
     OS = heap.pushStack(OS, addr);
 }
 // Convert TS Value to address and then push onto stack
 function pushTSValueOS(value: any) {
-    OS = heap.pushStack(OS, heap.TSValueToAddress(value));
+    // A bug can happen here because the heap.TSValueToAddr might cause a GC to happen,
+    // which frees the memory at that address!
+    let newValue = heap.TSValueToAddress(value);
+    tempRoot0 = newValue;
+    // A GC may have happened inside the allocate to stack
+    // and the address at newValue would have been freed!
+    OS = heap.pushStack(OS, newValue);
+    tempRoot0 = -1;
+}
+
+// Safe RTS Push, same issue with GC being called on the call frame just before
+function safePushRTSCallFrame() {
+    let newValue = heap.allocateCallframe(E, PC);
+    tempRoot0 = newValue;
+    RTS = heap.pushStack(RTS, newValue);
+    tempRoot0 = -1;
+}
+
+function safePushRTSBlockFrame() {
+    let newValue = heap.allocateBlockframe(E);
+    tempRoot0 = newValue;
+    RTS = heap.pushStack(RTS, newValue);
+    tempRoot0 = -1;
 }
 
 // NOTE: I'd really like to use the enum values but for some reason, they aren't allowed in the key of the map =.=
@@ -292,9 +324,12 @@ const microcode = {
         PC = value ? PC : instr.addr;
     },
     ENTER_SCOPE: instr => {
-        RTS = heap.pushStack(RTS, heap.allocateBlockframe(E));
+        safePushRTSBlockFrame();
+        // This frame can also be lost
         const frameAddress = heap.allocateFrame(instr.num);
+        tempRoot0 = frameAddress;
         E = heap.extendEnvironment(frameAddress, E);
+        tempRoot0 = -1;
         for (let i = 0; i < instr.num; i++) {
             // this is probably bad design because we are accessing the Unassigned
             heap.setChild(frameAddress, i, heap.Unassigned);
@@ -336,7 +371,9 @@ const microcode = {
     },
     LDF: instr => {
         const closureAddress = heap.allocateClosure(instr.arity, instr.addr, E);
+        tempRoot0 = closureAddress;
         pushAddressOS(closureAddress);
+        tempRoot0 = -1;
     },
     CALL: instr => {
         const arity = instr.arity;
@@ -348,15 +385,17 @@ const microcode = {
 
         let newPC = heap.getClosurePC(fun);
         const newFrame = heap.allocateFrame(arity);
+        tempRoot1 = newFrame;
         for (let i = arity - 1; i >= 0; i--) {
             let value;
             [OS, value] = heap.popStack(OS);
             heap.setChild(newFrame, i, value);
         }
-        RTS = heap.pushStack(RTS, heap.allocateCallframe(E, PC));
+        safePushRTSCallFrame();
         let _; // wow can't do _ in typescript =.=
         [OS, _] = heap.popStack(OS); // pop fun
         E = heap.extendEnvironment(newFrame, heap.getClosureEnvironment(fun));
+        tempRoot1 = -1;
         PC = newPC;
     },
     TAIL_CALL: instr => {
@@ -368,6 +407,7 @@ const microcode = {
         }
         const newPC = heap.getClosurePC(fun);
         const newFrame = heap.allocateFrame(arity);
+        tempRoot1 = newFrame;
         for (let i = arity - 1; i >= 0; i--) {
             let value;
             [OS, value] = heap.popStack(OS);
@@ -377,6 +417,7 @@ const microcode = {
         let _; // wow can't do _ in typescript =.=
         [OS, _] = heap.popStack(OS); // pop fun
         E = heap.extendEnvironment(newFrame, heap.getClosureEnvironment(fun));
+        tempRoot1 = -1;
         PC = newPC;
     },
     RESET: instr => {
@@ -398,12 +439,19 @@ const microcode = {
             throw Error('NOT A CLOSURE!!!!!!!!!!!!!!!');
         }
         // allocate new OS and RTS for the new thread
+        // there is a danger that the newRTS initialization can cause newOS to be
+        // freed, so we must set newOS as a tempRoot here
         let newOS = heap.initializeStack();
+        tempRoot0 = newOS;
         let newRTS = heap.initializeStack();
+        tempRoot1 = newRTS;
         // call closure using new operand and runtime stack
         let newPC = heap.getClosurePC(closure);
         let arity = heap.getClosureArity(closure);
+        // likewise this newFrame allocation can free newOS and newRTS
+        // so we make sure to temporarily make both tempRoots
         const newFrame = heap.allocateFrame(arity);
+        tempRoot2 = newFrame;
         // pop values from the old OS
         for (let i = arity - 1; i >= 0; i--) {
             let value;
@@ -411,39 +459,87 @@ const microcode = {
             heap.setChild(newFrame, i, value);
         }
         let newE = heap.extendEnvironment(newFrame, E);
+        tempRoot3 = newE;
         let _;
         [OS, _] = heap.popStack(OS); // pop fun
         pushTSValueOS(true);
         // Setting the goroutine to jump to current PC which is not incremented by 1
         // means it will kill itself when it reaches RESET
-        newRTS = heap.pushStack(newRTS, heap.allocateCallframe(E, PC));
+        // this newRTS needs to be handled the same way!
+        let newCallFrame = heap.allocateCallframe(E, PC);
+        tempRoot4 = newCallFrame;
+        newRTS = heap.pushStack(newRTS, newCallFrame);
         newThread(newOS, newRTS, newPC, newE);
         PC++; // avoid stepping onto DONE as the original thread.
         timeoutThread();
+        // finally we can reset the temp roots
+        tempRoot0 = -1;
+        tempRoot1 = -1;
+        tempRoot2 = -1;
+        tempRoot3 = -1;
+        tempRoot4 = -1;
     },
 };
+
+// ********************************
+// Garbage collection
+// ********************************
+
+export function getRoots(): number[] {
+    // @ts-ignore
+    let roots = [];
+    // No.
+    // Using a list has "context" issues.
+    if (tempRoot0 != -1) {
+        roots.push(tempRoot0);
+    }
+    if (tempRoot1 != -1) {
+        roots.push(tempRoot1);
+    }
+    if (tempRoot2 != -1) {
+        roots.push(tempRoot2);
+    }
+    if (tempRoot3 != -1) {
+        roots.push(tempRoot3);
+    }
+    if (tempRoot4 != -1) {
+        roots.push(tempRoot4);
+    }
+    // we have to ignore the current thread because it's not updated!
+    // make sure to use updated values here
+    roots.push(builtinsFrame);
+    roots.push(E);
+    roots.push(OS);
+    roots.push(RTS);
+    // @ts-ignore
+    for (let [threadId, thread] of threads.entries()) {
+        if (threadId == currentThreadId) {
+            continue;
+        }
+        roots.push(thread._OS);
+        roots.push(thread._E);
+        roots.push(thread._RTS);
+    }
+    return roots;
+}
 
 // ****************************************
 // Initialization
 // ****************************************
 // Called before the machine runs a program
 
-function initialize() {
+function initialize(numWords = 1000000) {
     // TODO: Figure out an appropriate number of words
     // There is definitely some bug with the memory management!
-    const numWords = 1000000;
     heap = new Heap(numWords);
     PC = 0;
     OS = heap.initializeStack();
     RTS = heap.initializeStack();
-    const builtinsFrame = initializeBuiltins();
+    builtinsFrame = initializeBuiltins();
     E = heap.allocateEnvironment(0);
     E = heap.extendEnvironment(builtinsFrame, E);
-    // TODO: Allocate built-in function frames
-    //       For example, we need built-ins for make(...)
     running = true;
     State = ProgramState.NORMAL;
-    startTime = Date.now();
     initScheduler();
 }
 
@@ -461,20 +557,17 @@ function initializeBuiltins() {
 
 // Run a single instruction, for concurrent execution.
 function runInstruction() {
-    if (Date.now() - startTime > 60000) {
-        throw Error('Execution time exceeded 60 seconds');
-    }
-
     const instr = instrs[PC++];
     log('Running ');
     log(instr);
     microcode[instr.tag](instr);
     TimeQuanta--;
+    printOSStack();
 }
 
 // TODO: Switch to low level memory representation
-export function run() {
-    initialize();
+export function run(numWords = 1000000) {
+    initialize(numWords);
     while (running) {
         // Handle concurrency
         if (TimeQuanta > 0) {

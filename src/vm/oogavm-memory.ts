@@ -1,4 +1,7 @@
 import debug from 'debug';
+import { HeapError, HeapOutOfMemoryError } from './oogavm-errors.js';
+import { ThreadId } from './oogavm-scheduler.js';
+import { getRoots, Thread } from './oogavm-machine.js';
 
 const log = debug('ooga:memory');
 // number of bytes each word represents
@@ -26,6 +29,39 @@ export enum Tag {
     BUILTIN,
 }
 
+function getTagString(tag: Tag): string {
+    switch (tag) {
+        case Tag.FALSE:
+            return 'FALSE';
+        case Tag.TRUE:
+            return 'TRUE';
+        case Tag.NUMBER:
+            return 'NUMBER';
+        case Tag.NULL:
+            return 'NULL';
+        case Tag.UNASSIGNED:
+            return 'UNASSIGNED';
+        case Tag.UNDEFINED:
+            return 'UNDEFINED';
+        case Tag.BLOCKFRAME:
+            return 'BLOCKFRAME';
+        case Tag.CALLFRAME:
+            return 'CALLFRAME';
+        case Tag.CLOSURE:
+            return 'CLOSURE';
+        case Tag.FRAME:
+            return 'FRAME';
+        case Tag.ENVIRONMENT:
+            return 'ENVIRONMENT';
+        case Tag.STACK:
+            return 'STACK';
+        case Tag.BUILTIN:
+            return 'BUILTIN';
+        default:
+            return 'UNKNOWN';
+    }
+}
+
 /**
  * The abstraction over the heap.
  *
@@ -44,6 +80,8 @@ export class Heap {
     // The next address to assign to
     private free: number;
 
+    private numUsedWords: number;
+
     private readonly numWords: number;
 
     // The canonical literals assigned here
@@ -52,8 +90,17 @@ export class Heap {
     Null;
     Unassigned;
     Undefined;
+    // Canonical array here for easy use in mark and sweep
+    private literals: any[];
+
+    // Pass in getRoots function here to make it easy for mark and sweep
+    private threads: Map<ThreadId, Thread>;
+
+    // Store statistics
+    private numMarked: number = 0;
 
     constructor(numWords: number) {
+        this.numUsedWords = 0;
         this.numWords = numWords;
         this.heap = new DataView(new ArrayBuffer(numWords * wordSize));
         this.free = 0;
@@ -103,9 +150,9 @@ export class Heap {
         const buf = new ArrayBuffer(wordSize);
         const view = new DataView(buf);
         view.setFloat64(0, word);
-        let binStr = '';
+        let binStr = view.getFloat64(0).toString() + ': ';
         for (let i = 0; i < 8; i++) {
-            binStr += ('00000000' + view.getUint8(i).toString()).slice(-8) + ' ';
+            binStr += ('00000000' + view.getUint8(i).toString(2)).slice(-8) + ' ';
         }
         return binStr;
     }
@@ -173,6 +220,13 @@ export class Heap {
         this.heap.setUint16(address * wordSize + offset, value);
     }
 
+    getNumChildren(address: number): number {
+        if (this.getTag(address) === Tag.NUMBER) {
+            return 0;
+        }
+        return this.getSize(address) - 1;
+    }
+
     /**
      * Get the i-th child
      * The child is 0-th indexed and from the second word.
@@ -220,11 +274,17 @@ export class Heap {
     // *****************
 
     allocate(tag: Tag, size: number) {
+        this.numUsedWords += 1;
         if (size > nodeSize) {
-            throw new Error('Cannot allocate node size more than ' + nodeSize + ' words');
+            throw new HeapError('Cannot allocate node size more than ' + nodeSize + ' words');
         }
         if (this.free === -1) {
-            throw new Error('Ran out of memory and currently do not implement garbage collection!');
+            let roots = getRoots();
+            this.markAndSweep(roots);
+            if (this.free === -1) {
+                // still dead
+                throw new HeapOutOfMemoryError();
+            }
         }
         const address = this.free;
         // this basically updates free to the next pointer because next is stored in the first word
@@ -240,6 +300,7 @@ export class Heap {
         this.Null = this.allocate(Tag.NULL, 1);
         this.Unassigned = this.allocate(Tag.UNASSIGNED, 1);
         this.Undefined = this.allocate(Tag.UNDEFINED, 1);
+        this.literals = [this.False, this.True, this.Null, this.Unassigned, this.Undefined];
     }
 
     // *******************
@@ -500,12 +561,109 @@ export class Heap {
     // *******************
     // Garbage collection
     // *******************
+    // Mark and sweep takes in a list of addresses which are denoted as the roots
+    // which may include the OS, RTS and E.
+    // This has further complications because each thread has its own E, OS and RTS so we must make
+    // note to account for all active and inactive threads.
+    // So we pass in a function which when invoked, will return the roots for the associated machine.
+
+    private isHeapMarked(addr: number): boolean {
+        return this.getTag(addr) < 0;
+    }
+
+    // Mark a node and return the original tag
+    private heapMark(addr: number): number {
+        const originalTag = this.getTag(addr);
+        if (this.isHeapMarked(addr)) {
+            return originalTag;
+        }
+        this.heap.setInt8(addr * wordSize, -1 - originalTag);
+        return originalTag;
+    }
+
+    private heapUnmark(addr: number): number {
+        if (!this.isHeapMarked(addr)) {
+            return;
+        }
+        const markedTag = this.getTag(addr);
+        this.heap.setInt8(addr * wordSize, -1 - markedTag);
+    }
+
+    private sweep() {
+        let numFreed = 0;
+        for (let i = 0; i <= this.numWords - nodeSize; i += nodeSize) {
+            if (!this.isHeapMarked(i)) {
+                this.freeMemory(i);
+                numFreed += 1;
+            } else {
+                this.heapUnmark(i);
+            }
+        }
+        log('Freed ' + numFreed + ' nodes after mark and sweep.');
+    }
+
+    mark(addr: number) {
+        if (this.isHeapMarked(addr)) {
+            return;
+        }
+        const originalTag: Tag = this.heapMark(addr);
+        this.numMarked++;
+        switch (originalTag) {
+            case Tag.BLOCKFRAME:
+                this.mark(this.getBlockframeEnvironment(addr));
+                break;
+            case Tag.CALLFRAME:
+                this.mark(this.getCallframeEnvironment(addr));
+                break;
+            case Tag.CLOSURE:
+                this.mark(this.getClosureEnvironment(addr));
+                break;
+            case Tag.STACK:
+                // mark the value of the OS
+                // also need to handle null value for base
+                const value = this.getStackValue(addr);
+                if (value != -1) {
+                    this.mark(value);
+                }
+                // recursively go into the next stack without popping
+                // need to handle base case of -1
+                const parent = this.getChild(addr, 0);
+                if (parent != -1) {
+                    this.mark(parent);
+                }
+                break;
+            case Tag.FRAME:
+            case Tag.ENVIRONMENT:
+                const numChildren = this.getNumChildren(addr);
+                for (let i = 0; i < numChildren; i++) {
+                    this.mark(this.getChild(addr, i));
+                }
+                break;
+            default:
+                return;
+        }
+    }
+
+    markAndSweep(roots: number[]) {
+        for (let root    of roots) {
+            this.mark(root);
+        }
+        for (let lit of this.literals) {
+            this.heapMark(lit);
+        }
+        this.sweep();
+        if (this.free === -1) {
+            throw Error('Heap memory exhausted!');
+        }
+    }
+
     // Use the mark and sweep algorithm
     freeMemory(address: number) {
         // this sets the next ptr to free
         // then updates free to point to it, thus extending the linked list
         this.setWord(address, this.free);
         this.free = address;
+        this.numUsedWords -= 1;
     }
 }
 

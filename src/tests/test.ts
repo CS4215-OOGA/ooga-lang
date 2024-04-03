@@ -10,7 +10,7 @@ let namespaces = debug.disable(); // remove this line to enable debug logs
 const log = debug('ooga:tests');
 debug.enable('ooga:tests');
 
-export function testProgram(program: string, expectedValue: any) {
+export function testProgram(program: string, expectedValue: any, numWords: number) {
     log('Running program:\n```');
     log(program);
     log('```\nExpected value: ' + expectedValue);
@@ -24,7 +24,7 @@ export function testProgram(program: string, expectedValue: any) {
         checkTypes(program_obj);
         let bytecode = assemble(instrs);
         processByteCode(bytecode);
-        value = run();
+        value = run(numWords);
     } catch (e) {
         log('--------------------------------------------');
         log('\x1b[31m%s\x1b[0m', 'Test failed with exception');
@@ -51,7 +51,7 @@ testProgram(
 var x int = 5;
 x;
 `,
-    5
+    5, 1000000000,
 );
 
 // Test shorthand
@@ -60,7 +60,7 @@ testProgram(
 x := 5;
 x;
 `,
-    5
+    5, 1000000000
 );
 
 testProgram(
@@ -68,7 +68,7 @@ testProgram(
 var x int = 5;
 x + 2;
 `,
-    7
+    7, 1000000000
 );
 
 testProgram(
@@ -76,7 +76,7 @@ testProgram(
 var x int = 5;
 x - 2;
 `,
-    3
+    3, 1000000000
 );
 
 testProgram(
@@ -84,7 +84,7 @@ testProgram(
 var x int = 4;
 x / 2;
 `,
-    2
+    2, 1000000000
 );
 
 testProgram(
@@ -92,7 +92,7 @@ testProgram(
 var x int = 5;
 x * 3;
 `,
-    15
+    15, 1000000000
 );
 
 // Test blocks and scope
@@ -104,7 +104,7 @@ var x int = 5;
 }
 x;
 `,
-    6
+    6, 1000000000
 );
 
 testProgram(
@@ -117,7 +117,7 @@ var y int = 10;
 }
 x + y;
 `,
-    15
+    15, 1000000000
 );
 
 // Testing simple identity function
@@ -128,7 +128,7 @@ func foo(n int) int {
 }
 foo(5);
 `,
-    5
+    5, 1000000000
 );
 
 // Testing function with brackets around return
@@ -139,7 +139,7 @@ func foo(n int) (int) {
     }
 foo(5);
 `,
-    5
+    5, 1000000000
 );
 
 // Testing function as lambda
@@ -150,7 +150,7 @@ foo := func(n int) int {
     };
 foo(5);
 `,
-    5
+    5, 1000000000
 );
 
 // Testing function as lambda with invocation
@@ -161,7 +161,7 @@ foo := func(n int) int {
     }(5);
 foo;
 `,
-    5
+    5, 1000000000
 );
 
 // Testing function with no return type
@@ -172,7 +172,7 @@ func foo(n int) {
 }
 foo(5);
 `,
-    null
+    null, 1000000000
 );
 
 // Testing literals
@@ -180,7 +180,7 @@ testProgram(
     `
 5
 `,
-    5
+    5, 1000000000
 );
 
 // Testing conditionals
@@ -193,7 +193,7 @@ if (x == 5) {
   7;
 }
 `,
-    6
+    6, 1000000000
 );
 
 testProgram(
@@ -205,7 +205,7 @@ if (x == 5) {
   7;
 }
 `,
-    7
+    7, 1000000000
 );
 
 // Testing recursive function
@@ -220,7 +220,7 @@ func factorial(n int) int {
 }
 factorial(5);
 `,
-    120
+    120, 1000000000
 );
 
 // Testing goroutine
@@ -238,7 +238,7 @@ go func() {
 
 a + b;
 `,
-    5
+    5, 1000000000
 );
 
 // Testing for loop with init; condition; update using var
@@ -250,7 +250,7 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    45
+    45, 1000000000
 );
 
 // Testing for loop with init; condition; update using shorthand
@@ -262,7 +262,7 @@ for i := 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    45
+    45, 1000000000
 );
 
 // Testing for loop with init; condition; update using var and ++
@@ -274,7 +274,7 @@ for var i int = 0; i < 10; i++ {
 }
 sum;
 `,
-    45
+    45, 1000000000
 );
 
 // Testing for loop with only condition
@@ -288,7 +288,7 @@ for i < 10 {
 }
 sum;
 `,
-    45
+    45, 1000000000
 );
 
 // Testing infinite loop with break
@@ -305,7 +305,7 @@ for {
 }
 sum;
 `,
-    45
+    45, 1000000000
 );
 
 // Testing nested for loop - one with var and one with shorthand
@@ -319,7 +319,7 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    900
+    900, 1000000000
 );
 
 // Test continue in for loop
@@ -334,7 +334,7 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    40
+    40, 1000000000
 );
 
 // Testing comments
@@ -344,7 +344,55 @@ testProgram(
 var x int = 5; // This is another comment
 x;
 `,
-    5
+    5, 1000000000
 );
 
 debug.enable(namespaces);
+
+// *******************************
+// Testing mark and sweep
+// *******************************
+// NOTE: All the mark and sweep test cases are super fragile
+//       and will break upon any feature we add that increases the
+//       number of words used at initialization!
+//       For the sake of our sanities, this place will be source of
+//       truth for how much memory the operation currently takes!
+//       The literal allocations will consume 50 words
+//       Allocating the starting OS will consume 20 words
+//       Allocating the builtin frame will consume 10 words
+//       Allocating the initial global environment will consume 10 words
+//       Initializing the environment to point to the builtin frame will consume
+//       another 10 words.
+//       Entering the global frame (which pushes onto RTS) will consume
+//       10 words for each variable/const/func declaration (and can't exceed 10)
+//       Then you gotta allocate the new environment frame which is another 10 words
+//       for each.
+//       And then you need to push two values onto the OS, which is 20 words.
+//       So if you do the bare math, the basic minimum number of words OOGAVM
+//       needs to run the following test case is 170.
+//       50 + 20 + 10 + 10 + 10 + 10 + 20 + 20 + 20
+//       If future test cases break cos we do something to the initialization
+//       look over here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+testProgram(
+    `
+var x int = 5;
+var y int = 10;
+x;
+`,
+    5, 170
+);
+
+// Testing mark and sweep, with exactly one variable that should be freed
+// LDCI 15 at var w will force mark and sweep and should free
+// the block frame which is 170, the frame at 190, E at 200 and the number 15
+// allocated at 210. Ok nice it does work!
+testProgram(`
+var x int = 5;
+var y int = 10;
+{
+    var z int = 15;
+}
+var z int = 10;
+var w int = 15;
+x;
+`, 5, 220);
