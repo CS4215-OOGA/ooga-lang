@@ -6,46 +6,55 @@ import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
 import { checkTypes } from '../vm/oogavm-typechecker.js';
 
-let namespaces = debug.disable(); // remove this line to enable debug logs
 const log = debug('ooga:tests');
-debug.enable('ooga:tests');
 
-export function testProgram(program: string, expectedValue: any, numWords: number) {
-    log('Running program:\n```');
-    log(program);
-    log('```\nExpected value: ' + expectedValue);
+const defaultNumWords = 100000;
+
+function logTest(message: string, isError: boolean = false) {
+    const color = isError ? '\x1b[31m%s\x1b[0m' : '\x1b[32m%s\x1b[0m';
+    log(color, message);
+}
+
+export function testProgram(
+    program: string,
+    expectedValue: any,
+    numWords: number = defaultNumWords
+) {
+    debug.disable(); // Disable debug logs initially
+    debug.enable('ooga:tests');
+    log(`Running program:\n\`\`\`\n${program}\n\`\`\`\nExpected value: ${expectedValue}`);
+
     let value;
     try {
-        program = program.trimEnd();
-        let program_obj: Object = parse(program);
-        program_obj = { tag: 'BlockStatement', body: program_obj };
-        // log(JSON.stringify(program_obj, null, 2));
-        const instrs = compile_program(program_obj);
-        checkTypes(program_obj);
-        let bytecode = assemble(instrs);
+        const trimmedProgram = program.trimEnd();
+        const programObj = parse(trimmedProgram);
+        const programBlock = { tag: 'BlockStatement', body: programObj };
+        const instrs = compile_program(programBlock);
+        checkTypes(programBlock);
+        const bytecode = assemble(instrs);
         processByteCode(bytecode);
         value = run(numWords);
     } catch (e) {
-        log('--------------------------------------------');
-        log('\x1b[31m%s\x1b[0m', 'Test failed with exception');
-        log(`Error: ${e.message}`);
-        log('--------------------------------------------');
+        logTest('--------------------------------------------', true);
+        logTest('Test failed with exception', true);
+        logTest(`Error: ${e.message}`, true);
+        logTest('--------------------------------------------', true);
         throw e;
+    } finally {
+        debug.enable('*');
     }
-    if (value !== expectedValue) {
-        // print "Test failed" in red
-        log('\x1b[31m%s\x1b[0m', 'Test failed');
-        log(`Expected ${expectedValue} but got ${value}`);
-        log('--------------------------------------------');
-        throw new Error('Test failed');
-    } else {
-        // print "Test passed" in green
-        log('\x1b[32m%s\x1b[0m', 'Test passed');
-    }
-    log('--------------------------------------------');
-}
 
-const defaultNumWords = 100000;
+    if (value !== expectedValue) {
+        logTest('--------------------------------------------', true);
+        logTest('Test failed', true);
+        logTest(`Expected ${expectedValue} but got ${value}`, true);
+        logTest('--------------------------------------------', true);
+        throw new Error(`Test failed: Expected ${expectedValue} but got ${value}`);
+    } else {
+        logTest('Test passed');
+        logTest('--------------------------------------------');
+    }
+}
 
 // Testing simple var expressions
 testProgram(
@@ -53,7 +62,8 @@ testProgram(
 var x int = 5;
 x;
 `,
-    5, defaultNumWords,
+    5,
+    defaultNumWords
 );
 
 // Test shorthand
@@ -62,7 +72,8 @@ testProgram(
 x := 5;
 x;
 `,
-    5, defaultNumWords
+    5,
+    defaultNumWords
 );
 
 testProgram(
@@ -70,7 +81,8 @@ testProgram(
 var x int = 5;
 x + 2;
 `,
-    7, defaultNumWords
+    7,
+    defaultNumWords
 );
 
 testProgram(
@@ -78,7 +90,8 @@ testProgram(
 var x int = 5;
 x - 2;
 `,
-    3, defaultNumWords
+    3,
+    defaultNumWords
 );
 
 testProgram(
@@ -86,7 +99,8 @@ testProgram(
 var x int = 4;
 x / 2;
 `,
-    2, defaultNumWords
+    2,
+    defaultNumWords
 );
 
 testProgram(
@@ -94,7 +108,8 @@ testProgram(
 var x int = 5;
 x * 3;
 `,
-    15, defaultNumWords
+    15,
+    defaultNumWords
 );
 
 // Test blocks and scope
@@ -106,7 +121,8 @@ var x int = 5;
 }
 x;
 `,
-    6, defaultNumWords
+    6,
+    defaultNumWords
 );
 
 testProgram(
@@ -119,7 +135,8 @@ var y int = 10;
 }
 x + y;
 `,
-    15, defaultNumWords
+    15,
+    defaultNumWords
 );
 
 // Testing simple identity function
@@ -130,7 +147,8 @@ func foo(n int) int {
 }
 foo(5);
 `,
-    5, defaultNumWords
+    5,
+    defaultNumWords
 );
 
 // Testing function with brackets around return
@@ -141,7 +159,8 @@ func foo(n int) (int) {
     }
 foo(5);
 `,
-    5, defaultNumWords
+    5,
+    defaultNumWords
 );
 
 // Testing function as lambda
@@ -152,7 +171,8 @@ foo := func(n int) int {
     };
 foo(5);
 `,
-    5, defaultNumWords
+    5,
+    defaultNumWords
 );
 
 // Testing function as lambda with invocation
@@ -163,7 +183,8 @@ foo := func(n int) int {
     }(5);
 foo;
 `,
-    5, defaultNumWords
+    5,
+    defaultNumWords
 );
 
 // Testing function with no return type
@@ -174,7 +195,8 @@ func foo(n int) {
 }
 foo(5);
 `,
-    null, defaultNumWords
+    null,
+    defaultNumWords
 );
 
 // Testing literals
@@ -182,7 +204,8 @@ testProgram(
     `
 5
 `,
-    5, defaultNumWords
+    5,
+    defaultNumWords
 );
 
 // Testing conditionals
@@ -195,7 +218,8 @@ if (x == 5) {
   7;
 }
 `,
-    6, defaultNumWords
+    6,
+    defaultNumWords
 );
 
 testProgram(
@@ -207,7 +231,8 @@ if (x == 5) {
   7;
 }
 `,
-    7, defaultNumWords
+    7,
+    defaultNumWords
 );
 
 // Testing recursive function
@@ -222,7 +247,8 @@ func factorial(n int) int {
 }
 factorial(5);
 `,
-    120, defaultNumWords
+    120,
+    defaultNumWords
 );
 
 // Testing goroutine
@@ -240,7 +266,8 @@ go func() {
 
 a + b;
 `,
-    5, defaultNumWords
+    5,
+    defaultNumWords
 );
 
 // Testing for loop with init; condition; update using var
@@ -252,7 +279,8 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    45, defaultNumWords
+    45,
+    defaultNumWords
 );
 
 // Testing for loop with init; condition; update using shorthand
@@ -264,7 +292,8 @@ for i := 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    45, defaultNumWords
+    45,
+    defaultNumWords
 );
 
 // Testing for loop with init; condition; update using var and ++
@@ -276,7 +305,8 @@ for var i int = 0; i < 10; i++ {
 }
 sum;
 `,
-    45, defaultNumWords
+    45,
+    defaultNumWords
 );
 
 // Testing for loop with only condition
@@ -290,7 +320,8 @@ for i < 10 {
 }
 sum;
 `,
-    45, defaultNumWords
+    45,
+    defaultNumWords
 );
 
 // Testing infinite loop with break
@@ -307,7 +338,8 @@ for {
 }
 sum;
 `,
-    45, defaultNumWords
+    45,
+    defaultNumWords
 );
 
 // Testing nested for loop - one with var and one with shorthand
@@ -321,7 +353,8 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    900, defaultNumWords
+    900,
+    defaultNumWords
 );
 
 // Test continue in for loop
@@ -336,7 +369,8 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    40, defaultNumWords
+    40,
+    defaultNumWords
 );
 
 // Testing comments
@@ -346,10 +380,9 @@ testProgram(
 var x int = 5; // This is another comment
 x;
 `,
-    5, defaultNumWords
+    5,
+    defaultNumWords
 );
-
-debug.enable(namespaces);
 
 // *******************************
 // Testing mark and sweep
@@ -381,14 +414,16 @@ var x int = 5;
 var y int = 10;
 x;
 `,
-    5, 170
+    5,
+    170
 );
 
 // Testing mark and sweep, with exactly one variable that should be freed
 // LDCI 15 at var w will force mark and sweep and should free
 // the block frame which is 170, the frame at 190, E at 200 and the number 15
 // allocated at 210. Ok nice it does work!
-testProgram(`
+testProgram(
+    `
 var x int = 5;
 var y int = 10;
 {
@@ -397,4 +432,7 @@ var y int = 10;
 var z int = 10;
 var w int = 15;
 x;
-`, 5, 220);
+`,
+    5,
+    220
+);
