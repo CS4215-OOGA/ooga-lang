@@ -45,13 +45,15 @@ export function testProgram(program: string, expectedValue: any, numWords: numbe
     log('--------------------------------------------');
 }
 
+const defaultNumWords = 100000;
+
 // Testing simple var expressions
 testProgram(
     `
 var x int = 5;
 x;
 `,
-    5, 1000000000,
+    5, defaultNumWords,
 );
 
 // Test shorthand
@@ -60,7 +62,7 @@ testProgram(
 x := 5;
 x;
 `,
-    5, 1000000000
+    5, defaultNumWords
 );
 
 testProgram(
@@ -68,7 +70,7 @@ testProgram(
 var x int = 5;
 x + 2;
 `,
-    7, 1000000000
+    7, defaultNumWords
 );
 
 testProgram(
@@ -76,7 +78,7 @@ testProgram(
 var x int = 5;
 x - 2;
 `,
-    3, 1000000000
+    3, defaultNumWords
 );
 
 testProgram(
@@ -84,7 +86,7 @@ testProgram(
 var x int = 4;
 x / 2;
 `,
-    2, 1000000000
+    2, defaultNumWords
 );
 
 testProgram(
@@ -92,7 +94,7 @@ testProgram(
 var x int = 5;
 x * 3;
 `,
-    15, 1000000000
+    15, defaultNumWords
 );
 
 // Test blocks and scope
@@ -104,7 +106,7 @@ var x int = 5;
 }
 x;
 `,
-    6, 1000000000
+    6, defaultNumWords
 );
 
 testProgram(
@@ -117,7 +119,7 @@ var y int = 10;
 }
 x + y;
 `,
-    15, 1000000000
+    15, defaultNumWords
 );
 
 // Testing simple identity function
@@ -128,7 +130,7 @@ func foo(n int) int {
 }
 foo(5);
 `,
-    5, 1000000000
+    5, defaultNumWords
 );
 
 // Testing function with brackets around return
@@ -139,7 +141,7 @@ func foo(n int) (int) {
     }
 foo(5);
 `,
-    5, 1000000000
+    5, defaultNumWords
 );
 
 // Testing function as lambda
@@ -150,7 +152,7 @@ foo := func(n int) int {
     };
 foo(5);
 `,
-    5, 1000000000
+    5, defaultNumWords
 );
 
 // Testing function as lambda with invocation
@@ -161,7 +163,7 @@ foo := func(n int) int {
     }(5);
 foo;
 `,
-    5, 1000000000
+    5, defaultNumWords
 );
 
 // Testing function with no return type
@@ -172,7 +174,7 @@ func foo(n int) {
 }
 foo(5);
 `,
-    null, 1000000000
+    null, defaultNumWords
 );
 
 // Testing literals
@@ -180,7 +182,7 @@ testProgram(
     `
 5
 `,
-    5, 1000000000
+    5, defaultNumWords
 );
 
 // Testing conditionals
@@ -193,7 +195,7 @@ if (x == 5) {
   7;
 }
 `,
-    6, 1000000000
+    6, defaultNumWords
 );
 
 testProgram(
@@ -205,7 +207,7 @@ if (x == 5) {
   7;
 }
 `,
-    7, 1000000000
+    7, defaultNumWords
 );
 
 // Testing recursive function
@@ -220,7 +222,7 @@ func factorial(n int) int {
 }
 factorial(5);
 `,
-    120, 1000000000
+    120, defaultNumWords
 );
 
 // Testing goroutine
@@ -238,7 +240,7 @@ go func() {
 
 a + b;
 `,
-    5, 1000000000
+    5, defaultNumWords
 );
 
 // Testing for loop with init; condition; update using var
@@ -250,7 +252,7 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    45, 1000000000
+    45, defaultNumWords
 );
 
 // Testing for loop with init; condition; update using shorthand
@@ -262,7 +264,7 @@ for i := 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    45, 1000000000
+    45, defaultNumWords
 );
 
 // Testing for loop with init; condition; update using var and ++
@@ -274,7 +276,7 @@ for var i int = 0; i < 10; i++ {
 }
 sum;
 `,
-    45, 1000000000
+    45, defaultNumWords
 );
 
 // Testing for loop with only condition
@@ -288,7 +290,7 @@ for i < 10 {
 }
 sum;
 `,
-    45, 1000000000
+    45, defaultNumWords
 );
 
 // Testing infinite loop with break
@@ -305,7 +307,7 @@ for {
 }
 sum;
 `,
-    45, 1000000000
+    45, defaultNumWords
 );
 
 // Testing nested for loop - one with var and one with shorthand
@@ -319,7 +321,7 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    900, 1000000000
+    900, defaultNumWords
 );
 
 // Test continue in for loop
@@ -334,7 +336,7 @@ for var i int = 0; i < 10; i = i + 1 {
 }
 sum;
 `,
-    40, 1000000000
+    40, defaultNumWords
 );
 
 // Testing comments
@@ -344,7 +346,7 @@ testProgram(
 var x int = 5; // This is another comment
 x;
 `,
-    5, 1000000000
+    5, defaultNumWords
 );
 
 debug.enable(namespaces);
