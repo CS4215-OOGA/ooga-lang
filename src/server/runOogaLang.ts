@@ -4,6 +4,7 @@ import { processByteCode } from '../vm/oogavm-machine.js';
 import { compile_program } from '../vm/oogavm-compiler.js';
 import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
+import { checkTypes } from '../vm/oogavm-typechecker.js';
 
 const log = debug('ooga:runOogaLang');
 
@@ -28,7 +29,9 @@ export function runOogaLangCode(code: string): Promise<string> {
 
             // Execute the ooga-lang code
             let program = parse(code);
+            program = { tag: 'BlockStatement', body: program };
             const instrs = compile_program(program);
+            checkTypes(program);
             let bytecode = assemble(instrs);
             processByteCode(bytecode);
             let value = run();

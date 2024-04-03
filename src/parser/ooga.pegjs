@@ -88,6 +88,14 @@ InitType
       }
     }
 
+StructIdentifier
+  = Identifier {
+    return {
+        tag: "Struct",
+        name: text()
+        };
+    }
+
 IdentifierStart
     = [a-zA-Z]
 
@@ -222,6 +230,8 @@ IntegerToken    = "int"        !IdentifierPart
 BooleanToken    = "bool"       !IdentifierPart
 StringToken     = "string"     !IdentifierPart
 GoroutineToken  = "go"         !IdentifierPart
+StructToken     = "struct"     !IdentifierPart
+TypeToken       = "type"       !IdentifierPart
 
 SingleLineComment
   = "//" (!LineTerminatorSequence .)* (LineTerminatorSequence / !.)
@@ -238,6 +248,7 @@ EOS
   / _ LineTerminatorSequence
   / _ &"}"
   / __ EOF
+
 
 EOF
   = !.
@@ -292,8 +303,11 @@ MemberExpression
       / FunctionExpression
     )
     tail:(
-        __ "[" __ property:Expression __ "]" {
+        __ "[" __ property:Expression __ "]" { // Existing bracket notation
           return { property: property, computed: true };
+        }
+      / __ "." __ property:Identifier { // Added dot notation
+          return { property: property, computed: false };
         }
     )*
     {
@@ -312,22 +326,68 @@ NewExpression
 
 CallExpression
   = head:(
-      callee:MemberExpression __ args:Arguments {
+      callee:MemberExpression __ args:Arguments { // Handle function calls on member expressions
         return { tag: "CallExpression", callee: callee, arguments: args };
       }
     )
     tail:(
+        // The tail part remains the same, handling further call expressions and property accesses
         __ args:Arguments {
           return { tag: "CallExpression", arguments: args };
         }
-      / lambda:LambdaDeclaration "(" __ ")" {
+      / __ "[" __ property:Expression __ "]" {
           return {
-            tag: "CallExpression",
-            callee: lambda,
-            arguments: []
+            tag: "MemberExpression",
+            object: head,
+            property: property,
+            computed: true
           };
         }
-      / __ "[" __ property:Expression __ "]" {
+      / __ "." __ property:Identifier { // Support for chaining dot syntax
+          return {
+            tag: "MemberExpression",
+            object: head,
+            property: property,
+            computed: false
+          };
+        }
+    )*
+    {
+      return tail.reduce(function(result, element) {
+        // Depending on the type of element (call or member access), adjust the target of the call or property access
+        if (element.tag === "CallExpression") {
+          element.callee = result;
+        } else { // For member expressions
+          element.object = result;
+        }
+        return element;
+      }, head);
+    }
+
+GoroutineCallExpression
+  = head:(
+      callee:MemberExpression __ args:Arguments { // Handles function/method calls
+        return { tag: "GoroutineCallExpression", callee: callee, arguments: args };
+      }
+    )
+    tail:(
+        // For additional method calls or property accesses after the initial call
+        __ args:Arguments {
+          return { tag: "GoroutineCallExpression", arguments: args };
+        }
+      / __ "." __ property:Identifier __ args:Arguments { // Direct support for method calls with dot syntax
+          return {
+            tag: "GoroutineCallExpression",
+            callee: {
+              tag: "MemberExpression",
+              object: head,
+              property: property,
+              computed: false
+            },
+            arguments: args
+          };
+        }
+      / __ "[" __ property:Expression __ "]" { // Bracket notation property access (less common in goroutine calls but included for completeness)
           return {
             tag: "MemberExpression",
             object: head,
@@ -338,42 +398,16 @@ CallExpression
     )*
     {
       return tail.reduce(function(result, element) {
-        element[TYPES_TO_PROPERTY_NAMES[element.type]] = result;
+        // Similar logic as CallExpression, adjusting based on whether it's a further call or property access
+        if (element.tag === "GoroutineCallExpression" || element.tag === "CallExpression") {
+          element.callee = result;
+        } else { // For member expressions
+          element.object = result;
+        }
         return element;
       }, head);
     }
 
-GoroutineCallExpression
-  = head:(
-      callee:MemberExpression __ args:Arguments {
-        return { tag: "GoroutineCallExpression", callee: callee, arguments: args };
-      }
-    )
-    tail:(
-        __ args:Arguments {
-          return { tag: "GoroutineCallExpression", arguments: args };
-        }
-      / lambda:LambdaDeclaration "(" __ ")" {
-          return {
-            tag: "GoroutineCallExpression",
-            callee: lambda,
-            arguments: []
-          };
-        }
-      / __ "[" __ property:Expression __ "]" {
-          return {
-            tag: "MemberExpression",
-            property: property,
-            computed: true
-          };
-        }
-    )*
-    {
-      return tail.reduce(function(result, element) {
-        element[TYPES_TO_PROPERTY_NAMES[element.type]] = result;
-        return element;
-      }, head);
-    }
 
 Arguments
   = "(" __ args:(ArgumentList __)? ")" {
@@ -606,7 +640,23 @@ VariableStatement
             type: type
         }
     }
+    / VarToken __ id:Identifier __ type:(StructIdentifier) init:(__ StructInitializer) EOS {
+        return {
+            tag: "VariableDeclaration",
+            id: id,
+            expression: extractOptional(init, 1),
+            type: type
+        }
+    }
     / id:Identifier init:(__ ShorthandInitialiser) EOS {
+        return {
+            tag: "VariableDeclaration",
+            id: id,
+            expression: extractOptional(init, 1),
+            type: "Unknown"
+        }
+    }
+    / id:Identifier init:(__ ShorthandStructInitializer) EOS {
         return {
             tag: "VariableDeclaration",
             id: id,
@@ -616,12 +666,20 @@ VariableStatement
     }
 
 ConstantStatement
-    = ConstToken __ id:Identifier __ init:(__ Initialiser) EOS {
+    = ConstToken __ id:Identifier __ type:(InitType)? __ init:(__ Initialiser) EOS {
         return {
             tag: "ConstantDeclaration",
             id: id,
             expression: extractOptional(init, 1),
-            type: "Unknown"
+            type: type || "Unknown"
+        }
+    }
+    / ConstToken __ id:Identifier __ type:(StructIdentifier)? __ init:(__ StructInitializer) EOS {
+        return {
+            tag: "ConstantDeclaration",
+            id: id,
+            expression: init,
+            type: type
         }
     }
 
@@ -863,3 +921,57 @@ SourceElements
 SourceElement
   = Statement
   / FunctionDeclaration
+  / StructDeclaration
+
+
+// ----- Structs -----
+StructDeclaration
+  = TypeToken __ id:Identifier __ StructToken __ "{" __ fields:StructFieldList __ "}" {
+      return {
+        tag: "StructDeclaration",
+        id: id,
+        fields: fields
+      };
+    }
+
+StructFieldList
+  = head:StructField tail:(__ StructField)* {
+      return buildList(head, tail, 1);
+    }
+
+StructField
+  = id:Identifier __ type:InitType EOS {
+      return { tag: "StructField", name: id, type: type };
+    }
+
+// ----- Struct Initializers -----
+StructInitializer
+  = "=" __ type:StructIdentifier __ "{" __ fields:StructFieldInitializerList __ "}" {
+      return { tag: "StructInitializer", fields: fields, named: true, type: type };
+    }
+  / "=" __ type:StructIdentifier __ "{" __ values:StructValueInitializerList __ "}" {
+      return { tag: "StructInitializer", values: values, named: false, type:type };
+    }
+
+ShorthandStructInitializer
+  = ":=" __ type:StructIdentifier __  "{" __ fields:StructFieldInitializerList __ "}" {
+      return { tag: "StructInitializer", fields: fields, named: true, type: type };
+    }
+   / ":=" __ type:StructIdentifier __ "{" __ values:StructValueInitializerList __ "}" {
+      return { tag: "StructInitializer", values: values, named: false, type: type };
+    }
+
+StructFieldInitializerList
+  = head:StructFieldInitializer tail:(__ "," __ StructFieldInitializer)* {
+      return buildList(head, tail, 3);
+    }
+
+StructFieldInitializer
+  = id:Identifier __ ":" __ value:AssignmentExpression {
+      return { tag: "StructFieldInitializer", name: id, value: value };
+    }
+
+StructValueInitializerList
+  = head:AssignmentExpression tail:(__ "," __ AssignmentExpression)* {
+      return buildList(head, tail, 3);
+    }
