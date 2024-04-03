@@ -13,7 +13,7 @@ const log = debug('ooga:runOogaLang');
  * @returns {Promise<string>} The captured output (including any errors).
  */
 export function runOogaLangCode(code: string): Promise<string> {
-    log(code);
+        log(code);
     return new Promise((resolve, reject) => {
         // Redirect console.log to capture output
         const originalConsoleLog = console.log;
