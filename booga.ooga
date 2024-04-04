@@ -1,7 +1,22 @@
-func foo(x bool) bool {
-	return x == true;
+type Vertex struct {
+	X int
 }
 
-x := 5;
 
-foo(true)
+func (v *Vertex) AddX(y int) int {
+	v.X = v.X + y
+	return v.X + y
+}
+
+var w Vertex = Vertex{X: 1}
+print(w.AddX(5));
+print(w.X);
+// func foo() {
+// 	return;
+// }
+
+// foo();
+
+type Wertex struct {
+	X int
+}

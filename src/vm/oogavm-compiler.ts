@@ -38,12 +38,6 @@ class Method {
     }
 
     equals(other: Method) {
-        log(
-            'IN EQUALS: Comparing ' +
-                JSON.stringify(this, null, 2) +
-                ' with ' +
-                JSON.stringify(other, null, 2)
-        );
         return this.receiver === other.receiver && this.methodName === other.methodName;
     }
 }
@@ -71,12 +65,6 @@ function compileTimeEnvironmentPosition(env: CompileTimeEnvironment, x: string |
 
 function valueIndex(frame: CompileTimeFrame, x: string | Method) {
     for (let i = 0; i < frame.length; i++) {
-        log(
-            'Comparing ' +
-                JSON.stringify(frame[i].name, null, 2) +
-                ' with ' +
-                JSON.stringify(x, null, 2)
-        );
         if (typeof x === 'string' && frame[i].name === x) {
             return i;
         } else if (
@@ -249,11 +237,8 @@ const compileComp = {
                 lastPop = wc - 1;
             }
         }
-        // log('Last pop: ' + lastPop);
-        // log('Start WC: ' + startWc);
-        // log('WC: ' + wc);
+
         if (lastPop !== undefined && lastPop === wc - 1) {
-            // log('Popping');
             instrs.pop();
             wc--;
         }
@@ -570,6 +555,7 @@ const compileComp = {
             fields: comp.fields.map(f => ({ name: f.name.name, type: f.type })),
             methods: [],
         };
+        instrs[wc++] = { tag: Opcodes.LDCI, val: null };
     },
     StructInitializer: (comp, ce) => {
         // First, verify the struct type exists
