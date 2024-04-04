@@ -187,6 +187,13 @@ let in_func = false;
 let expected_ret;
 // type_comp has the typing
 // functions for each component tag
+
+/**
+ * Represents a collection of type checking functions for different AST node types.
+ * Each property of this object corresponds to a specific AST node type, and its value is a type checking function for that node type.
+ * The type checking function takes in two parameters: `comp` (the AST node to be type checked) and `te` (the type environment).
+ * It returns the inferred type of the AST node.
+ */
 const type_comp = {
     Integer: (comp, te) =>
         is_integer(comp.value) ? types.Integer : error('expected number, got ' + comp.value),
@@ -659,6 +666,12 @@ const type_comp = {
     },
 };
 
+/**
+ * Type checks the given component using the provided type environment.
+ * @param {any} comp - The component to be type checked.
+ * @param {any} te - The type environment.
+ * @returns {any} - The result of type checking the component.
+ */
 const type = (comp, te) => {
     log('type');
     log(JSON.stringify(comp, null, 2));

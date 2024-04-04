@@ -162,6 +162,11 @@ function findVariableTypeInCE(
 // ******************
 //
 
+/**
+ * The `compileComp` object contains various functions that handle the compilation of different AST node types.
+ * Each function takes in the AST node and the compile-time environment as parameters and generates the corresponding instructions.
+ * The instructions are stored in the `instrs` array and the program counter is updated accordingly.
+ */
 const compileComp = {
     UnaryExpression: (comp, ce) => {
         compile(comp.argument, ce);
@@ -682,7 +687,6 @@ const compileComp = {
     },
 };
 
-// TODO: Make everything proper classes so that its clearer
 // NOTE: We are a left precedence
 // we compile the left then the right
 function compile(component, ce) {
