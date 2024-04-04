@@ -79,8 +79,10 @@ InitType
       switch(type[0]) {
         case "int":
           return "Integer";
-        case "float":
+        case "float32":
           return "Integer";
+        case "float64":
+            return "Integer";
         case "bool":
           return "Boolean";
         case "string":
@@ -128,6 +130,8 @@ Keyword
 
 Type
   = IntegerToken
+  / Float32Token
+  / Float64Token
   / BooleanToken
   / StringToken
 
@@ -231,7 +235,9 @@ ReturnToken     = "return"     !IdentifierPart
 ThisToken       = "this"       !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 VarToken        = "var"        !IdentifierPart
-IntegerToken    = "int"/"float"        !IdentifierPart
+IntegerToken    = "int"        !IdentifierPart
+Float32Token    = "float32"    !IdentifierPart
+Float64Token    = "float64"    !IdentifierPart
 BooleanToken    = "bool"       !IdentifierPart
 StringToken     = "string"     !IdentifierPart
 GoroutineToken  = "go"         !IdentifierPart

@@ -66,6 +66,16 @@ x;
     defaultNumWords
 );
 
+// Testing float64
+testProgram(
+    `
+var x float64 = 5.5;
+x;
+`,
+    5.5,
+    defaultNumWords
+);
+
 // Test shorthand
 testProgram(
     `
