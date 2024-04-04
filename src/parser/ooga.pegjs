@@ -154,7 +154,7 @@ DecimalLiteral
 
 DecimalIntegerLiteral
   = "0"
-  / NonZeroDigit DecimalDigit*
+  / "-"? NonZeroDigit DecimalDigit*
 
 DecimalDigit
   = [0-9]
