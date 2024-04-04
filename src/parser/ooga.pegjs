@@ -303,11 +303,8 @@ MemberExpression
       / FunctionExpression
     )
     tail:(
-        __ "[" __ property:Expression __ "]" { // Existing bracket notation
-          return { property: property, computed: true };
-        }
-      / __ "." __ property:Identifier { // Added dot notation
-          return { property: property, computed: false };
+        __ "." __ property:Identifier {
+          return { property: property };
         }
     )*
     {
@@ -315,8 +312,7 @@ MemberExpression
         return {
           tag: "MemberExpression",
           object: result,
-          property: element.property,
-          computed: element.computed
+          property: element.property
         };
       }, head);
     }
@@ -335,20 +331,11 @@ CallExpression
         __ args:Arguments {
           return { tag: "CallExpression", arguments: args };
         }
-      / __ "[" __ property:Expression __ "]" {
-          return {
-            tag: "MemberExpression",
-            object: head,
-            property: property,
-            computed: true
-          };
-        }
       / __ "." __ property:Identifier { // Support for chaining dot syntax
           return {
             tag: "MemberExpression",
             object: head,
-            property: property,
-            computed: false
+            property: property
           };
         }
     )*
@@ -381,18 +368,9 @@ GoroutineCallExpression
             callee: {
               tag: "MemberExpression",
               object: head,
-              property: property,
-              computed: false
+              property: property
             },
             arguments: args
-          };
-        }
-      / __ "[" __ property:Expression __ "]" { // Bracket notation property access (less common in goroutine calls but included for completeness)
-          return {
-            tag: "MemberExpression",
-            object: head,
-            property: property,
-            computed: true
           };
         }
     )*
@@ -611,6 +589,8 @@ Statement
   / FunctionDeclaration
   / ForStatement
   / ForInitStatement
+  / StructDeclaration
+  / MethodDeclaration
 
 BlockStatement
   = "{" __ body:(StatementList __)? "}" {
@@ -678,8 +658,8 @@ ConstantStatement
         return {
             tag: "ConstantDeclaration",
             id: id,
-            expression: init,
-            type: type
+            expression: extractOptional(init, 1),
+            type: type || "Unknown"
         }
     }
 
@@ -922,6 +902,7 @@ SourceElement
   = Statement
   / FunctionDeclaration
   / StructDeclaration
+  / MethodDeclaration
 
 
 // ----- Structs -----
@@ -950,7 +931,7 @@ StructInitializer
       return { tag: "StructInitializer", fields: fields, named: true, type: type };
     }
   / "=" __ type:StructIdentifier __ "{" __ values:StructValueInitializerList __ "}" {
-      return { tag: "StructInitializer", values: values, named: false, type:type };
+      return { tag: "StructInitializer", fields: values, named: false, type:type };
     }
 
 ShorthandStructInitializer
@@ -958,7 +939,7 @@ ShorthandStructInitializer
       return { tag: "StructInitializer", fields: fields, named: true, type: type };
     }
    / ":=" __ type:StructIdentifier __ "{" __ values:StructValueInitializerList __ "}" {
-      return { tag: "StructInitializer", values: values, named: false, type: type };
+      return { tag: "StructInitializer", fields: values, named: false, type: type };
     }
 
 StructFieldInitializerList
@@ -974,4 +955,28 @@ StructFieldInitializer
 StructValueInitializerList
   = head:AssignmentExpression tail:(__ "," __ AssignmentExpression)* {
       return buildList(head, tail, 3);
+    }
+
+MethodDeclaration
+  = FunctionToken __ "(" __ receiver:Receiver __ ")" __ id:Identifier __
+    "(" __ params:(FormalParameterList __)? ")" __
+    "("? __ type:(ReturnTypeList)? __ ")"? __
+    "{" __ body:FunctionBody __ "}"
+    {
+      return {
+        tag: "MethodDeclaration",
+        receiver: receiver,
+        id: id,
+        params: optionalList(extractOptional(params, 0)),
+        type: type || ["Null"],
+        body: body
+      };
+    }
+
+Receiver
+    = id:Identifier __ "*" __ type:StructIdentifier {
+        return { tag: "Receiver", name: id, type: type, pointer: true };
+    }
+    / id:Identifier __ type:StructIdentifier {
+        return { tag: "Receiver", name: id, type: type, pointer: false };
     }

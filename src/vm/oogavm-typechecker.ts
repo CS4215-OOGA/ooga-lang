@@ -8,7 +8,10 @@ const types = {
     Boolean: 'Boolean',
     String: 'String',
     Null: 'Null',
+    Struct: 'Struct',
 };
+
+const StructTable = {};
 
 function is_integer(x) {
     return typeof x === 'number' && x % 1 === 0;
@@ -341,7 +344,7 @@ const type_comp = {
         const extended_te = extend_type_environment(
             decls_known_type.map(comp => comp.id.name),
             decls_known_type.map(comp =>
-                comp.tag === 'VariableDeclaration'
+                comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration'
                     ? comp.type
                     : { tag: 'Function', args: comp.params.map(p => p.type), res: comp.type }
             ),
@@ -447,6 +450,92 @@ const type_comp = {
     },
     BreakStatement: (comp, te) => types.Null,
     ContinueStatement: (comp, te) => types.Null,
+    StructDeclaration: (comp, te) => {
+        log('StructDeclaration');
+        log(JSON.stringify(comp, null, 2));
+        StructTable[comp.id.name] = comp.fields.map(f => ({ name: f.name.name, type: f.type }));
+        log('Exiting StructDeclaration');
+        return { tag: types.Struct, name: comp.id.name };
+    },
+    StructInitializer: (comp, te) => {
+        log('StructInitializer');
+        log(JSON.stringify(comp, null, 2));
+        const struct = StructTable[comp.type.name];
+        if (!struct) {
+            error('struct ' + comp.id.name + ' not found');
+        }
+
+        if (comp.named) {
+            // Allow for fewer fields if they are named, the rest will be set to the 0 value of their type
+            if (struct.length < comp.fields.length) {
+                error('expected ' + struct.length + ' fields, got ' + comp.fields.length);
+            }
+
+            // Check that there are no duplicate fields
+            const field_names = comp.fields.map(f => f.name.name);
+            const unique_field_names = new Set(field_names);
+            if (field_names.length !== unique_field_names.size) {
+                error('duplicate field names in struct initializer');
+            }
+
+            // Check that all fields are present in the struct
+            for (let i = 0; i < comp.fields.length; i++) {
+                const field = comp.fields[i];
+                const struct_field = struct.find(f => f.name === field.name.name);
+                if (!struct_field) {
+                    error('field ' + field.name.name + ' not found in struct ' + comp.type.name);
+                }
+                const field_type = type(field.value, te);
+                if (!equal_type(field_type, struct_field.type)) {
+                    error(
+                        'type error in struct initializer; ' +
+                            'expected type: ' +
+                            unparse_types(struct_field.type) +
+                            ', ' +
+                            'actual type: ' +
+                            unparse_types(field_type)
+                    );
+                }
+            }
+        } else {
+            if (struct.length !== comp.fields.length) {
+                error('expected ' + struct.length + ' fields, got ' + comp.fields.length);
+            }
+
+            for (let i = 0; i < comp.fields.length; i++) {
+                const field = comp.fields[i];
+                const field_type = type(field, te);
+                if (!equal_type(field_type, struct[i].type)) {
+                    error(
+                        'type error in struct initializer; ' +
+                            'expected type: ' +
+                            unparse_types(struct[i].type) +
+                            ', ' +
+                            'actual type: ' +
+                            unparse_types(field_type)
+                    );
+                }
+            }
+        }
+
+        log('Exiting StructInitializer');
+        return { tag: types.Struct, name: comp.type.name };
+    },
+    MemberExpression: (comp, te) => {
+        log('MemberExpression');
+        log(JSON.stringify(comp, null, 2));
+        const obj_type = type(comp.object, te);
+        if (obj_type.tag !== types.Struct) {
+            error('expected struct type, got ' + unparse_types(obj_type));
+        }
+        const struct = StructTable[obj_type.name];
+        const field = struct.find(f => f.name === comp.property.name);
+        if (!field) {
+            error('field ' + comp.property.name + ' not found in struct ' + obj_type.name);
+        }
+        log('Exiting MemberExpression');
+        return field.type;
+    },
 };
 
 const type = (comp, te) => {

@@ -21,6 +21,10 @@ const enum OpCodes {
     TAIL_CALL = 'TAIL_CALL',
     NEW_THREAD = 'NEW_THREAD',
     DONE = 'DONE',
+    NEW_STRUCT = 'NEW_STRUCT',
+    INIT_FIELD = 'INIT_FIELD',
+    ACCESS_FIELD = 'ACCESS_FIELD',
+    SET_FIELD = 'SET_FIELD',
 }
 
 export default OpCodes;

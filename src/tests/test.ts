@@ -436,3 +436,78 @@ x;
     5,
     220
 );
+
+// Testing structs (no methods for now)
+// Structs can be initialized using var, shorthand or const
+// Golang style struct initialization
+
+// Structs with var
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+var p Point = Point{1, 2};
+p.x;
+`,
+    1,
+    defaultNumWords
+);
+
+// Structs with shorthand
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+p := Point{1, 2};
+p.x;
+`,
+    1,
+    defaultNumWords
+);
+
+// Structs with const
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+const p Point = Point{1, 2};
+p.x;
+`,
+    1,
+    defaultNumWords
+);
+
+// More complex struct stuff (variable declaration, struct field access)
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+var p Point = Point{1, 2};
+p.x + p.y;
+`,
+    3,
+    defaultNumWords
+);
+
+// Setting struct fields
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+var p Point = Point{1, 2};
+p.x = 2;
+p.x;
+`,
+    2,
+    defaultNumWords
+);

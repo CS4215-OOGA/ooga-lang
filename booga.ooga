@@ -1,8 +1,17 @@
-var sum int = 0;
-for var i int = 0; i < 10; i = i + 1 {
-  if (i == 5) {
-    continue;
-  }
-  sum = sum + i;
+type Vertex struct {
+	X int
+	Y int
 }
-sum;
+
+v := Vertex{X: 3, Y: 4}
+
+v.X = 10
+
+var z int = v.X + v.Y
+
+const w = Vertex{2, 3}
+
+w.X = 500
+w.Y = 6000
+
+z + w.X + w.Y

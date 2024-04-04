@@ -6,6 +6,9 @@ const log = debug('ooga:compiler');
 let wc;
 let instrs;
 let loopMarkers: any[] = []; // For loop markers
+let StructTable = {
+    // StructName: [{name: "memberName", type: "memberType"}, ...]
+}; // For struct declarations
 const push = (array, ...items) => {
     for (let item of items) {
         array.push(item);
@@ -18,7 +21,13 @@ const push = (array, ...items) => {
 // **************************
 // Reuse the existing compile time environment as much as possible for safer guarantee on correctness
 // A compile-time environment is an array of compile-time frames and a compile-time frame is an array of symbols
-type CompileTimeFrame = string[];
+type CompileTimeVariable = {
+    name: string;
+    type: string | Object | null;
+    // Currently, we are assuming that all variables are of size 1
+    // TODO: Keep track of the size of variable here - this is needed for storing structs in structs
+};
+type CompileTimeFrame = CompileTimeVariable[];
 type CompileTimeEnvironment = CompileTimeFrame[];
 
 // Find the position [frame-index, value-index] of a given symbol x
@@ -34,28 +43,30 @@ function compileTimeEnvironmentPosition(env: CompileTimeEnvironment, x: string) 
 
 function valueIndex(frame: CompileTimeFrame, x: string) {
     for (let i = 0; i < frame.length; i++) {
-        if (frame[i] === x) return i;
+        if (frame[i].name === x) return i;
     }
     return -1;
 }
 
-function compileTimeEnvironmentExtend(vs: string[], e: CompileTimeEnvironment) {
+function compileTimeEnvironmentExtend(vs: CompileTimeVariable[], e: CompileTimeEnvironment) {
     // shallow copy of e
     return push([...e], vs);
 }
 
-const builtinFrame = Object.keys(builtinMappings);
+const builtinFrame: string[] = Object.keys(builtinMappings);
 // TODO: Add builtins and constants frame to this
-const globalCompileTimeEnvironment: CompileTimeEnvironment = [builtinFrame];
+const globalCompileTimeEnvironment: CompileTimeEnvironment = [
+    builtinFrame.map(name => ({ name, type: null })), // TODO: Add types here
+];
 
 // TODO: Add type annotation here
 // scans out the declarations from the block, ignoring nested blocks
 // throws an error if the same variable is declared more than once
-function scanForLocalsBlock(compBlock): string[] {
+function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
     if (compBlock.tag !== 'SequenceStatement') {
         return [];
     }
-    let declarations: string[] = [];
+    let declarations: CompileTimeVariable[] = [];
     for (let i = 0; i < compBlock.body.length; i++) {
         let comp = compBlock.body[i];
         log('OOGA');
@@ -66,24 +77,42 @@ function scanForLocalsBlock(compBlock): string[] {
             comp.tag === 'FunctionDeclaration'
         ) {
             // could probably use an extra set but i rather have smaller code
-            if (declarations.includes(comp.id.name)) {
+            if (declarations.find(decl => decl.name === comp.id.name) !== undefined) {
                 throw Error(
                     'Variable ' + comp.id.name + ' declared more than once in the same block!'
                 );
             }
-            declarations.push(comp.id.name);
+            declarations.push(
+                comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration'
+                    ? { name: comp.id.name, type: comp.type }
+                    : { name: comp.id.name, type: 'function' }
+            );
         }
     }
     return declarations;
 }
 
 // Helper function to scan for declaration within a for init component
-function scanForLocalsSingle(comp): string[] {
+function scanForLocalsSingle(comp): CompileTimeVariable[] {
     if (comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration') {
-        return [comp.id.name];
+        return [{ name: comp.id.name, type: comp.type }];
     } else {
         return [];
     }
+}
+
+function findVariableTypeInCE(
+    ce: CompileTimeEnvironment,
+    variableName: string
+): string | Object | null {
+    for (let frame of ce) {
+        for (let variable of frame) {
+            if (variable.name === variableName) {
+                return variable.type;
+            }
+        }
+    }
+    return null;
 }
 
 // ******************
@@ -132,7 +161,7 @@ const compileComp = {
         goto_instr.addr = wc;
     },
     BlockStatement: (comp, ce) => {
-        const declarations = scanForLocalsBlock(comp.body);
+        const declarations: CompileTimeVariable[] = scanForLocalsBlock(comp.body);
         // Only enter and exit scope if there are actually declarations.
         if (declarations.length == 0) {
             return compile(comp.body, ce);
@@ -171,18 +200,26 @@ const compileComp = {
     //       A possible type inference hack (?) is to evaluate the expression then return the type.
     //       As I type this, I realise its probably the best way and probably not that hard (?)
     VariableDeclaration: (comp, ce) => {
-        // If the expression is null, the comp is of the form
-        // var x int
-        // and we can safely skip it.
+        // Process the expression as before
         if (comp.expression !== null) {
             compile(comp.expression, ce);
         }
-        // Note that this allows the value of the expression to be nil
         instrs[wc++] = {
             tag: Opcodes.ASSIGN,
             pos: compileTimeEnvironmentPosition(ce, comp.id.name),
         };
-        // TODO: To handle the types here
+        // Now also include the variable in the current frame with its type
+        // const currentFrame = ce[ce.length - 1]; // The last frame is the current scope
+        // If the type is 'Unknown' and the RHS is a StructInitializer, we can infer the type
+        if (
+            comp.type === 'Unknown' &&
+            comp.expression &&
+            comp.expression.tag === 'StructInitializer'
+        ) {
+            log('Setting variable ' + comp.id.name + ' to type ' + comp.expression.type.name);
+            comp.type = { tag: 'Struct', name: comp.expression.type.name };
+            ce[ce.length - 1].find(variable => variable.name === comp.id.name).type = comp.type;
+        }
     },
     ConstantDeclaration: (comp, ce) => {
         // Handles expressions of the form
@@ -197,14 +234,55 @@ const compileComp = {
             tag: Opcodes.ASSIGN,
             pos: compileTimeEnvironmentPosition(ce, comp.id.name),
         };
+
+        if (comp.type === 'Unknown' && comp.expression.tag === 'StructInitializer') {
+            log('Setting constant ' + comp.id.name + ' to type ' + comp.expression.type.name);
+            comp.type = { tag: 'Struct', name: comp.expression.type.name };
+            ce[ce.length - 1].find(variable => variable.name === comp.id.name).type = comp.type;
+        }
     },
     // TODO: The parser treats expressions of the form
     AssignmentExpression: (comp, ce) => {
+        // Compile the value to be assigned
         compile(comp.right, ce);
-        instrs[wc++] = {
-            tag: Opcodes.ASSIGN,
-            pos: compileTimeEnvironmentPosition(ce, comp.left.name),
-        };
+
+        // If LHS is a MemberExpression, handle field assignment
+        if (comp.left.tag === 'MemberExpression') {
+            // Push the struct address onto the stack
+            compile(comp.left.object, ce);
+            // Determine the struct type and member's index
+            const variableType = findVariableTypeInCE(ce, comp.left.object.name);
+            log(variableType);
+            if (
+                !variableType ||
+                typeof variableType !== 'object' ||
+                variableType.tag !== 'Struct' ||
+                !StructTable[variableType.name]
+            ) {
+                throw new Error(
+                    `Type of variable ${comp.left.object.name} is undefined or not a struct.`
+                );
+            }
+            const structDefinition = StructTable[variableType.name];
+            const fieldIndex = structDefinition.findIndex(
+                field => field.name === comp.left.property.name
+            );
+            if (fieldIndex === -1) {
+                throw new Error(
+                    `Field ${comp.left.property.name} does not exist in struct ${variableType}`
+                );
+            }
+            // Push the field index onto the stack
+            instrs[wc++] = { tag: Opcodes.LDCI, val: fieldIndex };
+            // Generate instruction to set the field's value
+            instrs[wc++] = { tag: Opcodes.SET_FIELD };
+        } else {
+            // Handle normal variable assignment
+            instrs[wc++] = {
+                tag: Opcodes.ASSIGN,
+                pos: compileTimeEnvironmentPosition(ce, comp.left.name),
+            };
+        }
     },
     Name: (comp, ce) => {
         // TODO: Might have to do type check here?
@@ -252,9 +330,12 @@ const compileComp = {
         instrs[wc++] = gotoInstruction;
 
         // TODO: probably want to incorporate type information here in the short future
-        let paramNames: string[] = [];
+        let paramNames: CompileTimeVariable[] = [];
         for (let i = 0; i < comp.params.length; i++) {
-            paramNames.push(comp.params[i].name);
+            paramNames.push({
+                name: comp.params[i].name,
+                type: comp.params[i].type,
+            });
         }
 
         compile(comp.body, compileTimeEnvironmentExtend(paramNames, ce));
@@ -303,7 +384,7 @@ const compileComp = {
     ForStatement: (comp, ce) => {
         // We also need to possibly enter scope if there was a variable declaration
         // in the init component
-        let declarations: string[] = [];
+        let declarations: CompileTimeVariable[] = [];
         if (comp.init !== null) {
             declarations = scanForLocalsSingle(comp.init);
             if (declarations.length > 0) {
@@ -373,6 +454,73 @@ const compileComp = {
         instrs[wc++] = continueInstr;
         // Record this continue instruction's address to fix up later
         loopMarkers[loopMarkers.length - 1].continues.push(wc - 1);
+    },
+    StructDeclaration: (comp, ce) => {
+        StructTable[comp.id.name] = comp.fields.map(f => ({ name: f.name.name, type: f.type }));
+    },
+    StructInitializer: (comp, ce) => {
+        // First, verify the struct type exists
+        const structInfo = StructTable[comp.type.name];
+        if (!structInfo) {
+            throw new Error(`Undefined struct type: ${comp.type.name}`);
+        }
+
+        // Allocate space for the new struct
+        instrs[wc++] = {
+            tag: Opcodes.NEW_STRUCT,
+            structType: comp.type.name,
+            numFields: structInfo.length,
+        };
+
+        // Handle field initialization
+        if (comp.named) {
+            // Named fields
+            comp.fields.forEach(fieldInit => {
+                // Find field index in struct definition
+                const fieldIndex = structInfo.findIndex(f => f.name === fieldInit.name.name);
+                if (fieldIndex === -1) {
+                    throw new Error(
+                        `Field ${fieldInit.name.name} does not exist in struct ${comp.type.name}`
+                    );
+                }
+
+                // Compile the value to be assigned
+                compile(fieldInit.value, ce);
+
+                // Initialize the struct field
+                instrs[wc++] = { tag: Opcodes.INIT_FIELD, fieldIndex: fieldIndex };
+            });
+        } else {
+            // Positional fields
+            comp.fields.forEach((value, index) => {
+                // Compile the value to be assigned
+                compile(value, ce);
+
+                // Initialize the struct field
+                instrs[wc++] = { tag: Opcodes.INIT_FIELD, fieldIndex: index };
+            });
+        }
+    },
+    MemberExpression: (comp, ce) => {
+        const variableType = findVariableTypeInCE(ce, comp.object.name);
+        if (
+            !variableType ||
+            typeof variableType !== 'object' ||
+            variableType.tag !== 'Struct' ||
+            !StructTable[variableType.name]
+        ) {
+            throw new Error(`Type of variable ${comp.object.name} is undefined or not a struct.`);
+        }
+        const structDefinition = StructTable[variableType.name];
+        const fieldIndex = structDefinition.findIndex(field => field.name === comp.property.name);
+
+        if (fieldIndex === -1) {
+            throw new Error(`Field ${comp.property.name} does not exist in struct ${variableType}`);
+        }
+
+        compile(comp.object, ce); // Push the struct's address onto the OS
+        instrs[wc++] = { tag: Opcodes.LDCI, val: fieldIndex }; // Field index
+        instrs[wc++] = { tag: Opcodes.ACCESS_FIELD }; // Access the field value
     },
 };
 

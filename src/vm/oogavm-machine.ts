@@ -348,6 +348,7 @@ const microcode = {
         let valueIndex = instr.pos[1];
         let value;
         value = heap.peekStack(OS);
+        log('Assigning value ' + value + ' to frame ' + frameIndex + ' value ' + valueIndex);
         heap.setEnvironmentValue(E, frameIndex, valueIndex, value);
     },
     LD: instr => {
@@ -479,6 +480,48 @@ const microcode = {
         tempRoot3 = -1;
         tempRoot4 = -1;
     },
+    NEW_STRUCT: instr => {
+        const structAddress = heap.allocateStruct(instr.structType);
+        log('Struct address is ' + structAddress);
+        tempRoot0 = structAddress;
+        pushAddressOS(structAddress);
+        tempRoot0 = -1; // Clear the temp root
+    },
+    INIT_FIELD: instr => {
+        let fieldValue;
+        [OS, fieldValue] = heap.popStack(OS); // Next, the value to be set for the field
+        log('Field value is ' + heap.addressToTSValue(fieldValue));
+        let structAddress;
+        [OS, structAddress] = heap.popStack(OS); // Assuming struct is on top of OS
+        log('Struct address is ' + structAddress);
+        log('Field index is ' + instr.fieldIndex);
+        log('Field value is ' + fieldValue);
+        heap.setField(structAddress, instr.fieldIndex, fieldValue);
+        pushAddressOS(structAddress); // Push back the struct address if necessary, or adjust as per your design
+    },
+    ACCESS_FIELD: instr => {
+        let fieldIndex;
+        [OS, fieldIndex] = heap.popStack(OS);
+        fieldIndex = heap.addressToTSValue(fieldIndex);
+        log('Field index is ' + fieldIndex);
+        let structAddress;
+        [OS, structAddress] = heap.popStack(OS);
+        log('Struct address is ' + structAddress);
+        let fieldValue = heap.getChild(structAddress, fieldIndex);
+        log('Field value is ' + fieldValue);
+        OS = heap.pushStack(OS, fieldValue);
+    },
+    SET_FIELD: instr => {
+        let fieldIndex;
+        [OS, fieldIndex] = heap.popStack(OS);
+        fieldIndex = heap.addressToTSValue(fieldIndex);
+        let structAddress;
+        [OS, structAddress] = heap.popStack(OS);
+        let fieldValue;
+        [OS, fieldValue] = heap.popStack(OS);
+        heap.setField(structAddress, fieldIndex, fieldValue);
+        pushAddressOS(structAddress);
+    },
 };
 
 // ********************************
@@ -487,7 +530,7 @@ const microcode = {
 
 export function getRoots(): number[] {
     // @ts-ignore
-    let roots = [];
+    let roots: number[] = [];
     // No.
     // Using a list has "context" issues.
     if (tempRoot0 != -1) {

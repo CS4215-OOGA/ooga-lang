@@ -27,6 +27,8 @@ export enum Tag {
     ENVIRONMENT,
     STACK,
     BUILTIN,
+    STRUCT,
+    STRUCT_FIELD,
 }
 
 function getTagString(tag: Tag): string {
@@ -494,6 +496,19 @@ export class Heap {
     // *******************
     // Golang structures
     // *******************
+    // [1 byte tag, 1 byte numFields, 2 bytes #children, 1 byte unused]
+    allocateStruct(numFields: number) {
+        const address = this.allocate(Tag.STRUCT, numFields + 1);
+        return address;
+    }
+
+    setField(structAddress: number, fieldIndex: number, value: number) {
+        this.setChild(structAddress, fieldIndex, value);
+    }
+
+    isStruct(address: number) {
+        return this.getTag(address) === Tag.STRUCT;
+    }
 
     // TODO: Implement slices
     //       Slices are resizable arrays.
@@ -536,6 +551,8 @@ export class Heap {
             return '<builtin>';
         } else if (this.isClosure(address)) {
             return '<closure>';
+        } else if (this.isStruct(address)) {
+            return '<struct>';
         } else {
             return 'unknown word tag: ' + this.wordToString(address);
         }
@@ -645,7 +662,7 @@ export class Heap {
     }
 
     markAndSweep(roots: number[]) {
-        for (let root    of roots) {
+        for (let root of roots) {
             this.mark(root);
         }
         for (let lit of this.literals) {
