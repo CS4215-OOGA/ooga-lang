@@ -209,6 +209,10 @@ function apply_logic(sym: string, left: any, right: any) {
             return left <= right;
         case '<':
             return left < right;
+        case '&&':
+            return left && right;
+        case '||':
+            return left || right;
         default:
             throw Error('LOGIC ERROR');
     }
