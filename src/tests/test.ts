@@ -511,3 +511,33 @@ p.x;
     2,
     defaultNumWords
 );
+
+// Combine all the above
+testProgram(
+    `
+type Vertex struct {
+    X int
+    Y int
+}
+
+v := Vertex{X: 3, Y: 4}
+
+v.X = 10
+
+var z int = v.X + v.Y
+
+const w = Vertex{2, 3}
+
+w.X = 500
+w.Y = 6000
+
+var a Vertex = Vertex{1, 2}
+
+a.X = 10
+a.Y = 20
+
+a.X + a.Y + v.X + v.Y + w.X + w.Y + z
+`,
+    6558,
+    defaultNumWords
+);

@@ -105,11 +105,11 @@ function findVariableTypeInCE(
     ce: CompileTimeEnvironment,
     variableName: string
 ): string | Object | null {
-    for (let frame of ce) {
-        for (let variable of frame) {
-            if (variable.name === variableName) {
-                return variable.type;
-            }
+    // We should start from the last frame and go backwards
+    for (let i = ce.length - 1; i >= 0; i--) {
+        const variable = ce[i].find(variable => variable.name === variableName);
+        if (variable) {
+            return variable.type;
         }
     }
     return null;
