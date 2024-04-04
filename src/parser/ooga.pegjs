@@ -267,7 +267,8 @@ EOF
 // ----- A.3 Expressions -----
 
 PrimaryExpression
-  = Identifier
+  = Struct
+  / Identifier
   / Literal
   / ArrayLiteral
   / "(" __ expression:Expression __ ")" { return expression; }
@@ -721,7 +722,7 @@ ForStatement
 ForWithInitTestUpdate
   = ForToken __
     init:ForInitStatement ";" __
-    test:Expression ";" __
+    test:ForTest ";" __
     update:Expression __
     "{" __ body: StatementList? __ "}" __
     {
@@ -738,7 +739,7 @@ ForWithInitTestUpdate
 
 ForWithTest
   = ForToken __
-    test:Expression __
+    test:ForTest __
     "{" __ body: StatementList? __ "}" __
     {
       return {
@@ -811,6 +812,7 @@ ReturnStatement
       return { tag: "ReturnStatement", expression: argument };
     }
 
+
 GoroutineStatement
   = GoroutineToken _ argument:GoroutineCallExpression EOS {
       return { tag: "CallGoroutine", expression: argument }
@@ -878,11 +880,22 @@ FormalParameter
   = id:Identifier __ type:InitType {
       return { tag: id.tag, name: id.name, type: type };
     }
+    / id:Identifier __ type:StructIdentifier {
+      return { tag: id.tag, name: id.name, type: type };
+    }
 
 
 ReturnTypeList
-  = head:InitType tail:(__ "," __ InitType)* {
-    return buildList(head, tail, 3);
+  = head:ReturnType tail:(__ "," __ ReturnType)* {
+      return buildList(head, tail, 3);
+    }
+
+ReturnType
+  = type:InitType {
+    return type;
+  }
+  / type:StructIdentifier {
+    return type;
   }
 
 FunctionBody
@@ -937,20 +950,23 @@ StructField
     }
 
 // ----- Struct Initializers -----
-StructInitializer
-  = "=" __ type:StructIdentifier __ "{" __ fields:StructFieldInitializerList __ "}" {
-      return { tag: "StructInitializer", fields: fields, named: true, type: type };
+Struct
+    = type:StructIdentifier __ "{" __ fields:StructFieldInitializerList __ "}" {
+        return { tag: "StructInitializer", fields: fields, named: true, type: type };
     }
-  / "=" __ type:StructIdentifier __ "{" __ values:StructValueInitializerList __ "}" {
-      return { tag: "StructInitializer", fields: values, named: false, type:type };
+    / type:StructIdentifier __ "{" __ values:StructValueInitializerList __ "}" {
+        return { tag: "StructInitializer", fields: values, named: false, type: type };
     }
 
-ShorthandStructInitializer
-  = ":=" __ type:StructIdentifier __  "{" __ fields:StructFieldInitializerList __ "}" {
-      return { tag: "StructInitializer", fields: fields, named: true, type: type };
+StructInitializer
+  = "=" !"=" __ struct:Struct {
+      return struct;
     }
-   / ":=" __ type:StructIdentifier __ "{" __ values:StructValueInitializerList __ "}" {
-      return { tag: "StructInitializer", fields: values, named: false, type: type };
+    / "=" !"=" __ expression:AssignmentExpression { return expression; }
+
+ShorthandStructInitializer
+  = ":=" __ struct:Struct {
+      return struct;
     }
 
 StructFieldInitializerList

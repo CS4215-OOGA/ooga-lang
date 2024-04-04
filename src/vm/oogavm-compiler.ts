@@ -608,7 +608,9 @@ const compileComp = {
             variableType.tag !== 'Struct' ||
             !StructTable[variableType.name]
         ) {
-            throw new Error(`Type of variable ${comp.object.name} is undefined or not a struct.`);
+            throw new Error(
+                `Type of variable ${comp.object.name} is undefined or not a struct. It is ${variableType}`
+            );
         }
         const structDefinition = StructTable[variableType.name];
         const fieldIndex = structDefinition.fields.findIndex(

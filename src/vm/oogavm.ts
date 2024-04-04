@@ -113,13 +113,13 @@ Options:
     log('--------------------------------------------');
     log('Parsed program:');
     log(JSON.stringify(program, null, 2));
+    program = checkTypes(program);
     log('--------------------------------------------');
     const instrs = compile_program(program);
     log('--------------------------------------------');
     log('Compiled program:');
     log(instrs);
     log('--------------------------------------------');
-    checkTypes(program);
     const bytecode = assemble(instrs);
     return writeFileAsync(options.outputFilename, bytecode);
 }

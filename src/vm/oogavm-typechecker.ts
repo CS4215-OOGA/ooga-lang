@@ -41,30 +41,63 @@ const unparse_types = t => {
 };
 
 const equal_type = (ts1, ts2) => {
+    // TODO: Ensure correctness of this function
     // ts1 and ts2 can be either a string or an array of strings
+    // ts1 and ts2 now can also be an object or an array of objects (for structs)
+    // [Integer] will be equal to Integer
+
     // types.Any is a special type that can be used to match any type
     log('equal_type', ts1, ts2);
     if (ts1 === ts2) {
         return true;
     }
+    if (ts1 === types.Any || ts2 === types.Any) {
+        return true;
+    }
     if (typeof ts1 === 'string' && typeof ts2 === 'string') {
-        return ts1 === types.Any || ts2 === types.Any;
+        return ts1 === ts2;
     }
-    if (typeof ts1 === 'string') {
-        return ts2.length === 1 && (ts2[0] === ts1 || ts2[0] === types.Any);
-    }
-    if (typeof ts2 === 'string') {
-        return ts1.length === 1 && (ts1[0] === ts2 || ts1[0] === types.Any);
-    }
-    if (ts1.length !== ts2.length) {
-        return false;
-    }
-    for (let i = 0; i < ts1.length; i++) {
-        if (!equal_type(ts1[i], ts2[i])) {
+    if (Array.isArray(ts1) && Array.isArray(ts2)) {
+        if (ts1.length !== ts2.length) {
             return false;
         }
+        for (let i = 0; i < ts1.length; i++) {
+            if (!equal_type(ts1[i], ts2[i])) {
+                return false;
+            }
+        }
+        return true;
     }
-    return true;
+    if (Array.isArray(ts1) && !Array.isArray(ts2)) {
+        log('Checking if', ts1, 'is equal to', [ts2]);
+        return equal_type(ts1, [ts2]);
+    } else if (!Array.isArray(ts1) && Array.isArray(ts2)) {
+        log('Checking if', ts2, 'is equal to', [ts1]);
+        return equal_type([ts1], ts2);
+    }
+    if (typeof ts1 === 'object' && typeof ts2 === 'object') {
+        log('Comparing objects', ts1, ts2);
+        if (ts1.tag !== ts2.tag) {
+            return false;
+        }
+        if (ts1.tag === types.Struct) {
+            return ts1.name === ts2.name;
+        }
+        if (ts1.tag === 'ret') {
+            return equal_type(ts1.type, ts2.type);
+        }
+        if (ts1.tag === 'Function' || ts1.tag === 'Method') {
+            if (!equal_type(ts1.args, ts2.args)) {
+                return false;
+            }
+            if (!equal_type(ts1.res, ts2.res)) {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    return false;
 };
 
 const unary_arith_type = { tag: 'Function', args: [types.Integer], res: [types.Integer] };
@@ -197,8 +230,14 @@ const type_comp = {
         const t2 = type(comp.alternate, te);
         log('IfStatement: t2', t2);
         if (in_func) {
-            if (equal_type(t1, t2)) return t1;
+            if (equal_type(t1, t2)) {
+                return t1;
+            } else {
+                log('IfStatement: t1', t1, 't2', t2);
+                log('Not equal');
+            }
         }
+
         return 'null';
     },
     FunctionDeclaration: (comp, te) => {
@@ -330,7 +369,8 @@ const type_comp = {
 
         log('Exiting CallExpression');
         log('Returning', fun_type.res);
-        return fun_type.res;
+        // TODO: WE ASSUME ONLY ONE RETURN TYPE FOR NOW
+        return fun_type.res[0];
     },
     ConstantDeclaration: (comp, te) => {
         log('ConstantDeclaration');
@@ -387,7 +427,9 @@ const type_comp = {
                 comp.tag === 'FunctionDeclaration' ||
                 comp.tag === 'ConstantDeclaration'
         );
+
         const decls_known_type = decls.filter(comp => comp.type !== 'Unknown');
+
         const extended_te = extend_type_environment(
             decls_known_type.map(comp => comp.id.name),
             decls_known_type.map(comp =>
@@ -397,16 +439,30 @@ const type_comp = {
             ),
             te
         );
+
+        // Is this even correct??????
+        const decls_struct = comp.body.body.filter(comp => comp.tag === 'StructDeclaration');
+        for (let i = 0; i < decls_struct.length; i++) {
+            log('StructDeclaration for', decls_struct[i].id.name);
+            type(decls_struct[i], extended_te);
+        }
         // log('Extended type environment');
         // log(JSON.stringify(extended_te));
         const decls_unknown_type = decls.filter(comp => comp.type === 'Unknown');
         log('Unknown type declarations');
         log(JSON.stringify(decls_unknown_type, null, 2));
-        const extended_te2 = extend_current_type_environment(
-            decls_unknown_type.map(comp => comp.id.name),
-            decls_unknown_type.map(comp => type(comp.expression, extended_te)),
-            extended_te
-        );
+        let extended_te2 = extended_te;
+        // We have to use a for loop here because one unknown type declaration can depend on another
+        for (let i = 0; i < decls_unknown_type.length; i++) {
+            const t = type(decls_unknown_type[i].expression, extended_te2);
+            decls_unknown_type[i].type = t;
+            extended_te2 = extend_current_type_environment(
+                [decls_unknown_type[i].id.name],
+                [t],
+                extended_te2
+            );
+        }
+
         log('Extended type environment 2');
         log(JSON.stringify(extended_te2, null, 2));
         const ret_type = type(comp.body, extended_te2);
@@ -513,8 +569,9 @@ const type_comp = {
         log('StructInitializer');
         log(JSON.stringify(comp, null, 2));
         const struct = StructTable[comp.type.name];
+        log(struct);
         if (!struct) {
-            error('struct ' + comp.id.name + ' not found');
+            error('struct ' + comp.type.name + ' not found');
         }
 
         if (comp.named) {
@@ -609,7 +666,19 @@ const type = (comp, te) => {
     return type_comp[comp.tag](comp, te);
 };
 
+/**
+ * Checks the types of the given program.
+ *
+ * @param program - The program to check the types for.
+ * @returns A copy of the program where all unknown types have been resolved.
+ */
 export function checkTypes(program: object) {
     log('Checking types');
-    return type(program, global_type_environment);
+    // Make a deep copy of the program
+    let program_copy = JSON.parse(JSON.stringify(program));
+    const t = type(program_copy, global_type_environment);
+    log('Exiting checkTypes, returning', t);
+    // This is a copy of the program where all unknown types have been resolved
+    log(JSON.stringify(program_copy, null, 2));
+    return program_copy;
 }

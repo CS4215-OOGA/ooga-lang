@@ -1,22 +1,21 @@
 type Vertex struct {
-	X int
+    X int
 }
 
+func (v *Vertex) GetX() int {
+    return v.X
+}
+
+var v Vertex = Vertex{3}
+
+print(v.GetX());
+
+const w = Vertex{4}
 
 func (v *Vertex) AddX(y int) int {
-	v.X = v.X + y
-	return v.X + y
+    v.X = v.X + y
+    return v.X + y
 }
 
-var w Vertex = Vertex{X: 1}
 print(w.AddX(5));
-print(w.X);
-// func foo() {
-// 	return;
-// }
-
-// foo();
-
-type Wertex struct {
-	X int
-}
+w.X;

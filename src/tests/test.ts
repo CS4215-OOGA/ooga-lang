@@ -22,15 +22,15 @@ export function testProgram(
 ) {
     debug.disable(); // Disable debug logs initially
     debug.enable('ooga:tests');
-    log(`Running program:\n\`\`\`\n${program}\n\`\`\`\nExpected value: ${expectedValue}`);
+    log(`Running program:\n\`\`\`${program}\`\`\`\nExpected value: ${expectedValue}`);
 
     let value;
     try {
         const trimmedProgram = program.trimEnd();
         const programObj = parse(trimmedProgram);
-        const programBlock = { tag: 'BlockStatement', body: programObj };
+        let programBlock = { tag: 'BlockStatement', body: programObj };
+        programBlock = checkTypes(programBlock);
         const instrs = compile_program(programBlock);
-        checkTypes(programBlock);
         const bytecode = assemble(instrs);
         processByteCode(bytecode);
         value = run(numWords);
@@ -679,5 +679,43 @@ print(w.AddX(5));
 w.X;
 `,
     9,
+    defaultNumWords
+);
+
+// Functions that return structs
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+
+func makePoint(x int, y int) Point {
+    return Point{x, y};
+}
+
+var p Point = makePoint(1, 2);
+p.x;
+`,
+    1,
+    defaultNumWords
+);
+
+// Functions that return structs using shorthand
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+
+func makePoint(x int, y int) Point {
+    return Point{x, y};
+}
+
+p := makePoint(1, 2);
+p.x;
+`,
+    1,
     defaultNumWords
 );
