@@ -76,6 +76,19 @@ x;
     defaultNumWords
 );
 
+// Testing simple arithmetic
+testProgram(
+    `
+var x int = 5;
+var y int = 10;
+var z float64 = 5.5;
+
+x + y + z;
+`,
+    20.5,
+    defaultNumWords
+);
+
 // Test shorthand
 testProgram(
     `
@@ -549,5 +562,122 @@ a.Y = 20
 a.X + a.Y + v.X + v.Y + w.X + w.Y + z
 `,
     6558,
+    defaultNumWords
+);
+
+// Testing structs with methods
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+
+func (p Point) getX() int {
+    return p.x;
+}
+
+var p Point = Point{1, 2};
+
+p.getX();
+`,
+    1,
+    defaultNumWords
+);
+
+// Testing structs with methods and arguments
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+
+func (p Point) getX() int {
+    return p.x;
+}
+
+func (p Point) addX(n int) int {
+    return p.x + n;
+}
+
+var p Point = Point{1, 2};
+
+p.addX(5);
+`,
+    6,
+    defaultNumWords
+);
+
+// Testing structs with methods and arguments
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+
+func (p Point) getX() int {
+    return p.x;
+}
+
+func (p Point) addX(n int) int {
+    return p.x + n;
+}
+
+var p Point = Point{1, 2};
+
+p.addX(p.getX());
+`,
+    2,
+    defaultNumWords
+);
+
+// More complex struct stuff (variable declaration, struct field access) with methods
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+
+func (p Point) getX() int {
+    return p.x;
+}
+
+var p Point = Point{1, 2};
+
+p.getX() + p.y;
+`,
+    3,
+    defaultNumWords
+);
+
+// Setting struct fields with methods
+testProgram(
+    `
+type Vertex struct {
+    X int
+}
+
+func (v *Vertex) GetX() int {
+    return v.X
+}
+
+var v Vertex = Vertex{3}
+
+print(v.GetX());
+
+const w = Vertex{4}
+
+func (v *Vertex) AddX(y int) int {
+    v.X = v.X + y
+    return v.X + y
+}
+
+print(w.AddX(5));
+w.X;
+`,
+    9,
     defaultNumWords
 );

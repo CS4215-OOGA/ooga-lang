@@ -147,7 +147,7 @@ export const builtinMappings = {
         let value: any;
         log('print sys call');
         [OS, value] = heap.popStack(OS);
-        log(heap.addressToTSValue(value));
+        console.log(heap.addressToTSValue(value));
         return value;
     },
     // "make": () => {
@@ -306,6 +306,7 @@ const microcode = {
         right = heap.addressToTSValue(right);
         [OS, left] = heap.popStack(OS);
         left = heap.addressToTSValue(left);
+        log(`Left is ${left} and right is ${right}, operator is ${instr.operator}`);
         const value = apply_binop(instr.operator, left, right);
         pushTSValueOS(value);
     },

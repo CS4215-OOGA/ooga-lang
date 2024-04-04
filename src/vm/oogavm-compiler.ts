@@ -7,7 +7,12 @@ let wc;
 let instrs;
 let loopMarkers: any[] = []; // For loop markers
 let StructTable = {
-    // StructName: [{name: "memberName", type: "memberType"}, ...]
+    // StructName: {
+    // fields: [
+    //    {name: "memberName", type: "memberType"},
+    //   ...],
+    // methods: [{methodName: "methodName", params: [{name: "paramName", type: "paramType"}], body: "methodBody, type: "methodType"}]
+    // }
 }; // For struct declarations
 const push = (array, ...items) => {
     for (let item of items) {
@@ -21,8 +26,30 @@ const push = (array, ...items) => {
 // **************************
 // Reuse the existing compile time environment as much as possible for safer guarantee on correctness
 // A compile-time environment is an array of compile-time frames and a compile-time frame is an array of symbols
+
+class Method {
+    receiver: string;
+    methodName: string;
+    isPointer: boolean;
+    constructor(receiver: string, methodName: string, isPointer: boolean) {
+        this.receiver = receiver;
+        this.methodName = methodName;
+        this.isPointer = isPointer;
+    }
+
+    equals(other: Method) {
+        log(
+            'IN EQUALS: Comparing ' +
+                JSON.stringify(this, null, 2) +
+                ' with ' +
+                JSON.stringify(other, null, 2)
+        );
+        return this.receiver === other.receiver && this.methodName === other.methodName;
+    }
+}
+
 type CompileTimeVariable = {
-    name: string;
+    name: string | Method; // This would be an object if it is a method - {receiver: string, methodName: string}
     type: string | Object | null;
     // Currently, we are assuming that all variables are of size 1
     // TODO: Keep track of the size of variable here - this is needed for storing structs in structs
@@ -31,19 +58,34 @@ type CompileTimeFrame = CompileTimeVariable[];
 type CompileTimeEnvironment = CompileTimeFrame[];
 
 // Find the position [frame-index, value-index] of a given symbol x
-function compileTimeEnvironmentPosition(env: CompileTimeEnvironment, x: string) {
+// x could be an object if it is a method as stated above
+function compileTimeEnvironmentPosition(env: CompileTimeEnvironment, x: string | Method) {
     let frameIndex = env.length;
     while (frameIndex > 0 && valueIndex(env[--frameIndex], x) === -1) {}
     let vIndex = valueIndex(env[frameIndex], x);
     if (vIndex === -1) {
-        throw Error('unbound name: ' + x);
+        throw Error('unbound name: ' + JSON.stringify(x, null, 2));
     }
     return [frameIndex, vIndex];
 }
 
-function valueIndex(frame: CompileTimeFrame, x: string) {
+function valueIndex(frame: CompileTimeFrame, x: string | Method) {
     for (let i = 0; i < frame.length; i++) {
-        if (frame[i].name === x) return i;
+        log(
+            'Comparing ' +
+                JSON.stringify(frame[i].name, null, 2) +
+                ' with ' +
+                JSON.stringify(x, null, 2)
+        );
+        if (typeof x === 'string' && frame[i].name === x) {
+            return i;
+        } else if (
+            x instanceof Method &&
+            frame[i].name instanceof Method &&
+            x.equals(frame[i].name)
+        ) {
+            return i;
+        }
     }
     return -1;
 }
@@ -69,7 +111,6 @@ function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
     let declarations: CompileTimeVariable[] = [];
     for (let i = 0; i < compBlock.body.length; i++) {
         let comp = compBlock.body[i];
-        log('OOGA');
         log(comp);
         if (
             comp.tag === 'VariableDeclaration' ||
@@ -87,6 +128,19 @@ function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
                     ? { name: comp.id.name, type: comp.type }
                     : { name: comp.id.name, type: 'function' }
             );
+        } else if (comp.tag === 'MethodDeclaration') {
+            const method = { receiver: comp.receiver.type.name, methodName: comp.id.name };
+            if (declarations.find(decl => decl.name === method) !== undefined) {
+                const methodName = method.receiver + '.' + method.methodName;
+                throw Error('Method ' + methodName + ' declared more than once in the same block!');
+            }
+
+            declarations.push({
+                name: new Method(comp.receiver.type.name, comp.id.name, comp.receiver.pointer),
+                type: 'method',
+            });
+
+            log('Added method ' + method.receiver + '.' + method.methodName);
         }
     }
     return declarations;
@@ -181,24 +235,29 @@ const compileComp = {
             instrs[wc++] = { tag: Opcodes.LDU };
             return;
         }
-        let first = true;
+
+        let startWc;
+        let lastPop;
+
         for (let i = 0; i < comp.body.length; i++) {
-            if (first) {
-                first = false;
-            } else {
-                instrs[wc++] = { tag: Opcodes.POP };
-            }
+            startWc = wc;
             compile(comp.body[i], ce);
+            if (startWc !== wc) {
+                // We only need to pop if we actually did something
+                // e.g. StructDeclaration does not do anything with the instruction set
+                instrs[wc++] = { tag: Opcodes.POP };
+                lastPop = wc - 1;
+            }
+        }
+        // log('Last pop: ' + lastPop);
+        // log('Start WC: ' + startWc);
+        // log('WC: ' + wc);
+        if (lastPop !== undefined && lastPop === wc - 1) {
+            // log('Popping');
+            instrs.pop();
+            wc--;
         }
     },
-    // TODO: Our parser currently treats all the following equivalent
-    //       var x int;
-    //       var x int = 5;
-    //       var x = 5;
-    //       x := 5
-    //       Since we do not intend to do type inference for now, we will throw an error here.
-    //       A possible type inference hack (?) is to evaluate the expression then return the type.
-    //       As I type this, I realise its probably the best way and probably not that hard (?)
     VariableDeclaration: (comp, ce) => {
         // Process the expression as before
         if (comp.expression !== null) {
@@ -263,7 +322,7 @@ const compileComp = {
                     `Type of variable ${comp.left.object.name} is undefined or not a struct.`
                 );
             }
-            const structDefinition = StructTable[variableType.name];
+            const structDefinition = StructTable[variableType.name].fields;
             const fieldIndex = structDefinition.findIndex(
                 field => field.name === comp.left.property.name
             );
@@ -344,11 +403,62 @@ const compileComp = {
         gotoInstruction.addr = wc;
     },
     CallExpression: (comp, ce) => {
-        compile(comp.callee, ce);
-        for (let arg of comp.arguments) {
-            compile(arg, ce);
+        if (comp.callee.tag === 'MemberExpression') {
+            // Method call
+            const variableType = findVariableTypeInCE(ce, comp.callee.object.name);
+            if (
+                !variableType ||
+                typeof variableType !== 'object' ||
+                variableType.tag !== 'Struct' ||
+                !StructTable[variableType.name]
+            ) {
+                throw new Error(
+                    `Type of variable ${comp.callee.object.name} is undefined or not a struct.`
+                );
+            }
+            const structDefinition = StructTable[variableType.name];
+            const methodIndex = structDefinition.methods.findIndex(
+                method => method.methodName === comp.callee.property.name
+            );
+
+            if (methodIndex === -1) {
+                throw new Error(
+                    `Method ${comp.callee.property.name} does not exist in struct ${variableType}`
+                );
+            }
+
+            // Push the struct address onto the stack
+            compile(
+                {
+                    tag: 'Name',
+                    name: new Method(
+                        variableType.name,
+                        comp.callee.property.name,
+                        structDefinition.methods[methodIndex].isPointer
+                    ),
+                },
+                ce
+            );
+            // Push the struct address onto the stack as well as the arguments
+
+            for (let arg of comp.arguments) {
+                compile(arg, ce);
+            }
+            compile(
+                {
+                    tag: 'Name',
+                    name: comp.callee.object.name,
+                },
+                ce
+            );
+            instrs[wc++] = { tag: Opcodes.CALL, arity: comp.arguments.length + 1 };
+        } else {
+            compile(comp.callee, ce);
+            for (let arg of comp.arguments) {
+                compile(arg, ce);
+            }
+            instrs[wc++] = { tag: Opcodes.CALL, arity: comp.arguments.length };
         }
-        instrs[wc++] = { tag: Opcodes.CALL, arity: comp.arguments.length };
     },
     ReturnStatement: (comp, ce) => {
         if (comp.expression === null) {
@@ -456,11 +566,14 @@ const compileComp = {
         loopMarkers[loopMarkers.length - 1].continues.push(wc - 1);
     },
     StructDeclaration: (comp, ce) => {
-        StructTable[comp.id.name] = comp.fields.map(f => ({ name: f.name.name, type: f.type }));
+        StructTable[comp.id.name] = {
+            fields: comp.fields.map(f => ({ name: f.name.name, type: f.type })),
+            methods: [],
+        };
     },
     StructInitializer: (comp, ce) => {
         // First, verify the struct type exists
-        const structInfo = StructTable[comp.type.name];
+        const structInfo = StructTable[comp.type.name]?.fields;
         if (!structInfo) {
             throw new Error(`Undefined struct type: ${comp.type.name}`);
         }
@@ -512,15 +625,72 @@ const compileComp = {
             throw new Error(`Type of variable ${comp.object.name} is undefined or not a struct.`);
         }
         const structDefinition = StructTable[variableType.name];
-        const fieldIndex = structDefinition.findIndex(field => field.name === comp.property.name);
+        const fieldIndex = structDefinition.fields.findIndex(
+            field => field.name === comp.property.name
+        );
+        const methodIndex = structDefinition.methods.findIndex(
+            method => method.methodName === comp.property.name
+        );
 
-        if (fieldIndex === -1) {
+        if (fieldIndex !== -1) {
+            compile(comp.object, ce); // Push the struct's address onto the OS
+            instrs[wc++] = { tag: Opcodes.LDCI, val: fieldIndex }; // Field index
+            instrs[wc++] = { tag: Opcodes.ACCESS_FIELD }; // Access the field value
+        } else if (methodIndex !== -1) {
+            // TODO: Implement method calls
+        } else {
             throw new Error(`Field ${comp.property.name} does not exist in struct ${variableType}`);
         }
+    },
+    MethodDeclaration: (comp, ce) => {
+        const structName = comp.receiver.type.name;
+        if (!StructTable[structName]) {
+            throw new Error(`Undefined struct type: ${structName}`);
+        }
+        const structInfo = StructTable[structName];
+        const methodIndex = structInfo.methods.findIndex(
+            method => method.methodName === comp.id.name
+        );
+        if (methodIndex !== -1) {
+            throw new Error(`Method ${comp.id.name} already exists in struct ${structName}`);
+        }
 
-        compile(comp.object, ce); // Push the struct's address onto the OS
-        instrs[wc++] = { tag: Opcodes.LDCI, val: fieldIndex }; // Field index
-        instrs[wc++] = { tag: Opcodes.ACCESS_FIELD }; // Access the field value
+        // Generate the method's code
+        instrs[wc++] = { tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1 };
+        const gotoInstruction = { tag: Opcodes.GOTO, addr: undefined };
+        instrs[wc++] = gotoInstruction;
+
+        let paramNames: CompileTimeVariable[] = [];
+        for (let i = 0; i < comp.params.length; i++) {
+            paramNames.push({
+                name: comp.params[i].name,
+                type: comp.params[i].type,
+            });
+        }
+
+        paramNames.push({ name: comp.receiver.name.name, type: comp.receiver.type });
+
+        compile(comp.body, compileTimeEnvironmentExtend(paramNames, ce));
+        instrs[wc++] = { tag: Opcodes.LDU };
+        instrs[wc++] = { tag: Opcodes.RESET };
+        gotoInstruction.addr = wc;
+        log(JSON.stringify(ce, null, 2));
+        instrs[wc++] = {
+            tag: Opcodes.ASSIGN,
+            pos: compileTimeEnvironmentPosition(
+                ce,
+                new Method(comp.receiver.type.name, comp.id.name, comp.receiver.pointer)
+            ),
+        };
+        // Store the method in the struct's method table
+        structInfo.methods.push({
+            methodName: comp.id.name,
+            params: comp.params,
+            body: comp.body,
+            type: comp.type,
+            addr: gotoInstruction.addr,
+            isPointer: comp.receiver.pointer,
+        });
     },
 };
 
@@ -529,7 +699,7 @@ const compileComp = {
 // we compile the left then the right
 function compile(component, ce) {
     log('Compiling: ');
-    log(component);
+    log(JSON.stringify(component, null, 2));
     return compileComp[component.tag](component, ce);
 }
 

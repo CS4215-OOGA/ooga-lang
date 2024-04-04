@@ -506,6 +506,10 @@ export class Heap {
         this.setChild(structAddress, fieldIndex, value);
     }
 
+    getField(structAddress: number, fieldIndex: number) {
+        return this.getChild(structAddress, fieldIndex);
+    }
+
     isStruct(address: number) {
         return this.getTag(address) === Tag.STRUCT;
     }
@@ -571,7 +575,7 @@ export class Heap {
             // https://stackoverflow.com/questions/28975896/is-there-a-way-to-check-for-both-null-and-undefined
             return this.Null;
         } else {
-            throw new Error('not implemented yet');
+            throw new Error('not implemented yet, value: ' + JSON.stringify(value, null, 2));
         }
     }
 

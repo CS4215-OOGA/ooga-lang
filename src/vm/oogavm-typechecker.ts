@@ -11,7 +11,14 @@ const types = {
     Struct: 'Struct',
 };
 
-const StructTable = {};
+const StructTable = {
+    // StructName: {
+    // fields: [
+    //    {name: "memberName", type: "memberType"},
+    //   ...],
+    // methods: [{methodName: "methodName", params: [{name: "paramName", type: "paramType"}], body: "methodBody, type: "methodType"}]
+    // }
+};
 
 function is_integer(x) {
     return typeof x === 'number';
@@ -256,21 +263,60 @@ const type_comp = {
 
         return { tag: 'Function', args: comp.params.map(p => p.type), res: comp.type };
     },
+    MethodDeclaration: (comp, te) => {
+        // Check if the receiver type is a struct
+        if (comp.receiver.type.tag !== types.Struct || !StructTable[comp.receiver.type.name]) {
+            error('receiver type must be a struct');
+        }
+
+        StructTable[comp.receiver.type.name].methods.push({
+            methodName: comp.id.name,
+            params: comp.params,
+            body: comp.body,
+            type: comp.type,
+            receiver: comp.receiver.name.name,
+        });
+
+        return type(
+            {
+                tag: 'FunctionDeclaration',
+                id: comp.id,
+                params: [
+                    {
+                        name: comp.receiver.name.name,
+                        type: comp.receiver.type,
+                    },
+                    ...comp.params,
+                ],
+                type: comp.type,
+                body: comp.body,
+            },
+            te
+        );
+    },
     CallExpression: (comp, te) => {
         log('CallExpression');
         log(JSON.stringify(comp, null, 2));
         const fun_type = type(comp.callee, te);
         log('fun_type', fun_type);
-        if (fun_type.tag !== 'Function')
+        if (fun_type.tag !== 'Function' && fun_type.tag !== 'Method') {
             error(
                 'type error in application; function ' +
                     'expression must have function type; ' +
                     'actual type: ' +
                     unparse_types(fun_type)
             );
+        }
         const expected_arg_types = fun_type.args;
-        const actual_arg_types = comp.arguments.map(e => type(e, te));
-
+        // The reason we need to flatten the arguments is because the arguments can be nested
+        // e.g.
+        // f(g(x), h(y))
+        // The arguments are [g(x), h(y)]
+        // The types of the arguments are [[Integer], [Integer]]
+        // We need to flatten the types to [Integer, Integer]
+        const actual_arg_types = comp.arguments.map(e => type(e, te)).flat();
+        log('expected_arg_types', expected_arg_types);
+        log('actual_arg_types', actual_arg_types);
         if (!equal_type(actual_arg_types, expected_arg_types)) {
             error(
                 'type error in application; ' +
@@ -283,6 +329,7 @@ const type_comp = {
         }
 
         log('Exiting CallExpression');
+        log('Returning', fun_type.res);
         return fun_type.res;
     },
     ConstantDeclaration: (comp, te) => {
@@ -383,7 +430,9 @@ const type_comp = {
                 );
             }
         }
-        return { tag: 'ret', type: Array.isArray(ret_type) ? ret_type : [ret_type] };
+        const to_return = { tag: 'ret', type: Array.isArray(ret_type) ? ret_type : [ret_type] };
+        log('Exiting ReturnStatement, returning', to_return);
+        return to_return;
     },
     AssignmentExpression: (comp, te) => {
         log('AssignmentExpression');
@@ -453,7 +502,10 @@ const type_comp = {
     StructDeclaration: (comp, te) => {
         log('StructDeclaration');
         log(JSON.stringify(comp, null, 2));
-        StructTable[comp.id.name] = comp.fields.map(f => ({ name: f.name.name, type: f.type }));
+        StructTable[comp.id.name] = {
+            fields: comp.fields.map(f => ({ name: f.name.name, type: f.type })),
+            methods: [],
+        };
         log('Exiting StructDeclaration');
         return { tag: types.Struct, name: comp.id.name };
     },
@@ -467,8 +519,8 @@ const type_comp = {
 
         if (comp.named) {
             // Allow for fewer fields if they are named, the rest will be set to the 0 value of their type
-            if (struct.length < comp.fields.length) {
-                error('expected ' + struct.length + ' fields, got ' + comp.fields.length);
+            if (struct.fields.length < comp.fields.length) {
+                error('expected ' + struct.fields.length + ' fields, got ' + comp.fields.length);
             }
 
             // Check that there are no duplicate fields
@@ -481,7 +533,7 @@ const type_comp = {
             // Check that all fields are present in the struct
             for (let i = 0; i < comp.fields.length; i++) {
                 const field = comp.fields[i];
-                const struct_field = struct.find(f => f.name === field.name.name);
+                const struct_field = struct.fields.find(f => f.name === field.name.name);
                 if (!struct_field) {
                     error('field ' + field.name.name + ' not found in struct ' + comp.type.name);
                 }
@@ -498,18 +550,18 @@ const type_comp = {
                 }
             }
         } else {
-            if (struct.length !== comp.fields.length) {
-                error('expected ' + struct.length + ' fields, got ' + comp.fields.length);
+            if (struct.fields.length !== comp.fields.length) {
+                error('expected ' + struct.fields.length + ' fields, got ' + comp.fields.length);
             }
 
             for (let i = 0; i < comp.fields.length; i++) {
                 const field = comp.fields[i];
                 const field_type = type(field, te);
-                if (!equal_type(field_type, struct[i].type)) {
+                if (!equal_type(field_type, struct.fields[i].type)) {
                     error(
                         'type error in struct initializer; ' +
                             'expected type: ' +
-                            unparse_types(struct[i].type) +
+                            unparse_types(struct.fields[i].type) +
                             ', ' +
                             'actual type: ' +
                             unparse_types(field_type)
@@ -525,16 +577,28 @@ const type_comp = {
         log('MemberExpression');
         log(JSON.stringify(comp, null, 2));
         const obj_type = type(comp.object, te);
-        if (obj_type.tag !== types.Struct) {
+        if (obj_type.tag !== types.Struct || !StructTable[obj_type.name]) {
             error('expected struct type, got ' + unparse_types(obj_type));
         }
         const struct = StructTable[obj_type.name];
-        const field = struct.find(f => f.name === comp.property.name);
-        if (!field) {
-            error('field ' + comp.property.name + ' not found in struct ' + obj_type.name);
+        const field = struct.fields.find(f => f.name === comp.property.name);
+        const method = struct.methods.find(m => m.methodName === comp.property.name);
+        log('Method:');
+        log(JSON.stringify(method, null, 2));
+        if (!field && !method) {
+            error(
+                'field or method ' + comp.property.name + ' not found in struct ' + obj_type.name
+            );
         }
         log('Exiting MemberExpression');
-        return field.type;
+        return field
+            ? field.type
+            : {
+                  tag: 'Method',
+                  args: method.params.map(p => p.type),
+                  res: method.type,
+                  receiver: method.receiver,
+              };
     },
 };
 
