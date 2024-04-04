@@ -14,7 +14,7 @@ const types = {
 const StructTable = {};
 
 function is_integer(x) {
-    return typeof x === 'number' && x % 1 === 0;
+    return typeof x === 'number';
 }
 
 function is_boolean(x) {

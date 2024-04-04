@@ -79,6 +79,8 @@ InitType
       switch(type[0]) {
         case "int":
           return "Integer";
+        case "float":
+          return "Integer";
         case "bool":
           return "Boolean";
         case "string":
@@ -148,7 +150,10 @@ NumericLiteral "number"
     }
 
 DecimalLiteral
-  = DecimalIntegerLiteral {
+  = DecimalIntegerLiteral "." DecimalDigit* {
+      return { tag: "Integer", value: parseFloat(text()) };
+    }
+  / DecimalIntegerLiteral {
       return { tag: "Integer", value: parseFloat(text()) };
     }
 
@@ -226,7 +231,7 @@ ReturnToken     = "return"     !IdentifierPart
 ThisToken       = "this"       !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 VarToken        = "var"        !IdentifierPart
-IntegerToken    = "int"        !IdentifierPart
+IntegerToken    = "int"/"float"        !IdentifierPart
 BooleanToken    = "bool"       !IdentifierPart
 StringToken     = "string"     !IdentifierPart
 GoroutineToken  = "go"         !IdentifierPart
