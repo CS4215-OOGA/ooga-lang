@@ -230,23 +230,14 @@ const compileComp = {
             return;
         }
 
-        let startWc;
-        let lastPop;
-
+        let first = true;
         for (let i = 0; i < comp.body.length; i++) {
-            startWc = wc;
-            compile(comp.body[i], ce);
-            if (startWc !== wc) {
-                // We only need to pop if we actually did something
-                // e.g. StructDeclaration does not do anything with the instruction set
-                instrs[wc++] = { tag: Opcodes.POP };
-                lastPop = wc - 1;
+            if (first) {
+                first = false;
+            } else {
+                instrs[wc++] = {tag: Opcodes.POP};
             }
-        }
-
-        if (lastPop !== undefined && lastPop === wc - 1) {
-            instrs.pop();
-            wc--;
+            compile(comp.body[i], ce);
         }
     },
     VariableDeclaration: (comp, ce) => {
