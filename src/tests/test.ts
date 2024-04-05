@@ -751,3 +751,58 @@ p.x;
     1,
     defaultNumWords
 );
+
+testProgram(
+    `
+type format struct{
+
+}
+
+func (f *format) Println(x int) {
+    print(x)
+}
+
+type WaitGroup struct {
+    counter int
+}
+
+func (wg *WaitGroup) Add(delta int) {
+    wg.counter += delta
+}
+
+func (wg *WaitGroup) Done() {
+    wg.counter--
+}
+
+func (wg *WaitGroup) Wait() {
+    for wg.counter > 0 {
+    }
+}
+
+
+var fmt format = format{}
+
+// USER PROGRAM
+type Vertex struct {
+    X int
+}
+
+func (v *Vertex) Add(w Vertex) {
+    v.X = v.X + w.X
+}
+
+
+v := Vertex{1}
+w := Vertex{2}
+wg := WaitGroup{1}
+go func() {
+    v.Add(w)
+    wg.Done()
+}()
+wg.Wait()
+
+v.X // 3
+    `,
+    3,
+    defaultNumWords
+);

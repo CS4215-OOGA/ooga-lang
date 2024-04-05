@@ -32,19 +32,17 @@ type Vertex struct {
 }
 
 func (v *Vertex) Add(w Vertex) {
-	fmt.Println(v.X + w.X)
+	v.X = v.X + w.X
 }
 
-func main() {
-	v := Vertex{1}
-	w := Vertex{2}
-	wg := WaitGroup{1}
-	go func() {
-		v.Add(w)
-		wg.Done()
-	}()
-	wg.Wait()
-}
 
-// END USER PROGRAM, ADD CALL TO MAIN
-main()
+v := Vertex{1}
+w := Vertex{2}
+wg := WaitGroup{1}
+go func() {
+	v.Add(w)
+	wg.Done()
+}()
+wg.Wait()
+
+fmt.Println(v.X) // 3

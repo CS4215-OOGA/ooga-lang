@@ -348,12 +348,23 @@ const compileComp = {
     // ++x;
     // --y;
     UpdateExpression: (comp, ce) => {
+        log('UpdateExpression: ' + JSON.stringify(comp, null, 2));
         compile(comp.id, ce);
-        instrs[wc++] = { tag: Opcodes.UNARY, operator: comp.operator };
-        instrs[wc++] = {
-            tag: Opcodes.ASSIGN,
-            pos: compileTimeEnvironmentPosition(ce, comp.id.name),
-        };
+        log(JSON.stringify(comp, null, 2));
+        compile(
+            {
+                tag: 'AssignmentExpression',
+                left: comp.id,
+                right: {
+                    tag: 'BinaryExpression',
+                    left: comp.id,
+                    right: { tag: 'Integer', value: 1 },
+                    operator: comp.operator === '++' ? '+' : '-',
+                },
+            },
+            ce
+        );
+        log('Exiting UpdateExpression');
     },
     FunctionDeclaration: (comp, ce) => {
         // similarly, we treat function declaration as constant declarations for anonymous functions
@@ -683,6 +694,12 @@ const compileComp = {
         );
 
         if (fieldIndex !== -1) {
+            log(
+                'Field index: ' +
+                    fieldIndex +
+                    ', comping field: ' +
+                    JSON.stringify(comp.object, null, 2)
+            );
             compile(comp.object, ce); // Push the struct's address onto the OS
             instrs[wc++] = { tag: Opcodes.LDCI, val: fieldIndex }; // Field index
             instrs[wc++] = { tag: Opcodes.ACCESS_FIELD }; // Access the field value
@@ -691,6 +708,8 @@ const compileComp = {
         } else {
             throw new Error(`Field ${comp.property.name} does not exist in struct ${variableType}`);
         }
+
+        log('Exiting MemberExpression');
     },
     MethodDeclaration: (comp, ce) => {
         const structName = comp.receiver.type.name;
