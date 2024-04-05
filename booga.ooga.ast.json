@@ -7,7 +7,7 @@
         "tag": "StructDeclaration",
         "id": {
           "tag": "Name",
-          "name": "format"
+          "name": "fmt"
         },
         "fields": []
       },
@@ -21,7 +21,7 @@
           },
           "type": {
             "tag": "Struct",
-            "name": "format"
+            "name": "fmt"
           },
           "pointer": true
         },
@@ -62,183 +62,6 @@
         }
       },
       {
-        "tag": "StructDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "WaitGroup"
-        },
-        "fields": [
-          {
-            "tag": "StructField",
-            "name": {
-              "tag": "Name",
-              "name": "counter"
-            },
-            "type": "Integer"
-          }
-        ]
-      },
-      {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "wg"
-          },
-          "type": {
-            "tag": "Struct",
-            "name": "WaitGroup"
-          },
-          "pointer": true
-        },
-        "id": {
-          "tag": "Name",
-          "name": "Add"
-        },
-        "params": [
-          {
-            "tag": "Name",
-            "name": "delta",
-            "type": "Integer"
-          }
-        ],
-        "type": [
-          "Null"
-        ],
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "AssignmentExpression",
-                "operator": "+=",
-                "left": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "wg"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "counter"
-                  }
-                },
-                "right": {
-                  "tag": "Name",
-                  "name": "delta"
-                }
-              }
-            ]
-          }
-        }
-      },
-      {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "wg"
-          },
-          "type": {
-            "tag": "Struct",
-            "name": "WaitGroup"
-          },
-          "pointer": true
-        },
-        "id": {
-          "tag": "Name",
-          "name": "Done"
-        },
-        "params": [],
-        "type": [
-          "Null"
-        ],
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "UpdateExpression",
-                "operator": "--",
-                "id": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "wg"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "counter"
-                  }
-                },
-                "prefix": false
-              }
-            ]
-          }
-        }
-      },
-      {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "wg"
-          },
-          "type": {
-            "tag": "Struct",
-            "name": "WaitGroup"
-          },
-          "pointer": true
-        },
-        "id": {
-          "tag": "Name",
-          "name": "Wait"
-        },
-        "params": [],
-        "type": [
-          "Null"
-        ],
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "ForStatement",
-                "type": "ForWithTest",
-                "init": null,
-                "test": {
-                  "tag": "LogicalExpression",
-                  "operator": ">",
-                  "left": {
-                    "tag": "MemberExpression",
-                    "object": {
-                      "tag": "Name",
-                      "name": "wg"
-                    },
-                    "property": {
-                      "tag": "Name",
-                      "name": "counter"
-                    }
-                  },
-                  "right": {
-                    "tag": "Integer",
-                    "value": 0
-                  }
-                },
-                "update": null,
-                "body": null
-              }
-            ]
-          }
-        }
-      },
-      {
         "tag": "VariableDeclaration",
         "id": {
           "tag": "Name",
@@ -250,12 +73,12 @@
           "named": true,
           "type": {
             "tag": "Struct",
-            "name": "format"
+            "name": "fmt"
           }
         },
         "type": {
           "tag": "Struct",
-          "name": "format"
+          "name": "fmt"
         }
       },
       {
@@ -291,18 +114,9 @@
         },
         "id": {
           "tag": "Name",
-          "name": "Add"
+          "name": "GetX"
         },
-        "params": [
-          {
-            "tag": "Name",
-            "name": "w",
-            "type": {
-              "tag": "Struct",
-              "name": "Vertex"
-            }
-          }
-        ],
+        "params": [],
         "type": [
           "Null"
         ],
@@ -312,46 +126,46 @@
             "tag": "SequenceStatement",
             "body": [
               {
-                "tag": "CallExpression",
-                "callee": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "fmt"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "Println"
-                  }
+                "tag": "ForStatement",
+                "type": "ForInfinite",
+                "init": null,
+                "test": {
+                  "tag": "Boolean",
+                  "value": true
                 },
-                "arguments": [
-                  {
-                    "tag": "BinaryExpression",
-                    "operator": "+",
-                    "left": {
-                      "tag": "MemberExpression",
-                      "object": {
-                        "tag": "Name",
-                        "name": "v"
+                "update": null,
+                "body": {
+                  "tag": "SequenceStatement",
+                  "body": [
+                    {
+                      "tag": "CallExpression",
+                      "callee": {
+                        "tag": "MemberExpression",
+                        "object": {
+                          "tag": "Name",
+                          "name": "fmt"
+                        },
+                        "property": {
+                          "tag": "Name",
+                          "name": "Println"
+                        }
                       },
-                      "property": {
-                        "tag": "Name",
-                        "name": "X"
-                      }
-                    },
-                    "right": {
-                      "tag": "MemberExpression",
-                      "object": {
-                        "tag": "Name",
-                        "name": "w"
-                      },
-                      "property": {
-                        "tag": "Name",
-                        "name": "X"
-                      }
+                      "arguments": [
+                        {
+                          "tag": "MemberExpression",
+                          "object": {
+                            "tag": "Name",
+                            "name": "v"
+                          },
+                          "property": {
+                            "tag": "Name",
+                            "name": "X"
+                          }
+                        }
+                      ]
                     }
-                  }
-                ]
+                  ]
+                }
               }
             ]
           }
@@ -417,99 +231,76 @@
                 "type": "Unknown"
               },
               {
-                "tag": "VariableDeclaration",
-                "id": {
-                  "tag": "Name",
-                  "name": "wg"
-                },
+                "tag": "CallGoroutine",
                 "expression": {
-                  "tag": "StructInitializer",
-                  "fields": [
-                    {
-                      "tag": "Integer",
-                      "value": 1
+                  "tag": "GoroutineCallExpression",
+                  "callee": {
+                    "tag": "MemberExpression",
+                    "object": {
+                      "tag": "Name",
+                      "name": "v"
+                    },
+                    "property": {
+                      "tag": "Name",
+                      "name": "GetX"
                     }
-                  ],
-                  "named": false,
-                  "type": {
-                    "tag": "Struct",
-                    "name": "WaitGroup"
-                  }
-                },
-                "type": "Unknown"
+                  },
+                  "arguments": []
+                }
               },
               {
                 "tag": "CallGoroutine",
                 "expression": {
                   "tag": "GoroutineCallExpression",
                   "callee": {
-                    "tag": "LambdaDeclaration",
-                    "id": null,
-                    "params": [],
-                    "body": {
-                      "tag": "BlockStatement",
-                      "body": {
-                        "tag": "SequenceStatement",
-                        "body": [
-                          {
-                            "tag": "CallExpression",
-                            "callee": {
-                              "tag": "MemberExpression",
-                              "object": {
-                                "tag": "Name",
-                                "name": "v"
-                              },
-                              "property": {
-                                "tag": "Name",
-                                "name": "Add"
-                              }
-                            },
-                            "arguments": [
-                              {
-                                "tag": "Name",
-                                "name": "w"
-                              }
-                            ]
-                          },
-                          {
-                            "tag": "CallExpression",
-                            "callee": {
-                              "tag": "MemberExpression",
-                              "object": {
-                                "tag": "Name",
-                                "name": "wg"
-                              },
-                              "property": {
-                                "tag": "Name",
-                                "name": "Done"
-                              }
-                            },
-                            "arguments": []
-                          }
-                        ]
-                      }
+                    "tag": "MemberExpression",
+                    "object": {
+                      "tag": "Name",
+                      "name": "w"
                     },
-                    "type": [
-                      "Null"
-                    ]
+                    "property": {
+                      "tag": "Name",
+                      "name": "GetX"
+                    }
                   },
                   "arguments": []
                 }
               },
               {
-                "tag": "CallExpression",
-                "callee": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "wg"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "Wait"
-                  }
+                "tag": "VariableDeclaration",
+                "id": {
+                  "tag": "Name",
+                  "name": "i"
                 },
-                "arguments": []
+                "expression": null,
+                "type": "Integer"
+              },
+              {
+                "tag": "ForStatement",
+                "type": "ForInfinite",
+                "init": null,
+                "test": {
+                  "tag": "Boolean",
+                  "value": true
+                },
+                "update": null,
+                "body": {
+                  "tag": "SequenceStatement",
+                  "body": [
+                    {
+                      "tag": "AssignmentExpression",
+                      "operator": "=",
+                      "left": {
+                        "tag": "Name",
+                        "name": "i"
+                      },
+                      "right": {
+                        "tag": "Integer",
+                        "value": 1
+                      }
+                    }
+                  ]
+                }
               }
             ]
           }
