@@ -603,6 +603,7 @@ Statement
   / ForInitStatement
   / StructDeclaration
   / MethodDeclaration
+  / CallExpression
 
 BlockStatement
   = "{" __ body:(StatementList __)? "}" {

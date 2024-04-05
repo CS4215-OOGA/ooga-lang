@@ -1,33 +1,50 @@
-type fmt struct{}
+type fmt struct{
+
+}
 
 func (f *fmt) Println(x int) {
-	print(x)
+    print(x)
 }
 
 var fmt fmt = fmt{}
 
+type WaitGroup struct {
+    counter int
+}
+
+func (wg *WaitGroup) Add(delta int) {
+    wg.counter += delta
+}
+
+func (wg *WaitGroup) Done() {
+    wg.counter--
+}
+
+func (wg *WaitGroup) Wait() {
+    for wg.counter > 0 {
+    }
+}
+
 // USER PROGRAM
 type Vertex struct {
-	X int
+    X int
 }
 
-func (v *Vertex) GetX() {
-	for {
-		fmt.Println(v.X)
-	}
+func (v *Vertex) Add(w Vertex) {
+    v.X = v.X + w.X
 }
 
-func main() {
-	v := Vertex{1}
-	w := Vertex{2}
 
-	go v.GetX()
-	go w.GetX()
-
-	var i int
-	for {
-		i = 1
-	}
+v := Vertex{1}
+w := Vertex{2}
+wg := WaitGroup{0}
+for i := 0; i < 10; i++ {
+	wg.Add(1)
+	go func() {
+		v.Add(w)
+		wg.Done()
+	}()
 }
+wg.Wait()
 
-main()
+v.X // 3

@@ -806,3 +806,30 @@ v.X // 3
     3,
     defaultNumWords
 );
+
+//
+
+testProgram(
+    `
+type Vertex struct {
+    X int
+    Y int
+}
+
+func (v *Vertex) AddX(x int) int {
+    v.X = v.X + x
+    return v.X
+}
+
+var v Vertex = Vertex{1, 2}
+
+func main() {
+    go v.AddX(3)
+}
+
+main();
+v.X;
+    `,
+    4,
+    defaultNumWords
+);

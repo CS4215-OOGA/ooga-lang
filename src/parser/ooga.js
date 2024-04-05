@@ -5460,6 +5460,9 @@ function peg$parse(input, options) {
                             s0 = peg$parseStructDeclaration();
                             if (s0 === peg$FAILED) {
                               s0 = peg$parseMethodDeclaration();
+                              if (s0 === peg$FAILED) {
+                                s0 = peg$parseCallExpression();
+                              }
                             }
                           }
                         }
