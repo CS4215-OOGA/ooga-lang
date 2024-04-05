@@ -489,7 +489,7 @@ const microcode = {
         tempRoot4 = -1;
     },
     NEW_STRUCT: instr => {
-        const structAddress = heap.allocateStruct(instr.structType);
+        const structAddress = heap.allocateStruct(instr.numFields);
         log('Struct address is ' + structAddress);
         tempRoot0 = structAddress;
         pushAddressOS(structAddress);
