@@ -858,3 +858,34 @@ p.addX(r.getX());
     6,
     defaultNumWords
 );
+
+// Test a lot of declarations
+testProgram(`
+var a int = 1;
+var b int = 2;
+var c int = 3;
+var d int = 4;
+var e int = 5;
+var f int = 6;
+var g int = 7;
+var h int = 8;
+var i int = 9;
+var j int = 10;
+var k int = 11;
+var l int = 12;
+var m int = 13;
+var n int = 14;
+var o int = 15;
+var p int = 16;
+var q int = 17;
+var r int = 18;
+var s int = 19;
+var t int = 20;
+var u int = 21;
+var v int = 22;
+var w int = 23;
+var x int = 24;
+var y int = 25;
+var z int = 26;
+a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w +x + y + z;
+`, 351, defaultNumWords);

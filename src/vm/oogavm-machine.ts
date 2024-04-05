@@ -1,10 +1,35 @@
 import * as fs from 'fs';
 import * as util from 'util';
 import { RoundRobinScheduler, Scheduler, ThreadId } from './oogavm-scheduler.js';
-import { Heap } from './oogavm-memory.js';
 import { fileURLToPath } from 'url';
 import debug from 'debug';
 import { HeapDeadError, HeapOutOfMemoryError } from './oogavm-errors.js';
+import {
+    addressToTSValue,
+    allocateBlockFrame, allocateBuiltin,
+    allocateCallFrame,
+    allocateClosure, allocateEnvironment,
+    allocateFrame, allocateStruct, constructHeap, debugHeap,
+    extendEnvironment,
+    getBlockFrameEnvironment,
+    getBuiltinID,
+    getCallFrameEnvironment,
+    getCallFramePC,
+    getClosureEnvironment,
+    getClosurePC,
+    getEnvironmentValue, getField, getPrevStackAddress, initializeStack,
+    isBuiltin,
+    isCallFrame, isClosure,
+    isUnassigned,
+    peekStack,
+    peekStackN,
+    popStack,
+    pushStack,
+    setEnvironmentValue, setField,
+    setFrameValue,
+    TSValueToAddress,
+    Unassigned, Undefined,
+} from './oogavm-heap.js';
 
 const log = debug('ooga:vm');
 
@@ -29,8 +54,6 @@ let TimeQuanta: number;
 // Indicates whether the machine is currently running.
 // Needed because with concurrency, no longer sufficient to check for a DONE
 let running: boolean;
-// The heap that contains all memory related operations.
-let heap: Heap;
 // State of the machine. Used to handle runtime errors reporting.
 let State: ProgramState;
 // Built-in-frame environment
@@ -148,8 +171,8 @@ export const builtinMappings = {
     print: () => {
         let value: any;
         log('print sys call');
-        [OS, value] = heap.popStack(OS);
-        console.log(heap.addressToTSValue(value));
+        [OS, value] = popStack(OS);
+        console.log(addressToTSValue(value));
         return value;
     },
     // "make": () => {
@@ -177,8 +200,8 @@ export function initializeBuiltinTable() {
 function applyBuiltin(builtinId: number) {
     const result = builtinArray[builtinId]();
     let _;
-    [OS, _] = heap.popStack(OS); // pop fun
-    OS = heap.pushStack(OS, result);
+    [OS, _] = popStack(OS); // pop fun
+    OS = pushStack(OS, result);
 }
 
 function apply_binop(sym: string, left: any, right: any) {
@@ -247,32 +270,32 @@ function apply_unop(sym: string, value: any) {
 
 // Push the raw heap address onto the OS
 function pushAddressOS(addr: any) {
-    OS = heap.pushStack(OS, addr);
+    OS = pushStack(OS, addr);
 }
 // Convert TS Value to address and then push onto stack
 function pushTSValueOS(value: any) {
     // A bug can happen here because the heap.TSValueToAddr might cause a GC to happen,
     // which frees the memory at that address!
-    let newValue = heap.TSValueToAddress(value);
+    let newValue = TSValueToAddress(value);
     tempRoot0 = newValue;
     // A GC may have happened inside the allocate to stack
     // and the address at newValue would have been freed!
-    OS = heap.pushStack(OS, newValue);
+    OS = pushStack(OS, newValue);
     tempRoot0 = -1;
 }
 
 // Safe RTS Push, same issue with GC being called on the call frame just before
 function safePushRTSCallFrame() {
-    let newValue = heap.allocateCallframe(E, PC);
+    let newValue = allocateCallFrame(E, PC);
     tempRoot0 = newValue;
-    RTS = heap.pushStack(RTS, newValue);
+    RTS = pushStack(RTS, newValue);
     tempRoot0 = -1;
 }
 
 function safePushRTSBlockFrame() {
-    let newValue = heap.allocateBlockframe(E);
+    let newValue = allocateBlockFrame(E);
     tempRoot0 = newValue;
-    RTS = heap.pushStack(RTS, newValue);
+    RTS = pushStack(RTS, newValue);
     tempRoot0 = -1;
 }
 
@@ -285,16 +308,16 @@ const microcode = {
         pushTSValueOS(instr.val);
     },
     LDU: instr => {
-        pushTSValueOS(heap.Undefined);
+        pushTSValueOS(Undefined);
     },
     POP: instr => {
         let _;
-        [OS, _] = heap.popStack(OS);
+        [OS, _] = popStack(OS);
     },
     UNARY: instr => {
         let value;
-        [OS, value] = heap.popStack(OS);
-        value = heap.addressToTSValue(value);
+        [OS, value] = popStack(OS);
+        value = addressToTSValue(value);
         value = apply_unop(instr.operator, value);
         log('Value of unop is ' + value);
         pushTSValueOS(value);
@@ -304,10 +327,10 @@ const microcode = {
         let right;
         // NOTE: At the moment, this is kinda wonky. There may be a cleaner way to express this
         // But the tuple return value is definitely necessary, so I am not so sure how to make this look nicer
-        [OS, right] = heap.popStack(OS);
-        right = heap.addressToTSValue(right);
-        [OS, left] = heap.popStack(OS);
-        left = heap.addressToTSValue(left);
+        [OS, right] = popStack(OS);
+        right = addressToTSValue(right);
+        [OS, left] = popStack(OS);
+        left = addressToTSValue(left);
         log(`Left is ${left} and right is ${right}, operator is ${instr.operator}`);
         const value = apply_binop(instr.operator, left, right);
         pushTSValueOS(value);
@@ -317,35 +340,35 @@ const microcode = {
         let right;
         // NOTE: At the moment, this is kinda wonky. There may be a cleaner way to express this
         // But the tuple return value is definitely necessary, so I am not so sure how to make this look nicer
-        [OS, right] = heap.popStack(OS);
-        right = heap.addressToTSValue(right);
-        [OS, left] = heap.popStack(OS);
-        left = heap.addressToTSValue(left);
+        [OS, right] = popStack(OS);
+        right = addressToTSValue(right);
+        [OS, left] = popStack(OS);
+        left = addressToTSValue(left);
         const value = apply_logic(instr.operator, left, right);
         pushTSValueOS(value);
     },
     JOF: instr => {
         let value;
-        [OS, value] = heap.popStack(OS);
-        value = heap.addressToTSValue(value);
+        [OS, value] = popStack(OS);
+        value = addressToTSValue(value);
         PC = value ? PC : instr.addr;
     },
     ENTER_SCOPE: instr => {
         safePushRTSBlockFrame();
         // This frame can also be lost
-        const frameAddress = heap.allocateFrame(instr.num);
+        const frameAddress = allocateFrame(instr.num);
         tempRoot0 = frameAddress;
-        E = heap.extendEnvironment(frameAddress, E);
+        E = extendEnvironment(frameAddress, E);
         tempRoot0 = -1;
         for (let i = 0; i < instr.num; i++) {
             // this is probably bad design because we are accessing the Unassigned
-            heap.setChild(frameAddress, i, heap.Unassigned);
+            setFrameValue(frameAddress, i, Unassigned);
         }
     },
     EXIT_SCOPE: instr => {
         let oldEnvAddr;
-        [RTS, oldEnvAddr] = heap.popStack(RTS);
-        E = heap.getBlockframeEnvironment(oldEnvAddr);
+        [RTS, oldEnvAddr] = popStack(RTS);
+        E = getBlockFrameEnvironment(oldEnvAddr);
     },
     GOTO: instr => {
         PC = instr.addr;
@@ -354,15 +377,15 @@ const microcode = {
         let frameIndex = instr.pos[0];
         let valueIndex = instr.pos[1];
         let value;
-        value = heap.peekStack(OS);
+        value = peekStack(OS);
         log('Assigning value ' + value + ' to frame ' + frameIndex + ' value ' + valueIndex);
-        heap.setEnvironmentValue(E, frameIndex, valueIndex, value);
+        setEnvironmentValue(E, frameIndex, valueIndex, value);
     },
     LD: instr => {
         let frameIndex = instr.pos[0];
         let valueIndex = instr.pos[1];
-        const value = heap.getEnvironmentValue(E, frameIndex, valueIndex);
-        if (heap.isUnassigned(value)) {
+        const value = getEnvironmentValue(E, frameIndex, valueIndex);
+        if (isUnassigned(value)) {
             throw Error('accessing an unassigned variable');
         }
         pushAddressOS(value);
@@ -378,7 +401,7 @@ const microcode = {
         }
     },
     LDF: instr => {
-        const closureAddress = heap.allocateClosure(instr.arity, instr.addr, E);
+        const closureAddress = allocateClosure(instr.arity, instr.addr, E);
         tempRoot0 = closureAddress;
         pushAddressOS(closureAddress);
         tempRoot0 = -1;
@@ -386,45 +409,47 @@ const microcode = {
     CALL: instr => {
         const arity = instr.arity;
         // fun is the closure
-        const fun = heap.peekStackN(OS, arity);
-        if (heap.isBuiltin(fun)) {
-            return applyBuiltin(heap.getBuiltinId(fun));
+        const fun = peekStackN(OS, arity);
+        if (isBuiltin(fun)) {
+            return applyBuiltin(getBuiltinID(fun));
         }
 
-        let newPC = heap.getClosurePC(fun);
-        const newFrame = heap.allocateFrame(arity);
+        let newPC = getClosurePC(fun);
+        const newFrame = allocateFrame(arity);
         tempRoot1 = newFrame;
         for (let i = arity - 1; i >= 0; i--) {
             let value;
-            [OS, value] = heap.popStack(OS);
-            heap.setChild(newFrame, i, value);
+            [OS, value] = popStack(OS);
+            setFrameValue(newFrame, i, value);
         }
         safePushRTSCallFrame();
         let _; // wow can't do _ in typescript =.=
-        [OS, _] = heap.popStack(OS); // pop fun
-        E = heap.extendEnvironment(newFrame, heap.getClosureEnvironment(fun));
+        [OS, _] = popStack(OS); // pop fun
+        E = extendEnvironment(newFrame, getClosureEnvironment(fun));
         tempRoot1 = -1;
+        log("newPC = " + newPC);
+        log("PC = " + PC);
         PC = newPC;
     },
     TAIL_CALL: instr => {
         const arity = instr.arity;
         // fun is the closure
-        const fun = heap.peekStackN(OS, arity);
-        if (heap.isBuiltin(fun)) {
-            return applyBuiltin(heap.getBuiltinId(fun));
+        const fun = peekStackN(OS, arity);
+        if (isBuiltin(fun)) {
+            return applyBuiltin(getBuiltinID(fun));
         }
-        const newPC = heap.getClosurePC(fun);
-        const newFrame = heap.allocateFrame(arity);
+        const newPC = getClosurePC(fun);
+        const newFrame = allocateFrame(arity);
         tempRoot1 = newFrame;
         for (let i = arity - 1; i >= 0; i--) {
             let value;
-            [OS, value] = heap.popStack(OS);
-            heap.setChild(newFrame, i, value);
+            [OS, value] = popStack(OS);
+            setFrameValue(newFrame, i, value);
         }
         // No pushing onto RTS
         let _; // wow can't do _ in typescript =.=
-        [OS, _] = heap.popStack(OS); // pop fun
-        E = heap.extendEnvironment(newFrame, heap.getClosureEnvironment(fun));
+        [OS, _] = popStack(OS); // pop fun
+        E = extendEnvironment(newFrame, getClosureEnvironment(fun));
         tempRoot1 = -1;
         PC = newPC;
     },
@@ -434,53 +459,60 @@ const microcode = {
         // We cannot do it the same way as the homework because now we have time quantum, and resetting really isn't
         // a thread operation.
         do {
-            [RTS, topFrame] = heap.popStack(RTS);
-        } while (!heap.isCallframe(topFrame));
+            [RTS, topFrame] = popStack(RTS);
+        } while (!isCallFrame(topFrame));
         // At this point, either it is a call frame or our program has crashed.
-        PC = heap.getCallframePC(topFrame);
-        E = heap.getCallframeEnvironment(topFrame);
+        PC = getCallFramePC(topFrame);
+        E = getCallFrameEnvironment(topFrame);
     },
     NEW_THREAD: instr => {
         // Expects a closure on operand stack
-        let closure = heap.peekStackN(OS, instr.arity);
-        if (!heap.isClosure(closure)) {
+        let closure = peekStackN(OS, instr.arity);
+        log("Closure: " + closure);
+        if (!isClosure(closure)) {
             throw Error('NOT A CLOSURE!!!!!!!!!!!!!!!');
         }
         log('Creating new thread with closure ' + closure);
         // allocate new OS and RTS for the new thread
         // there is a danger that the newRTS initialization can cause newOS to be
         // freed, so we must set newOS as a tempRoot here
-        let newOS = heap.initializeStack();
+        let newOS = initializeStack();
         tempRoot0 = newOS;
-        let newRTS = heap.initializeStack();
+        let newRTS = initializeStack();
         tempRoot1 = newRTS;
         // call closure using new operand and runtime stack
-        let newPC = heap.getClosurePC(closure);
+        let newPC = getClosurePC(closure);
         let arity = instr.arity;
         // likewise this newFrame allocation can free newOS and newRTS
         // so we make sure to temporarily make both tempRoots
-        const newFrame = heap.allocateFrame(arity);
+        // arity can become undefined
+        log("Arity is : " + arity);
+        // FIXME: Temporarily bandaid
+        if (arity === undefined) {
+            arity = 0;
+        }
+        const newFrame = allocateFrame(arity);
         tempRoot2 = newFrame;
         // pop values from the old OS
         log('Arity is ' + arity);
         for (let i = arity - 1; i >= 0; i--) {
             let value;
-            [OS, value] = heap.popStack(OS);
+            [OS, value] = popStack(OS);
             log('Heap value is ' + value);
-            log('TS value is ' + heap.addressToTSValue(value));
-            heap.setChild(newFrame, i, value);
+            log('TS value is ' + addressToTSValue(value));
+            setFrameValue(newFrame, i, value);
         }
-        let newE = heap.extendEnvironment(newFrame, heap.getClosureEnvironment(closure));
+        let newE = extendEnvironment(newFrame, getClosureEnvironment(closure));
         tempRoot3 = newE;
         let _;
-        [OS, _] = heap.popStack(OS); // pop fun
+        [OS, _] = popStack(OS); // pop fun
         pushTSValueOS(true);
         // Setting the goroutine to jump to current PC which is not incremented by 1
         // means it will kill itself when it reaches RESET
         // this newRTS needs to be handled the same way!
-        let newCallFrame = heap.allocateCallframe(E, PC);
+        let newCallFrame = allocateCallFrame(E, PC);
         tempRoot4 = newCallFrame;
-        newRTS = heap.pushStack(newRTS, newCallFrame);
+        newRTS = pushStack(newRTS, newCallFrame);
         newThread(newOS, newRTS, newPC, newE);
         PC++; // avoid stepping onto DONE as the original thread.
         timeoutThread();
@@ -492,7 +524,7 @@ const microcode = {
         tempRoot4 = -1;
     },
     NEW_STRUCT: instr => {
-        const structAddress = heap.allocateStruct(instr.numFields);
+        const structAddress = allocateStruct(instr.numFields);
         log('Struct address is ' + structAddress);
         tempRoot0 = structAddress;
         pushAddressOS(structAddress);
@@ -500,37 +532,37 @@ const microcode = {
     },
     INIT_FIELD: instr => {
         let fieldValue;
-        [OS, fieldValue] = heap.popStack(OS); // Next, the value to be set for the field
-        log('Field value is ' + heap.addressToTSValue(fieldValue));
+        [OS, fieldValue] = popStack(OS); // Next, the value to be set for the field
+        log('Field value is ' + addressToTSValue(fieldValue));
         let structAddress;
-        [OS, structAddress] = heap.popStack(OS); // Assuming struct is on top of OS
+        [OS, structAddress] = popStack(OS); // Assuming struct is on top of OS
         log('Struct address is ' + structAddress);
         log('Field index is ' + instr.fieldIndex);
         log('Field value is ' + fieldValue);
-        heap.setField(structAddress, instr.fieldIndex, fieldValue);
+        setField(structAddress, instr.fieldIndex, fieldValue);
         pushAddressOS(structAddress); // Push back the struct address if necessary, or adjust as per your design
     },
     ACCESS_FIELD: instr => {
         let fieldIndex;
-        [OS, fieldIndex] = heap.popStack(OS);
-        fieldIndex = heap.addressToTSValue(fieldIndex);
+        [OS, fieldIndex] = popStack(OS);
+        fieldIndex = addressToTSValue(fieldIndex);
         log('Field index is ' + fieldIndex);
         let structAddress;
-        [OS, structAddress] = heap.popStack(OS);
+        [OS, structAddress] = popStack(OS);
         log('Struct address is ' + structAddress);
-        let fieldValue = heap.getChild(structAddress, fieldIndex);
+        let fieldValue = getField(structAddress, fieldIndex);
         log('Field value is ' + fieldValue);
-        OS = heap.pushStack(OS, fieldValue);
+        OS = pushStack(OS, fieldValue);
     },
     SET_FIELD: instr => {
         let fieldIndex;
-        [OS, fieldIndex] = heap.popStack(OS);
-        fieldIndex = heap.addressToTSValue(fieldIndex);
+        [OS, fieldIndex] = popStack(OS);
+        fieldIndex = addressToTSValue(fieldIndex);
         let structAddress;
-        [OS, structAddress] = heap.popStack(OS);
+        [OS, structAddress] = popStack(OS);
         let fieldValue;
-        [OS, fieldValue] = heap.popStack(OS);
-        heap.setField(structAddress, fieldIndex, fieldValue);
+        [OS, fieldValue] = popStack(OS);
+        setField(structAddress, fieldIndex, fieldValue);
         pushAddressOS(structAddress);
     },
     START_ATOMIC: instr => {
@@ -591,13 +623,13 @@ export function getRoots(): number[] {
 function initialize(numWords = 1000000) {
     // TODO: Figure out an appropriate number of words
     // There is definitely some bug with the memory management!
-    heap = new Heap(numWords);
+    constructHeap(numWords);
     PC = 0;
-    OS = heap.initializeStack();
-    RTS = heap.initializeStack();
+    OS = initializeStack();
+    RTS = initializeStack();
     builtinsFrame = initializeBuiltins();
-    E = heap.allocateEnvironment(0);
-    E = heap.extendEnvironment(builtinsFrame, E);
+    E = allocateEnvironment(0);
+    E = extendEnvironment(builtinsFrame, E);
     running = true;
     State = ProgramState.NORMAL;
     initScheduler();
@@ -606,11 +638,11 @@ function initialize(numWords = 1000000) {
 function initializeBuiltins() {
     initializeBuiltinTable();
     const builtinValues = Object.values(builtins);
-    const frameAddress = heap.allocateFrame(builtinValues.length);
+    const frameAddress = allocateFrame(builtinValues.length);
     for (let i = 0; i < builtinValues.length; i++) {
         const builtin = builtinValues[i];
         // @ts-ignore
-        heap.setChild(frameAddress, i, heap.allocateBuiltin(builtin.id));
+        setFrameValue(frameAddress, i, allocateBuiltin(builtin.id));
     }
     return frameAddress;
 }
@@ -624,6 +656,11 @@ function runInstruction() {
     if (!isAtomicSection) {
         TimeQuanta--;
     }
+    log("RTS: " + RTS);
+    log("OS: " + OS);
+    log("E: " + E);
+    log("PC: " + E);
+    debugHeap();
     printOSStack();
 }
 
@@ -645,8 +682,8 @@ export function run(numWords = 1000000) {
             throw Error('execution aborted due to: ' + getErrorType());
         }
     }
-    log(heap.addressToTSValue(heap.peekStack(OS)));
-    return heap.addressToTSValue(heap.peekStack(OS));
+    log("Program value is " + addressToTSValue(peekStack(OS)));
+    return addressToTSValue(peekStack(OS));
 }
 
 function getErrorType(): string {
@@ -673,15 +710,17 @@ function printOSStack() {
     log('Printing OS Stack...');
     let currOS = OS;
     while (currOS != -1) {
+        log("****************************")
         log('currOS');
         log(currOS);
-        let value: any = heap.addressToTSValue(heap.peekStack(currOS));
+        let value: any = addressToTSValue(peekStack(currOS));
         log('TS Value');
         log(value);
         log('Raw Value');
-        value = heap.peekStack(currOS);
+        value = peekStack(currOS);
         log(value);
-        currOS = heap.getChild(currOS, 0);
+        currOS = getPrevStackAddress(currOS);
+        log("****************************")
     }
     log('Done printing OS Stack...');
 }
