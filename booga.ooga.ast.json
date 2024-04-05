@@ -7,360 +7,32 @@
         "tag": "StructDeclaration",
         "id": {
           "tag": "Name",
-          "name": "fmt"
-        },
-        "fields": []
-      },
-      {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "f"
-          },
-          "type": {
-            "tag": "Struct",
-            "name": "fmt"
-          },
-          "pointer": true
-        },
-        "id": {
-          "tag": "Name",
-          "name": "Println"
-        },
-        "params": [
-          {
-            "tag": "Name",
-            "name": "x",
-            "type": "Integer"
-          }
-        ],
-        "type": [
-          "Null"
-        ],
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "CallExpression",
-                "callee": {
-                  "tag": "Name",
-                  "name": "print"
-                },
-                "arguments": [
-                  {
-                    "tag": "Name",
-                    "name": "x"
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      {
-        "tag": "VariableDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "fmt"
-        },
-        "expression": {
-          "tag": "StructInitializer",
-          "fields": [],
-          "named": true,
-          "type": {
-            "tag": "Struct",
-            "name": "fmt"
-          }
-        },
-        "type": {
-          "tag": "Struct",
-          "name": "fmt"
-        }
-      },
-      {
-        "tag": "StructDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "WaitGroup"
+          "name": "Point"
         },
         "fields": [
           {
             "tag": "StructField",
             "name": {
               "tag": "Name",
-              "name": "counter"
+              "name": "x"
             },
             "type": "Integer"
-          }
-        ]
-      },
-      {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "wg"
           },
-          "type": {
-            "tag": "Struct",
-            "name": "WaitGroup"
-          },
-          "pointer": true
-        },
-        "id": {
-          "tag": "Name",
-          "name": "Add"
-        },
-        "params": [
-          {
-            "tag": "Name",
-            "name": "delta",
-            "type": "Integer"
-          }
-        ],
-        "type": [
-          "Null"
-        ],
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "AssignmentExpression",
-                "operator": "+=",
-                "left": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "wg"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "counter"
-                  }
-                },
-                "right": {
-                  "tag": "Name",
-                  "name": "delta"
-                }
-              }
-            ]
-          }
-        }
-      },
-      {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "wg"
-          },
-          "type": {
-            "tag": "Struct",
-            "name": "WaitGroup"
-          },
-          "pointer": true
-        },
-        "id": {
-          "tag": "Name",
-          "name": "Done"
-        },
-        "params": [],
-        "type": [
-          "Null"
-        ],
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "UpdateExpression",
-                "operator": "--",
-                "id": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "wg"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "counter"
-                  }
-                },
-                "prefix": false
-              }
-            ]
-          }
-        }
-      },
-      {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "wg"
-          },
-          "type": {
-            "tag": "Struct",
-            "name": "WaitGroup"
-          },
-          "pointer": true
-        },
-        "id": {
-          "tag": "Name",
-          "name": "Wait"
-        },
-        "params": [],
-        "type": [
-          "Null"
-        ],
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "ForStatement",
-                "type": "ForWithTest",
-                "init": null,
-                "test": {
-                  "tag": "LogicalExpression",
-                  "operator": ">",
-                  "left": {
-                    "tag": "MemberExpression",
-                    "object": {
-                      "tag": "Name",
-                      "name": "wg"
-                    },
-                    "property": {
-                      "tag": "Name",
-                      "name": "counter"
-                    }
-                  },
-                  "right": {
-                    "tag": "Integer",
-                    "value": 0
-                  }
-                },
-                "update": null,
-                "body": null
-              }
-            ]
-          }
-        }
-      },
-      {
-        "tag": "StructDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "Vertex"
-        },
-        "fields": [
           {
             "tag": "StructField",
             "name": {
               "tag": "Name",
-              "name": "X"
+              "name": "y"
             },
             "type": "Integer"
           }
         ]
       },
       {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "v"
-          },
-          "type": {
-            "tag": "Struct",
-            "name": "Vertex"
-          },
-          "pointer": true
-        },
+        "tag": "ConstantDeclaration",
         "id": {
           "tag": "Name",
-          "name": "Add"
-        },
-        "params": [
-          {
-            "tag": "Name",
-            "name": "w",
-            "type": {
-              "tag": "Struct",
-              "name": "Vertex"
-            }
-          }
-        ],
-        "type": [
-          "Null"
-        ],
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "AssignmentExpression",
-                "operator": "=",
-                "left": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "v"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "X"
-                  }
-                },
-                "right": {
-                  "tag": "BinaryExpression",
-                  "operator": "+",
-                  "left": {
-                    "tag": "MemberExpression",
-                    "object": {
-                      "tag": "Name",
-                      "name": "v"
-                    },
-                    "property": {
-                      "tag": "Name",
-                      "name": "X"
-                    }
-                  },
-                  "right": {
-                    "tag": "MemberExpression",
-                    "object": {
-                      "tag": "Name",
-                      "name": "w"
-                    },
-                    "property": {
-                      "tag": "Name",
-                      "name": "X"
-                    }
-                  }
-                }
-              }
-            ]
-          }
-        }
-      },
-      {
-        "tag": "VariableDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "v"
+          "name": "p"
         },
         "expression": {
           "tag": "StructInitializer",
@@ -368,25 +40,7 @@
             {
               "tag": "Integer",
               "value": 1
-            }
-          ],
-          "named": false,
-          "type": {
-            "tag": "Struct",
-            "name": "Vertex"
-          }
-        },
-        "type": "Unknown"
-      },
-      {
-        "tag": "VariableDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "w"
-        },
-        "expression": {
-          "tag": "StructInitializer",
-          "fields": [
+            },
             {
               "tag": "Integer",
               "value": 2
@@ -395,177 +49,23 @@
           "named": false,
           "type": {
             "tag": "Struct",
-            "name": "Vertex"
+            "name": "Point"
           }
         },
-        "type": "Unknown"
-      },
-      {
-        "tag": "VariableDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "wg"
-        },
-        "expression": {
-          "tag": "StructInitializer",
-          "fields": [
-            {
-              "tag": "Integer",
-              "value": 0
-            }
-          ],
-          "named": false,
-          "type": {
-            "tag": "Struct",
-            "name": "WaitGroup"
-          }
-        },
-        "type": "Unknown"
-      },
-      {
-        "tag": "ForStatement",
-        "type": "ForWithInitTestUpdate",
-        "init": {
-          "tag": "VariableDeclaration",
-          "id": {
-            "tag": "Name",
-            "name": "i"
-          },
-          "expression": {
-            "tag": "Integer",
-            "value": 0
-          },
-          "type": "Unknown"
-        },
-        "test": {
-          "tag": "LogicalExpression",
-          "operator": "<",
-          "left": {
-            "tag": "Name",
-            "name": "i"
-          },
-          "right": {
-            "tag": "Integer",
-            "value": 10
-          }
-        },
-        "update": {
-          "tag": "UpdateExpression",
-          "operator": "++",
-          "id": {
-            "tag": "Name",
-            "name": "i"
-          },
-          "prefix": false
-        },
-        "body": {
-          "tag": "SequenceStatement",
-          "body": [
-            {
-              "tag": "CallExpression",
-              "callee": {
-                "tag": "MemberExpression",
-                "object": {
-                  "tag": "Name",
-                  "name": "wg"
-                },
-                "property": {
-                  "tag": "Name",
-                  "name": "Add"
-                }
-              },
-              "arguments": [
-                {
-                  "tag": "Integer",
-                  "value": 1
-                }
-              ]
-            },
-            {
-              "tag": "CallGoroutine",
-              "expression": {
-                "tag": "GoroutineCallExpression",
-                "callee": {
-                  "tag": "LambdaDeclaration",
-                  "id": null,
-                  "params": [],
-                  "body": {
-                    "tag": "BlockStatement",
-                    "body": {
-                      "tag": "SequenceStatement",
-                      "body": [
-                        {
-                          "tag": "CallExpression",
-                          "callee": {
-                            "tag": "MemberExpression",
-                            "object": {
-                              "tag": "Name",
-                              "name": "v"
-                            },
-                            "property": {
-                              "tag": "Name",
-                              "name": "Add"
-                            }
-                          },
-                          "arguments": [
-                            {
-                              "tag": "Name",
-                              "name": "w"
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "CallExpression",
-                          "callee": {
-                            "tag": "MemberExpression",
-                            "object": {
-                              "tag": "Name",
-                              "name": "wg"
-                            },
-                            "property": {
-                              "tag": "Name",
-                              "name": "Done"
-                            }
-                          },
-                          "arguments": []
-                        }
-                      ]
-                    }
-                  },
-                  "type": [
-                    "Null"
-                  ]
-                },
-                "arguments": []
-              }
-            }
-          ]
+        "type": {
+          "tag": "Struct",
+          "name": "Point"
         }
-      },
-      {
-        "tag": "CallExpression",
-        "callee": {
-          "tag": "MemberExpression",
-          "object": {
-            "tag": "Name",
-            "name": "wg"
-          },
-          "property": {
-            "tag": "Name",
-            "name": "Wait"
-          }
-        },
-        "arguments": []
       },
       {
         "tag": "MemberExpression",
         "object": {
           "tag": "Name",
-          "name": "v"
+          "name": "p"
         },
         "property": {
           "tag": "Name",
-          "name": "X"
+          "name": "x"
         }
       }
     ]

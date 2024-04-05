@@ -453,6 +453,12 @@ const type_comp = {
             log('StructDeclaration for', decls_struct[i].id.name);
             type(decls_struct[i], extended_te);
         }
+
+        const decls_method = comp.body.body.filter(comp => comp.tag === 'MethodDeclaration');
+        for (let i = 0; i < decls_method.length; i++) {
+            log('MethodDeclaration for', decls_method[i].id.name);
+            type(decls_method[i], extended_te);
+        }
         // log('Extended type environment');
         // log(JSON.stringify(extended_te));
         const decls_unknown_type = decls.filter(comp => comp.type === 'Unknown');

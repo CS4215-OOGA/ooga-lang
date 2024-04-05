@@ -807,8 +807,7 @@ v.X // 3
     defaultNumWords
 );
 
-//
-
+// Testing struct methods with goroutines (goroutines cannot return anything)
 testProgram(
     `
 type Vertex struct {
@@ -831,5 +830,31 @@ main();
 v.X;
     `,
     4,
+    defaultNumWords
+);
+
+// Complex struct stuff with methods, using var, shorthand and const
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+
+func (p Point) getX() int {
+    return p.x;
+}
+
+func (p Point) addX(n int) int {
+    return p.x + n;
+}
+
+var p Point = Point{1, 2};
+const q = Point{3, 4};
+r := q;
+r.x = 5;
+p.addX(r.getX());
+`,
+    6,
     defaultNumWords
 );
