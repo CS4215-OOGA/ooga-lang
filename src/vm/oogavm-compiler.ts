@@ -351,19 +351,46 @@ const compileComp = {
         log('UpdateExpression: ' + JSON.stringify(comp, null, 2));
         compile(comp.id, ce);
         log(JSON.stringify(comp, null, 2));
-        compile(
-            {
-                tag: 'AssignmentExpression',
-                left: comp.id,
-                right: {
-                    tag: 'BinaryExpression',
-                    left: comp.id,
-                    right: { tag: 'Integer', value: 1 },
-                    operator: comp.operator === '++' ? '+' : '-',
-                },
-            },
-            ce
-        );
+        instrs[wc++] = { tag: Opcodes.UNARY, operator: comp.operator };
+        if (comp.id.tag === 'Name') {
+            instrs[wc++] = {
+                tag: Opcodes.ASSIGN,
+                pos: compileTimeEnvironmentPosition(ce, comp.id.name),
+            };
+        } else if (comp.id.tag === 'MemberExpression') {
+            // We need to push the struct address onto the stack
+            // Then we need to push the field index onto the stack
+            // Then we need to set the field value
+
+            // Push the struct address onto the stack
+            compile(comp.id.object, ce);
+            // Determine the struct type and member's index
+            const variableType = findVariableTypeInCE(ce, comp.id.object.name);
+            log(variableType);
+            if (
+                !variableType ||
+                typeof variableType !== 'object' ||
+                variableType.tag !== 'Struct' ||
+                !StructTable[variableType.name]
+            ) {
+                throw new Error(
+                    `Type of variable ${comp.id.object.name} is undefined or not a struct.`
+                );
+            }
+            const structDefinition = StructTable[variableType.name].fields;
+            const fieldIndex = structDefinition.findIndex(
+                field => field.name === comp.id.property.name
+            );
+            if (fieldIndex === -1) {
+                throw new Error(
+                    `Field ${comp.id.property.name} does not exist in struct ${variableType}`
+                );
+            }
+            // Push the field index onto the stack
+            instrs[wc++] = { tag: Opcodes.LDCI, val: fieldIndex };
+            // Generate instruction to set the field's value
+            instrs[wc++] = { tag: Opcodes.SET_FIELD };
+        }
         log('Exiting UpdateExpression');
     },
     FunctionDeclaration: (comp, ce) => {
