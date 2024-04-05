@@ -2,6 +2,7 @@ import debug from 'debug';
 import { HeapError, HeapOutOfMemoryError } from './oogavm-errors.js';
 import { ThreadId } from './oogavm-scheduler.js';
 import { getRoots, Thread } from './oogavm-machine.js';
+import { error } from '../utils/utils.js';
 
 const log = debug('ooga:memory');
 // number of bytes each word represents
@@ -558,7 +559,14 @@ export class Heap {
         } else if (this.isStruct(address)) {
             return '<struct>';
         } else {
-            return 'unknown word tag: ' + this.wordToString(address);
+            error(
+                'unknown word tag: ' +
+                    this.wordToString(address) +
+                    ' tag: ' +
+                    this.getTag(address) +
+                    ' struct tag: ' +
+                    Tag.STRUCT
+            );
         }
     }
 

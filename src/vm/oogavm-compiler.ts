@@ -55,6 +55,7 @@ type CompileTimeEnvironment = CompileTimeFrame[];
 // x could be an object if it is a method as stated above
 function compileTimeEnvironmentPosition(env: CompileTimeEnvironment, x: string | Method) {
     let frameIndex = env.length;
+    log('Finding position of ' + JSON.stringify(x, null, 2));
     while (frameIndex > 0 && valueIndex(env[--frameIndex], x) === -1) {}
     let vIndex = valueIndex(env[frameIndex], x);
     if (vIndex === -1) {
@@ -335,11 +336,13 @@ const compileComp = {
     },
     Name: (comp, ce) => {
         // TODO: Might have to do type check here?
+        log('Name: ' + comp.name);
         instrs[wc++] = {
             tag: Opcodes.LD,
             sym: comp.name,
             pos: compileTimeEnvironmentPosition(ce, comp.name),
         };
+        log('Exiting Name');
     },
     // This handles expressions of the form
     // ++x;
@@ -471,12 +474,64 @@ const compileComp = {
         instrs[wc++] = { tag: Opcodes.DONE };
     },
     CallGoroutine: (comp, ce) => {
-        compile(comp.expression.callee, ce);
-        for (let arg of comp.expression.arguments) {
-            compile(arg, ce);
+        if (comp.expression.callee.tag === 'MemberExpression') {
+            // Method call
+            const variableType = findVariableTypeInCE(ce, comp.expression.callee.object.name);
+            if (
+                !variableType ||
+                typeof variableType !== 'object' ||
+                variableType.tag !== 'Struct' ||
+                !StructTable[variableType.name]
+            ) {
+                throw new Error(
+                    `Type of variable ${comp.expression.callee.object.name} is undefined or not a struct.`
+                );
+            }
+            const structDefinition = StructTable[variableType.name];
+            const methodIndex = structDefinition.methods.findIndex(
+                method => method.methodName === comp.expression.callee.property.name
+            );
+
+            if (methodIndex === -1) {
+                throw new Error(
+                    `Method ${comp.expression.callee.property.name} does not exist in struct ${variableType}`
+                );
+            }
+
+            // Push the struct address onto the stack
+            compile(
+                {
+                    tag: 'Name',
+                    name: new Method(
+                        variableType.name,
+                        comp.expression.callee.property.name,
+                        structDefinition.methods[methodIndex].isPointer
+                    ),
+                },
+                ce
+            );
+            // Push the struct address onto the stack as well as the arguments
+
+            for (let arg of comp.expression.arguments) {
+                compile(arg, ce);
+            }
+            compile(
+                {
+                    tag: 'Name',
+                    name: comp.expression.callee.object.name,
+                },
+                ce
+            );
+            instrs[wc++] = { tag: Opcodes.NEW_THREAD, arity: comp.expression.arguments.length + 1 };
+            instrs[wc++] = { tag: Opcodes.DONE };
+        } else {
+            compile(comp.expression.callee, ce);
+            for (let arg of comp.expression.arguments) {
+                compile(arg, ce);
+            }
+            instrs[wc++] = { tag: Opcodes.NEW_THREAD, arity: comp.expression.arguments.length };
+            instrs[wc++] = { tag: Opcodes.DONE };
         }
-        instrs[wc++] = { tag: Opcodes.NEW_THREAD, arity: comp.expression.arguments.length };
-        instrs[wc++] = { tag: Opcodes.DONE };
     },
     // ForStatements are just syntactic sugar for while loops
     // The difference is that in ooga-lang, all three components are optional!
@@ -606,6 +661,7 @@ const compileComp = {
         }
     },
     MemberExpression: (comp, ce) => {
+        log('MemberExpression: ' + JSON.stringify(comp, null, 2));
         const variableType = findVariableTypeInCE(ce, comp.object.name);
         if (
             !variableType ||
@@ -617,6 +673,7 @@ const compileComp = {
                 `Type of variable ${comp.object.name} is undefined or not a struct. It is ${variableType}`
             );
         }
+        log('Variable type: ' + JSON.stringify(variableType, null, 2));
         const structDefinition = StructTable[variableType.name];
         const fieldIndex = structDefinition.fields.findIndex(
             field => field.name === comp.property.name

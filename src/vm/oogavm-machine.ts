@@ -444,6 +444,7 @@ const microcode = {
         if (!heap.isClosure(closure)) {
             throw Error('NOT A CLOSURE!!!!!!!!!!!!!!!');
         }
+        log('Creating new thread with closure ' + closure);
         // allocate new OS and RTS for the new thread
         // there is a danger that the newRTS initialization can cause newOS to be
         // freed, so we must set newOS as a tempRoot here
@@ -453,15 +454,17 @@ const microcode = {
         tempRoot1 = newRTS;
         // call closure using new operand and runtime stack
         let newPC = heap.getClosurePC(closure);
-        let arity = heap.getClosureArity(closure);
+        let arity = instr.arity;
         // likewise this newFrame allocation can free newOS and newRTS
         // so we make sure to temporarily make both tempRoots
         const newFrame = heap.allocateFrame(arity);
         tempRoot2 = newFrame;
         // pop values from the old OS
+        log('Arity is ' + arity);
         for (let i = arity - 1; i >= 0; i--) {
             let value;
             [OS, value] = heap.popStack(OS);
+            log('Value is ' + value);
             heap.setChild(newFrame, i, value);
         }
         let newE = heap.extendEnvironment(newFrame, E);

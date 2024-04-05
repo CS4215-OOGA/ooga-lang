@@ -388,7 +388,7 @@ const type_comp = {
     },
     VariableDeclaration: (comp, te) => {
         log('VariableDeclaration');
-        const actual_type = type(comp.expression, te);
+        const actual_type = comp.expression ? type(comp.expression, te) : types.Any;
         const prev_type = lookup_type(comp.id.name, te);
         log('VariableDeclaration: actual_type', actual_type, 'comp.type', prev_type);
 
@@ -555,9 +555,9 @@ const type_comp = {
         // check the update expression, this can be null as well
         // the update expression should either be a CallExpression or an AssignmentExpression
         const t1 = comp.update ? type(comp.update, extended_te) : types.Null;
-        log('ForStatement: t1', t1);
-        const t2 = type(comp.body, extended_te);
-        log('ForStatement: t2', t2);
+        log('ForStatement: update type: ', t1);
+        const t2 = comp.body ? type(comp.body, extended_te) : types.Null;
+        log('ForStatement: body type: ', t2);
         return types.Null;
     },
     BreakStatement: (comp, te) => types.Null,

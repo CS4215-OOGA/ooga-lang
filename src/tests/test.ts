@@ -719,3 +719,35 @@ p.x;
     1,
     defaultNumWords
 );
+
+// Testing struct methods with goroutines (goroutines cannot return anything)
+testProgram(
+    `
+type Point struct {
+    x int;
+    y int;
+}
+
+func (p Point) getX() int {
+    return p.x;
+}
+
+func (p Point) addX(n int) int {
+    return p.x + n;
+}
+
+var p Point = Point{1, 2};
+
+go func() {
+    p.addX(5);
+}
+
+go func() {
+    p.getX();
+}
+
+p.x;
+`,
+    1,
+    defaultNumWords
+);

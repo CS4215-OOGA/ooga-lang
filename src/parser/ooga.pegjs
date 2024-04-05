@@ -334,7 +334,7 @@ NewExpression
 
 CallExpression
   = head:(
-      callee:MemberExpression __ args:Arguments { // Handle function calls on member expressions
+      callee:(MemberExpression/LambdaDeclaration) __ args:Arguments { // Handle function calls on member expressions
         return { tag: "CallExpression", callee: callee, arguments: args };
       }
     )
@@ -859,7 +859,7 @@ FunctionDeclaration
 FunctionExpression
   = FunctionToken __ id:(Identifier __)?
     "(" __ params:(FormalParameterList __)? ")" __
-    "("? __ type:(ReturnTypeList) __ ")"? __
+    "("? __ type:(ReturnTypeList)? __ ")"? __
     "{" __ body:FunctionBody __ "}"
     {
       return {
@@ -931,11 +931,11 @@ SourceElement
 
 // ----- Structs -----
 StructDeclaration
-  = TypeToken __ id:Identifier __ StructToken __ "{" __ fields:StructFieldList __ "}" {
+  = TypeToken __ id:Identifier __ StructToken __ "{" __ fields:StructFieldList? __ "}" {
       return {
         tag: "StructDeclaration",
         id: id,
-        fields: fields
+        fields: fields || []
       };
     }
 
@@ -951,11 +951,11 @@ StructField
 
 // ----- Struct Initializers -----
 Struct
-    = type:StructIdentifier __ "{" __ fields:StructFieldInitializerList __ "}" {
-        return { tag: "StructInitializer", fields: fields, named: true, type: type };
+    = type:StructIdentifier __ "{" __ fields:StructFieldInitializerList? __ "}" {
+        return { tag: "StructInitializer", fields: fields || [], named: true, type: type };
     }
-    / type:StructIdentifier __ "{" __ values:StructValueInitializerList __ "}" {
-        return { tag: "StructInitializer", fields: values, named: false, type: type };
+    / type:StructIdentifier __ "{" __ values:StructValueInitializerList? __ "}" {
+        return { tag: "StructInitializer", fields: values || [], named: false, type: type };
     }
 
 StructInitializer

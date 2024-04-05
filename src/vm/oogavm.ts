@@ -113,6 +113,8 @@ Options:
     log('--------------------------------------------');
     log('Parsed program:');
     log(JSON.stringify(program, null, 2));
+    // always write the AST to a file
+    await writeFileAsync(options.inputFilename + '.ast.json', JSON.stringify(program, null, 2));
     program = checkTypes(program);
     log('--------------------------------------------');
     const instrs = compile_program(program);
