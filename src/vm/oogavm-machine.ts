@@ -466,10 +466,11 @@ const microcode = {
         for (let i = arity - 1; i >= 0; i--) {
             let value;
             [OS, value] = heap.popStack(OS);
-            log('Value is ' + value);
+            log('Heap value is ' + value);
+            log('TS value is ' + heap.addressToTSValue(value));
             heap.setChild(newFrame, i, value);
         }
-        let newE = heap.extendEnvironment(newFrame, E);
+        let newE = heap.extendEnvironment(newFrame, heap.getClosureEnvironment(closure));
         tempRoot3 = newE;
         let _;
         [OS, _] = heap.popStack(OS); // pop fun
@@ -616,8 +617,8 @@ function initializeBuiltins() {
 
 // Run a single instruction, for concurrent execution.
 function runInstruction() {
+    log('Running instruction ' + PC);
     const instr = instrs[PC++];
-    log('Running ');
     log(instr);
     microcode[instr.tag](instr);
     if (!isAtomicSection) {
