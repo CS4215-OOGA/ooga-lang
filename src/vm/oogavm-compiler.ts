@@ -340,6 +340,7 @@ const compileComp = {
     // --y;
     UpdateExpression: (comp, ce) => {
         log('UpdateExpression: ' + JSON.stringify(comp, null, 2));
+        instrs[wc++] = {tag: Opcodes.START_ATOMIC};
         compile(comp.id, ce);
         log(JSON.stringify(comp, null, 2));
         instrs[wc++] = { tag: Opcodes.UNARY, operator: comp.operator };
@@ -382,6 +383,7 @@ const compileComp = {
             // Generate instruction to set the field's value
             instrs[wc++] = { tag: Opcodes.SET_FIELD };
         }
+        instrs[wc++] = {tag: Opcodes.END_ATOMIC};
         log('Exiting UpdateExpression');
     },
     FunctionDeclaration: (comp, ce) => {

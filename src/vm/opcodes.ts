@@ -25,6 +25,9 @@ const enum OpCodes {
     INIT_FIELD = 'INIT_FIELD',
     ACCESS_FIELD = 'ACCESS_FIELD',
     SET_FIELD = 'SET_FIELD',
+    // These two OpCodes are added to support true "mutex"
+    START_ATOMIC = 'START_ATOMIC',
+    END_ATOMIC = 'END_ATOMIC',
 }
 
 export default OpCodes;

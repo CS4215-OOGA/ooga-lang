@@ -43,6 +43,8 @@ let tempRoot1: number = -1;
 let tempRoot2: number = -1;
 let tempRoot3: number = -1;
 let tempRoot4: number = -1;
+// Flag to indicate "true concurrency"
+let isAtomicSection: boolean = false;
 
 enum ProgramState {
     NORMAL,
@@ -530,6 +532,12 @@ const microcode = {
         heap.setField(structAddress, fieldIndex, fieldValue);
         pushAddressOS(structAddress);
     },
+    START_ATOMIC: instr => {
+        isAtomicSection = true;
+    },
+    END_ATOMIC: instr => {
+        isAtomicSection = false;
+    }
 };
 
 // ********************************
@@ -612,7 +620,9 @@ function runInstruction() {
     log('Running ');
     log(instr);
     microcode[instr.tag](instr);
-    TimeQuanta--;
+    if (!isAtomicSection) {
+        TimeQuanta--;
+    }
     printOSStack();
 }
 
