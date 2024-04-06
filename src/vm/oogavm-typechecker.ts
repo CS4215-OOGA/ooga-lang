@@ -15,8 +15,6 @@ import {
     StringType,
     ReturnType,
 } from './oogavm-types.js';
-import assert from 'assert';
-import { get } from 'http';
 
 const log = debug('ooga:typechecker');
 
@@ -24,12 +22,7 @@ const StructTable = new Map<string, StructType>();
 
 function getType(t, te) {
     log('getType: ', t);
-    if (t.type === 'Struct') {
-        if (!StructTable.has(t.name)) {
-            throw new Error('struct ' + t.name + ' not found');
-        }
-        return StructTable.get(t.name);
-    } else if (t.tag === 'Method') {
+    if (t.tag === 'Method') {
         return new MethodType(
             t.args.map(arg => getType(arg, te)),
             getType({ type: t.res }, te)
@@ -44,6 +37,11 @@ function getType(t, te) {
             t.params.map(p => getType(p, te)),
             getType({ type: t.type }, te)
         );
+    } else if (t.type.tag === 'Struct') {
+        if (!StructTable.has(t.type.name)) {
+            throw new Error('struct ' + t.name + ' not found');
+        }
+        return StructTable.get(t.type.name);
     } else if (t.type === 'Integer') {
         log('Returning IntegerType');
         return new IntegerType();
@@ -457,8 +455,6 @@ const type_comp = {
         for (let i = 0; i < struct_decls.length; i++) {
             log('StructDeclaration for', struct_decls[i].id.name);
             const comp = struct_decls[i];
-
-            log(JSON.stringify(comp, null, 2));
             log('StructTable: ', StructTable);
             if (StructTable.has(comp.id.name)) {
                 throw new Error('struct ' + comp.id.name + ' already exists');
@@ -469,7 +465,7 @@ const type_comp = {
 
             log('Fields: ', unparse(comp.fields));
             const fields = comp.fields.map(f => {
-                return getType(f, te);
+                return new StructField(f.name.name, getType(f, te));
             });
             log('Fields: ', fields);
             // There can be no methods declared at the StructDeclaration level
@@ -636,20 +632,21 @@ const type_comp = {
     StructInitializer: (comp, te) => {
         log('StructInitializer');
         log(JSON.stringify(comp, null, 2));
-        const struct = StructTable[comp.type.name];
-        log(struct);
-        if (!struct) {
-            throw new Error('struct ' + comp.type.name + ' not found');
+
+        const structName = comp.type.name;
+        if (!StructTable.has(structName)) {
+            throw new Error('struct ' + structName + ' not found');
+        }
+
+        const structInfo: StructType = StructTable.get(structName)!;
+
+        if (structInfo.fields.length !== comp.fields.length) {
+            throw new Error(
+                'expected ' + structInfo.fields.length + ' fields, got ' + comp.fields.length
+            );
         }
 
         if (comp.named) {
-            // Allow for fewer fields if they are named, the rest will be set to the 0 value of their type
-            if (struct.fields.length < comp.fields.length) {
-                throw new Error(
-                    'expected ' + struct.fields.length + ' fields, got ' + comp.fields.length
-                );
-            }
-
             // Check that there are no duplicate fields
             const field_names = comp.fields.map(f => f.name.name);
             const unique_field_names = new Set(field_names);
@@ -660,7 +657,7 @@ const type_comp = {
             // Check that all fields are present in the struct
             for (let i = 0; i < comp.fields.length; i++) {
                 const field = comp.fields[i];
-                const struct_field = struct.fields.find(f => f.name === field.name.name);
+                const struct_field = structInfo.fields.find(f => f.fieldName === field.name.name);
                 if (!struct_field) {
                     throw new Error(
                         'field ' + field.name.name + ' not found in struct ' + comp.type.name
@@ -679,20 +676,17 @@ const type_comp = {
                 }
             }
         } else {
-            if (struct.fields.length !== comp.fields.length) {
-                throw new Error(
-                    'expected ' + struct.fields.length + ' fields, got ' + comp.fields.length
-                );
-            }
-
             for (let i = 0; i < comp.fields.length; i++) {
                 const field = comp.fields[i];
                 const field_type = type(field, te);
-                if (!equal_type(field_type, struct.fields[i].type)) {
+                log(structInfo);
+                log('field_type', field_type);
+                log('structInfo.fields[i].type', structInfo.fields[i]);
+                if (!equal_type(field_type, structInfo.fields[i].type)) {
                     throw new Error(
                         'type error in struct initializer; ' +
                             'expected type: ' +
-                            unparse_types(struct.fields[i].type) +
+                            unparse_types(structInfo.fields[i].type) +
                             ', ' +
                             'actual type: ' +
                             unparse_types(field_type)
@@ -702,7 +696,7 @@ const type_comp = {
         }
 
         log('Exiting StructInitializer');
-        return { tag: types.Struct, name: comp.type.name };
+        return structInfo;
     },
     MemberExpression: (comp, te) => {
         log('MemberExpression');

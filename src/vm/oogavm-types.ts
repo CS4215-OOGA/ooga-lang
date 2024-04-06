@@ -1,3 +1,7 @@
+import debug from 'debug';
+
+const log = debug('ooga:vm:types');
+
 export class Type {
     is_const: boolean;
     name: string;
@@ -57,20 +61,13 @@ export class MethodType extends FunctionType {
 }
 
 export class StructField extends Type {
+    fieldName: string;
     type: Type;
 
-    constructor(name: string, type: Type, is_const: boolean = false) {
-        super(name, is_const);
+    constructor(fieldName: string, type: Type, is_const: boolean = false) {
+        super('StructField', is_const);
+        this.fieldName = fieldName;
         this.type = type;
-    }
-}
-
-export class SelfType extends Type {
-    structName: string;
-
-    constructor(structName: string, is_const: boolean = false) {
-        super('Self', is_const);
-        this.structName = structName;
     }
 }
 
@@ -134,28 +131,35 @@ export function equal_type(ts1: Type, ts2: Type) {
     }
 
     if (ts1 instanceof StructType && ts2 instanceof StructType) {
+        log('Comparing struct types', ts1, ts2);
         if (ts1.structName !== ts2.structName) {
+            log('Struct names do not match');
             return false;
         }
 
         if (ts1.fields.length !== ts2.fields.length) {
+            log('Field lengths do not match');
             return false;
         }
 
         // Check fields
         for (let i = 0; i < ts1.fields.length; i++) {
+            log('Comparing field', ts1.fields[i], ts2.fields[i]);
             if (!equal_type(ts1.fields[i].type, ts2.fields[i].type)) {
+                log('Field types do not match', ts1.fields[i].type, ts2.fields[i].type);
                 return false;
             }
         }
 
         // Check methods
         if (ts1.methods.length !== ts2.methods.length) {
+            log('Method lengths do not match');
             return false;
         }
 
         for (let i = 0; i < ts1.methods.length; i++) {
             if (!equal_type(ts1.methods[i], ts2.methods[i])) {
+                log('Method types do not match');
                 return false;
             }
         }

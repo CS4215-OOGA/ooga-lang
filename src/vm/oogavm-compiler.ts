@@ -11,6 +11,7 @@ let wc;
 let instrs;
 let loopMarkers: any[] = []; // For loop markers
 let StructTable = new Map<string, StructType>();
+
 const push = (array, ...items) => {
     for (let item of items) {
         array.push(item);
@@ -670,11 +671,15 @@ const compileComp = {
         instrs[wc++] = { tag: Opcodes.LDCI, val: null };
     },
     StructInitializer: (comp, ce) => {
+        log('StructInitializer: ' + JSON.stringify(comp, null, 2));
         // First, verify the struct type exists
-        const structInfo = StructTable[comp.type.name]?.fields;
-        if (!structInfo) {
+        log(StructTable);
+
+        if (!StructTable.has(comp.type.name)) {
             throw new Error(`Undefined struct type: ${comp.type.name}`);
         }
+
+        const structInfo: StructType = StructTable.get(comp.type.name)!;
 
         // Allocate space for the new struct
         instrs[wc++] = {

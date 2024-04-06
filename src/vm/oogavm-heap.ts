@@ -187,7 +187,7 @@ function allocateLiteralValues() {
     Null = allocate(Tag.NULL, 2);
     Unassigned = allocate(Tag.UNASSIGNED, 2);
     Undefined = allocate(Tag.UNDEFINED, 2);
-    emptyString = allocateString("");
+    emptyString = allocateString('');
     literals = [False, True, Null, Unassigned, Undefined];
 }
 
@@ -469,27 +469,27 @@ function isNumber(address: number): boolean {
 // Although Strings are never garbage collected, they need to be moved to
 // compact the heap, and so the StringPool needs to be updated appropriately
 // as well.
-let StringPool = new Map<string, number>;
+let StringPool = new Map<string, number>();
 
 const StringSizeOffset = 2;
 const StringValueOffset = 3;
 
 function allocateString(s: string): number {
-    log("Inside allocateString for " + s);
+    log('Inside allocateString for ' + s);
     if (StringPool.has(s)) {
         return StringPool.get(s);
     }
 
     const size = Math.ceil(s.length / 8);
     const actualSize = size + headerSize + 1;
-    log("Size of string in words is " + actualSize);
+    log('Size of string in words is ' + actualSize);
     // 1 comes from using the third word to store the actual string length
     const sAddress = allocate(Tag.STRING, actualSize);
 
     // Store the actual length in the second word.
     heap.setUint32((sAddress + StringSizeOffset) * wordSize, s.length);
 
-    log("Length of string in word is " + heap.getUint32((sAddress + StringSizeOffset) * wordSize));
+    log('Length of string in word is ' + heap.getUint32((sAddress + StringSizeOffset) * wordSize));
 
     // Allocate byte by byte
     for (let i = 0; i < s.length; i++) {
@@ -498,8 +498,8 @@ function allocateString(s: string): number {
 
     StringPool.set(s, sAddress);
 
-    log("StringPool set to " + StringPool.get(s));
-    log("StringValue is " + getStringValue(sAddress));
+    log('StringPool set to ' + StringPool.get(s));
+    log('StringValue is ' + getStringValue(sAddress));
 
     return sAddress;
 }
@@ -507,13 +507,13 @@ function allocateString(s: string): number {
 function getStringValue(address: number): string {
     // Handle the empty string appropriately
     if (address === emptyString) {
-        return "";
+        return '';
     }
 
     // get the actual string length
-    log("getStringValue for " + address);
+    log('getStringValue for ' + address);
     const stringLength = heap.getUint32((address + StringSizeOffset) * wordSize);
-    let resultString = "";
+    let resultString = '';
     // read byte by byte
     for (let i = 0; i < stringLength; i++) {
         const c = String.fromCharCode(heap.getUint8((address + StringValueOffset) * wordSize + i));
@@ -527,16 +527,16 @@ function isString(address: number): boolean {
 }
 
 export function printHeapUsage() {
-    log("Heap: " + free + "/" + max + " words.");
+    log('Heap: ' + free + '/' + max + ' words.');
 }
 
 export function printStringPoolMapping() {
-    log("************************StringPool************************");
+    log('************************StringPool************************');
     // @ts-ignore
     for (let key of StringPool.keys()) {
-        log(key + " -> " + StringPool.get(key));
+        log(key + ' -> ' + StringPool.get(key));
     }
-    log("************************StringPool************************");
+    log('************************StringPool************************');
 }
 
 // TODO: Use this to visualize the heap
@@ -591,7 +591,7 @@ export function debugHeap(): void {
                 log('Env Addr: ' + getClosureEnvironment(curr));
                 break;
             case Tag.STRING:
-                log("String value: " + getStringValue(curr));
+                log('String value: ' + getStringValue(curr));
                 break;
             default:
                 break;
@@ -637,7 +637,7 @@ export function addressToTSValue(address: number) {
 
 export function TSValueToAddress(value: any) {
     if (typeof value === 'string') {
-      return allocateString(value);
+        return allocateString(value);
     } else if (typeof value === 'boolean') {
         return value ? True : False;
     } else if (typeof value === 'number') {
@@ -843,7 +843,7 @@ function moveLiveObjects() {
 
 function collectGarbage() {
     // First pass: marking
-    log("Collecting da garbage...");
+    log('Collecting da garbage...');
     let roots = getRoots();
     for (let root of roots) {
         mark(root);
@@ -856,10 +856,9 @@ function collectGarbage() {
     // The Strings will then be compacted appropriately
     // @ts-ignore
     for (let sKey of StringPool.keys()) {
-        log(sKey + " -> " + StringPool.get(sKey));
+        log(sKey + ' -> ' + StringPool.get(sKey));
         mark(StringPool.get(sKey));
     }
-
 
     // Second pass: Compute forwarding location for live objects
     computeForwardingAddresses();
