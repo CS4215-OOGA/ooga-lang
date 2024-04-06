@@ -438,7 +438,7 @@ var y int = 10;
 x;
 `,
     5,
-    170
+    100
 );
 
 // Testing mark and sweep, with exactly one variable that should be freed

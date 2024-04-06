@@ -40,13 +40,13 @@ const readFileAsync = util.promisify(fs.readFile);
 // ****************************
 
 // OS represents the operand stack. It uses the address of the OS on the heap.
-let OS: number;
+export let OS: number;
 // PC represents the Program Counter. It is just an integer, we assume it is a PC register or something.
 let PC: number;
 // E represents the environment. It uses the address of E on the heap.
-let E: number;
+export let E: number;
 // RTS represents the runtime stack. It uses the address of the RTS on the heap.
-let RTS: number;
+export let RTS: number;
 // instrs represents the program instructions.
 let instrs: any[];
 // TimeQuanta represents the current time quantum for the current running thread
@@ -603,6 +603,7 @@ export function getRoots(): number[] {
     roots.push(E);
     roots.push(OS);
     roots.push(RTS);
+    roots.push(originalE);
     // @ts-ignore
     for (let [threadId, thread] of threads.entries()) {
         if (threadId == currentThreadId) {
@@ -620,16 +621,27 @@ export function getRoots(): number[] {
 // ****************************************
 // Called before the machine runs a program
 
+let originalE;
+
+function updateRoots(newE: number, newOS: number, newRTS: number) {
+    log("original E = " + E + " is updated to " + newE);
+    E = newE;
+    log("original OS = " + OS + " is updated to " + newOS);
+    OS = newOS;
+    log("original RTS = " + RTS + " is updated to " + newRTS);
+    RTS = newRTS;
+}
+
 function initialize(numWords = 1000000) {
     // TODO: Figure out an appropriate number of words
     // There is definitely some bug with the memory management!
-    constructHeap(numWords);
+    constructHeap(numWords, updateRoots);
     PC = 0;
     OS = initializeStack();
     RTS = initializeStack();
     builtinsFrame = initializeBuiltins();
-    E = allocateEnvironment(0);
-    E = extendEnvironment(builtinsFrame, E);
+    originalE = allocateEnvironment(0);
+    E = extendEnvironment(builtinsFrame, originalE);
     running = true;
     State = ProgramState.NORMAL;
     initScheduler();
@@ -757,7 +769,7 @@ async function main() {
     const inputFilename = process.argv[2];
     let bytecode = await readFileAsync(inputFilename, 'utf8');
     processByteCode(bytecode);
-    return run();
+    return run(80);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

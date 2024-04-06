@@ -1,5 +1,6 @@
 import debug from 'debug';
 import { HeapOutOfMemoryError, OogaError } from './oogavm-errors.js';
+import { getRoots, E, OS, RTS } from './oogavm-machine.js';
 
 const log = debug('ooga:memory');
 
@@ -11,6 +12,7 @@ const sizeOffset = 5;
 const emptyFreeList = -1;
 
 export enum Tag {
+    UNINITIALIZED, // all starting heap are tag 0
     FALSE,
     TRUE,
     NUMBER,
@@ -68,9 +70,10 @@ function getTagString(tag: Tag): string {
 //  0-3rd byte: size of node in words
 //    E.g. if node's minimum
 //  4-7th byte: tag of node
-// 2nd word onwards is tag dependent interpretation
-// For Tags without children, payload is the 2nd word
-// For Tags with children, num children is 2nd word
+// 2nd word is the forwarding address
+// 3rd word onwards is tag dependent interpretation
+// For Tags without children, payload is the 3rd word
+// For Tags with children, num children is 3rd word
 //
 // minimum number of words required to support each node in the
 // linear list is = 3 words
@@ -87,11 +90,8 @@ let free: number;
 let max: number;
 // 4 bytes from start
 const tagOffset = 4;
-
-// 2nd word
-const nextOffset = 1;
-// 3rd word
-const numChildrenOffset = 2;
+// 2 words required for header information
+const headerSize = 2;
 
 // Canonical variables
 export let False;
@@ -100,14 +100,25 @@ export let Null;
 export let Unassigned;
 export let Undefined;
 
-export function constructHeap(numWords: number): DataView {
+let literals = [];
+
+let updateRoots;
+
+/**
+ * A heap based memory model that makes use of Lisp 2 garbage collection.
+ * @param numWords
+ */
+export function constructHeap(numWords: number, updateRootsFn): DataView {
     if (numWords > 2 ** 64) {
         throw new OogaError("Can't use a memory model with more than 2**32 words");
+    } else if (numWords % 2 !== 0) {
+        throw new OogaError("Please use an even number of words for Ooga");
     }
     heap = new DataView(new ArrayBuffer(numWords * wordSize));
     max = numWords;
     free = 0;
     allocateLiteralValues();
+    updateRoots = updateRootsFn;
     return heap;
 }
 
@@ -148,37 +159,30 @@ function set2ByteAtOffset(address: number, offset: number, value: number) {
     heap.setUint16(address * wordSize + offset, value);
 }
 
-function getNumChildren(address: number): number {
-    if (getTag(address) === Tag.NUMBER) {
-        return 0;
-    }
-    return heap.getFloat64((address + numChildrenOffset) * wordSize);
-}
-
 function allocate(tag: Tag, size: number): number {
-    if (free === max) {
+    if (free === max || free + size >= max) {
         collectGarbage();
     }
-    if (free === max) {
+
+    if (free === max || free + size >= max) {
         throw new HeapOutOfMemoryError();
     }
+
     const address = free;
     free = free + size;
     setTag(address, tag);
     setSize(address, size);
+    setForwardingAddress(address, address);
     return address;
 }
 
-function collectGarbage() {
-
-}
-
 function allocateLiteralValues() {
-    False = allocate(Tag.FALSE, 1);
-    True = allocate(Tag.TRUE, 1);
-    Null = allocate(Tag.NULL, 1);
-    Unassigned = allocate(Tag.UNASSIGNED, 1);
-    Undefined = allocate(Tag.UNDEFINED, 1);
+    False = allocate(Tag.FALSE, 2);
+    True = allocate(Tag.TRUE, 2);
+    Null = allocate(Tag.NULL, 2);
+    Unassigned = allocate(Tag.UNASSIGNED, 2);
+    Undefined = allocate(Tag.UNDEFINED, 2);
+    literals = [False, True, Null, Unassigned, Undefined];
 }
 
 function isTrue(address: number): boolean {
@@ -220,12 +224,12 @@ function setWord(addr: number, value): void {
 // ****************************
 // Stack
 // ****************************
-// 2nd word is address of previous Stack
-// 3rd word is address of Stack element value
-const prevStackElementOffset = 1;
-const stackEntryOffset = 2;
+// 3rd word is address of previous Stack
+// 4th word is address of Stack element value
+const prevStackElementOffset = 2;
+const stackEntryOffset = 3;
 export function initializeStack(): number {
-    const address = allocate(Tag.STACK, 3);
+    const address = allocate(Tag.STACK, 4);
     setWord(address + prevStackElementOffset, -1);
     setWord(address + stackEntryOffset, -1);
     return address;
@@ -236,7 +240,7 @@ export function getPrevStackAddress(address: number): number {
 }
 
 export function pushStack(stackAddress: number, stackElementAddress: number): number {
-    const nextStack = allocate(Tag.STACK, 3);
+    const nextStack = allocate(Tag.STACK, 4);
     setWord(nextStack + prevStackElementOffset, stackAddress);
     setWord(nextStack + stackEntryOffset, stackElementAddress);
     return nextStack;
@@ -269,26 +273,26 @@ function isStack(address: number): boolean {
 // *****************************
 //
 
-// 1 word
-const closureArityOffset = 1;
-// 1 word + 2 byte offset
-const closurePcOffset = 3;
 // 2 words
-const closureEnvOffset = 2;
+const closureArityOffset = 1;
+// 2 word + 2 byte offset
+const closurePcOffset = 3;
+// 3 words
+const closureEnvOffset = 3;
 export function allocateClosure(arity: number, pc: number, envAddress: number): number {
-    const address = allocate(Tag.CLOSURE, 3);
-    setByteAtOffset(address + 1, closureArityOffset, arity);
-    set2ByteAtOffset(address + 1, closurePcOffset, pc);
+    const address = allocate(Tag.CLOSURE, 4);
+    setByteAtOffset(address + headerSize, closureArityOffset, arity);
+    set2ByteAtOffset(address + headerSize, closurePcOffset, pc);
     setWord(address + closureEnvOffset, envAddress);
     return address;
 }
 
 export function getClosureArity(address: number): number {
-    return getByteAtOffset(address + 1, closureArityOffset);
+    return getByteAtOffset(address + headerSize, closureArityOffset);
 }
 
 export function getClosurePC(address: number): number {
-    return get2ByteAtOffset(address + 1, closurePcOffset);
+    return get2ByteAtOffset(address + headerSize, closurePcOffset);
 }
 
 export function getClosureEnvironment(address: number): number {
@@ -302,12 +306,12 @@ export function isClosure(address: number): boolean {
 // **************************************
 // Block Frame
 // **************************************
-
-// 1 word
-const blockFrameEnvOffset = 1;
+// 3rd word is blockFrameEnv
+const blockFrameEnvOffset = 2;
 
 export function allocateBlockFrame(envAddress: number): number {
-    const address = allocate(Tag.BLOCKFRAME, 2);
+    const address = allocate(Tag.BLOCKFRAME, 3);
+    log("BlockFrame at addr " + address + " will point to E=" + envAddress);
     setWord(address + blockFrameEnvOffset, envAddress);
     return address;
 }
@@ -324,13 +328,13 @@ function isBlockFrame(address: number): boolean {
 // Call Frame
 // ********************************
 
-// 2nd word
-const callFramePCOffset = 1;
 // 3rd word
-const callFrameEnvAddress = 2;
+const callFramePCOffset = 2;
+// 4th word
+const callFrameEnvAddress = 3;
 
 export function allocateCallFrame(envAddress: number, pc: number): number {
-    const address = allocate(Tag.CALLFRAME, 3);
+    const address = allocate(Tag.CALLFRAME, 4);
     setWord(address + callFramePCOffset, pc);
     setWord(address + callFrameEnvAddress, envAddress);
     return address;
@@ -353,25 +357,25 @@ export function isCallFrame(address: number): boolean {
 // *********************
 
 export function allocateEnvironment(numFrames: number): number {
-    return allocate(Tag.ENVIRONMENT, numFrames + 1);
+    return allocate(Tag.ENVIRONMENT, numFrames + headerSize);
 }
 
 export function getEnvironmentValue(envAddress: number, frameIndex: number, valueIndex: number) {
-    const frameAddress = getWordOffset(envAddress, frameIndex + 1);
-    return getWordOffset(frameAddress, valueIndex + 1);
+    const frameAddress = getWordOffset(envAddress, frameIndex + headerSize);
+    return getWordOffset(frameAddress, valueIndex + headerSize);
 }
 
 export function setEnvironmentValue(envAddress: number, frameIndex: number, valueIndex: number, value: number) {
-    const frameAddress = getWordOffset(envAddress, frameIndex + 1);
-    setWord(frameAddress + valueIndex + 1, value);
+    const frameAddress = getWordOffset(envAddress, frameIndex + headerSize);
+    setWord(frameAddress + valueIndex + headerSize, value);
 }
 
 export function allocateFrame(numValues: number): number {
-    return allocate(Tag.FRAME, numValues + 1);
+    return allocate(Tag.FRAME, numValues + headerSize);
 }
 
 export function setFrameValue(frameAddress: number, i: number, value: number) {
-    setWord(frameAddress + i + 1, value);
+    setWord(frameAddress + i + headerSize, value);
 }
 
 // extend a given environment by a new frame
@@ -379,22 +383,21 @@ export function setFrameValue(frameAddress: number, i: number, value: number) {
 // and copies the frame addresses of the given env to the new env
 // then sets the address of te new frame to the end of the new env
 export function extendEnvironment(frameAddress: number, envAddress: number): number {
-    const oldSize = getSize(envAddress);
-    // this has the increment by 1 because allocateEnvironment assumes 1 for itself
-    const newEnvAddress = allocateEnvironment(oldSize);
+    const oldSize = getSize(envAddress) - headerSize;
+    const newEnvAddress = allocateEnvironment(oldSize + 1);
     let i = 0;
-    for (i = 0; i < oldSize - 1; i++) {
-        setWord(newEnvAddress + i + 1, getWordOffset(envAddress, i + 1));
+    for (i = 0; i < oldSize; i++) {
+        setWord(newEnvAddress + i + headerSize, getWordOffset(envAddress, i + headerSize));
     }
-    setWord(newEnvAddress + i + 1, frameAddress);
+    setWord(newEnvAddress + i + headerSize, frameAddress);
     return newEnvAddress;
 }
 
-// 1 word
-const builtinIDOffset = 8;
+// 2 word
+const builtinIDOffset = 16;
 
 export function allocateBuiltin(id: number): number {
-    const address = allocate(Tag.BUILTIN, 2);
+    const address = allocate(Tag.BUILTIN, 3);
     setByteAtOffset(address, builtinIDOffset, id);
     return address;
 }
@@ -407,16 +410,16 @@ export function getBuiltinID(address: number): number {
 // Golang structures
 // **************************
 export function allocateStruct(numFields: number): number {
-    const address = allocate(Tag.STRUCT, numFields + 1);
+    const address = allocate(Tag.STRUCT, numFields + headerSize);
     return address;
 }
 
 export function setField(structAddress: number, fieldIndex: number, value: number) {
-    setWord(structAddress + 1 + fieldIndex, value);
+    setWord(structAddress + headerSize + fieldIndex, value);
 }
 
 export function getField(structAddress: number, fieldIndex: number): number {
-    return getWordOffset(structAddress, fieldIndex + 1);
+    return getWordOffset(structAddress, fieldIndex + headerSize);
 }
 
 function isStruct(address: number) {
@@ -427,8 +430,8 @@ function isStruct(address: number) {
 // Number
 // *********************
 function allocateNumber(n: number): number {
-    const numAddress = allocate(Tag.NUMBER, 2);
-    setWord(numAddress + 1, n);
+    const numAddress = allocate(Tag.NUMBER, 3);
+    setWord(numAddress + headerSize, n);
     return numAddress;
 }
 
@@ -463,11 +466,11 @@ export function debugHeap(): void {
                 break;
             case Tag.STACK:
                 log("Previous: " + getPrevStackAddress(curr));
-                log("Entry: " + addressToTSValue(peekStack(curr)));
+                log("Entry: " + addressToTSValue(peekStack(curr)) + " at " + peekStack(curr));
                 break;
             case Tag.ENVIRONMENT:
-                for (let i = 0; i < getSize(curr) - 1; i++) {
-                    log("Frame address: " + getWordOffset(curr, i + 1));
+                for (let i = 0; i < getSize(curr) - headerSize; i++) {
+                    log("Frame address: " + getWordOffset(curr, i + headerSize));
                 }
                 break;
             case Tag.STRUCT:
@@ -478,8 +481,8 @@ export function debugHeap(): void {
                 log("Env Addr: " + getCallFrameEnvironment(curr));
                 break;
             case Tag.FRAME:
-                for (let i = 0; i < getSize(curr) - 1; i++) {
-                    log("Frame " + i + ": " + getWordOffset(curr, i + 1));
+                for (let i = 0; i < getSize(curr) - headerSize; i++) {
+                    log("Frame " + i + ": " + getWordOffset(curr, i + headerSize));
                 }
                 break;
             case Tag.CLOSURE:
@@ -511,7 +514,7 @@ export function addressToTSValue(address: number) {
     } else if (isUnassigned(address)) {
         return '<unassigned>';
     } else if (isNumber(address)) {
-        return getWordOffset(address, 1);
+        return getWordOffset(address, headerSize);
     } else if (isBuiltin(address)) {
         return '<builtin>';
     } else if (isClosure(address)) {
@@ -542,4 +545,207 @@ export function TSValueToAddress(value: any) {
     } else {
         throw new Error('not implemented yet, value: ' + JSON.stringify(value, null, 2));
     }
+}
+
+// Linear mark and sweep garbage collection with copy compaction
+function isMarked(addr) {
+    return getTag(addr) < 0;
+}
+
+function markTag(addr) {
+    const originalTag = getTag(addr);
+    if (originalTag === Tag.UNINITIALIZED || isMarked(addr)) {
+        return originalTag;
+    }
+    heap.setInt8(addr * wordSize + tagOffset, -1 - originalTag);
+    return originalTag;
+}
+
+function unmarkTag(addr) {
+    if (!isMarked(addr)) {
+        return;
+    }
+    const markedTag = getTag(addr);
+    heap.setInt8(addr * wordSize + tagOffset, -1 - markedTag);
+}
+
+function mark(addr) {
+    if (isMarked(addr)) {
+        return;
+    }
+    const originalTag: Tag = markTag(addr);
+    switch (originalTag) {
+        case Tag.BLOCKFRAME:
+            mark(getBlockFrameEnvironment(addr));
+            break;
+        case Tag.CALLFRAME:
+            mark(getCallFrameEnvironment(addr));
+            break;
+        case Tag.CLOSURE:
+            mark(getClosureEnvironment(addr));
+            break;
+        case Tag.STACK:
+            // mark values and then recurse to bottom of stack
+            // taking care to handle proper nil values
+            const value = peekStack(addr);
+            if (value !== -1) {
+                mark(value);
+            }
+            const parent = getPrevStackAddress(addr);
+            if (parent !== -1) {
+                mark(parent);
+            }
+            break;
+        case Tag.FRAME:
+        case Tag.ENVIRONMENT:
+        case Tag.STRUCT:
+            const numChildren = getSize(addr) - 1;
+            for (let i = 0; i < numChildren; i++) {
+                mark(getWord(addr + i + 1));
+            }
+            break;
+        default:
+            // no special case for builtins, struct fields
+            return;
+    }
+}
+
+const forwardingAddressOffset = 1;
+
+function getForwardingAddress(address: number) {
+    return heap.getInt32((address + forwardingAddressOffset) * wordSize);
+}
+
+function setForwardingAddress(address: number, forwardedAddress: number) {
+    heap.setInt32((address + forwardingAddressOffset) * wordSize, forwardedAddress);
+}
+
+/**
+ * Implements the Lisp 2 garbage collection algorithm.
+ * Performs 4 passes over the heap.
+ * The first pass is the standard marking phase.
+ * The second pass computes the forwarding location for live objects.
+ * The third pass updates all pointers
+ * The fourth and final pass moves objects.
+ * This achieves O(N) time complexity while maximizing usage of the entire heap.
+ */
+
+function computeForwardingAddresses() {
+    let freePtr = 0;
+    let livePtr = 0;
+    while (livePtr < free) {
+        const size = getSize(livePtr);
+        // If it points to a live object, update the forwarding address
+        // to the current freePtr and increment the freePtr according to
+        // the object's size.
+        if (isMarked(livePtr)) {
+            setForwardingAddress(livePtr, freePtr);
+            freePtr += size;
+        }
+        livePtr += size;
+    }
+}
+
+// For each live object, update its pointers according to the forwarding
+// pointers of the objects they point to
+function updateReferences() {
+    let curr = 0;
+    while (curr < free) {
+        const size = getSize(curr);
+        if (isMarked(curr)) {
+            const markedTag = getTag(curr);
+            const originalTag = -1 - markedTag;
+            switch(originalTag) {
+                case Tag.BLOCKFRAME:
+                    const originalBlockEnvAddr = getBlockFrameEnvironment(curr);
+                    const forwardedBlockEnvAddr = getForwardingAddress(originalBlockEnvAddr);
+                    setWord(curr + blockFrameEnvOffset, forwardedBlockEnvAddr);
+                    break;
+                case Tag.CALLFRAME:
+                    const originalCFEnvAddr = getCallFrameEnvironment(curr);
+                    const forwardedCFEnvAddr = getForwardingAddress(originalCFEnvAddr);
+                    setWord(curr + callFrameEnvAddress, forwardedCFEnvAddr);
+                    break;
+                case Tag.CLOSURE:
+                    const originalCLEnvAddr = getClosureEnvironment(curr);
+                    const forwardedCLEnvAddr = getForwardingAddress(originalCLEnvAddr);
+                    setWord(curr + closureEnvOffset, forwardedCLEnvAddr);
+                    break;
+                case Tag.STACK:
+                    // Remember that the value of a stack is just the address
+                    let originalValue = peekStack(curr);
+                    if (originalValue !== -1) {
+                        const forwardedValue = getForwardingAddress(originalValue);
+                        setWord(curr + stackEntryOffset, forwardedValue);
+                    }
+                    let originalPrev = getWordOffset(curr, prevStackElementOffset);
+                    if (originalPrev !== -1) {
+                        const forwardedPrev = getForwardingAddress(originalPrev);
+                        setWord(curr + prevStackElementOffset, forwardedPrev);
+                    }
+                    break;
+                case Tag.FRAME:
+                case Tag.ENVIRONMENT:
+                case Tag.STRUCT:
+                    const numChildren = getSize(curr) - headerSize;
+                    for (let i = 0; i < numChildren; i++) {
+                        const originalChildAddr = getWord(curr + i + headerSize);
+                        const forwardedAddr = getForwardingAddress(originalChildAddr);
+                        setWord(curr + i + headerSize, forwardedAddr);
+                    }
+                    break;
+                default:
+                    // no special case for builtins, struct fields
+                    break;
+            }
+        }
+        curr += size;
+    }
+}
+
+function moveLiveObjects() {
+    let curr = 0;
+    let freePtr = 0; // the next free
+    while (curr < free) {
+        const size = getSize(curr);
+        if (!isMarked(curr)) {
+            curr += size;
+            continue;
+        }
+        // need to unmark first to make valid,
+        // this will also ignore the entry again
+        unmarkTag(curr);
+        const forwardedAddress = getForwardingAddress(curr);
+        // copy each word over
+        for (let i = 0; i < size; i++) {
+            const value = getWord(curr + i);
+            setWord(forwardedAddress + i, value);
+        }
+        // Explicitly update the forwarding address
+        setForwardingAddress(forwardedAddress, forwardedAddress);
+        curr += size;
+        freePtr += size;
+    }
+    free = freePtr;
+}
+
+function collectGarbage() {
+    // First pass: marking
+    let roots = getRoots();
+    for (let root of roots) {
+        mark(root);
+    }
+    for (let literal of literals) {
+        mark(literal);
+    }
+    // Second pass: Compute forwarding location for live objects
+    computeForwardingAddresses();
+    // Third pass: update all pointers to the forwarding addresses
+    updateReferences();
+    // we need to update the roots first because if the root is at a place
+    // after free, the forwarding address there is basically garbage data
+    // can't avoid this tight coupling unfortunately
+    updateRoots(getForwardingAddress(E), getForwardingAddress(OS), getForwardingAddress(RTS));
+    // Final pass: move all live objects to their forwarding address
+    moveLiveObjects();
 }
