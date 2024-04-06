@@ -17,19 +17,11 @@
               "name": "x"
             },
             "type": "Integer"
-          },
-          {
-            "tag": "StructField",
-            "name": {
-              "tag": "Name",
-              "name": "y"
-            },
-            "type": "Integer"
           }
         ]
       },
       {
-        "tag": "ConstantDeclaration",
+        "tag": "VariableDeclaration",
         "id": {
           "tag": "Name",
           "name": "p"
@@ -40,10 +32,6 @@
             {
               "tag": "Integer",
               "value": 1
-            },
-            {
-              "tag": "Integer",
-              "value": 2
             }
           ],
           "named": false,
@@ -55,17 +43,6 @@
         "type": {
           "tag": "Struct",
           "name": "Point"
-        }
-      },
-      {
-        "tag": "MemberExpression",
-        "object": {
-          "tag": "Name",
-          "name": "p"
-        },
-        "property": {
-          "tag": "Name",
-          "name": "x"
         }
       }
     ]

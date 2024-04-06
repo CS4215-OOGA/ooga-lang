@@ -5,7 +5,11 @@ export class OogaError extends Error {
     }
 }
 
-export class ParseError extends OogaError {}
+export class ParseError extends OogaError {
+    constructor(msg: string) {
+        super(msg);
+    }
+}
 
 export class HeapError extends OogaError {
     constructor(msg: string) {
@@ -27,7 +31,7 @@ export class HeapDeadError extends OogaError {
     }
 }
 
-export class OogaRedeclarationError extends OogaError {
+export class CompilerError extends OogaError {
     constructor(msg: string) {
         super(msg);
     }

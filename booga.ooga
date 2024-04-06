@@ -1,6 +1,5 @@
 type Point struct {
 	x int
-	y int
 }
-const p Point = Point{1, 2}
-p.x
+
+var p Point = Point{1}

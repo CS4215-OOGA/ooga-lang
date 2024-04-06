@@ -1,5 +1,5 @@
 import debug from 'debug';
-import { HeapOutOfMemoryError, OogaError } from './oogavm-errors.js';
+import { HeapError, HeapOutOfMemoryError } from './oogavm-errors.js';
 import { getRoots, E, OS, RTS } from './oogavm-machine.js';
 
 const log = debug('ooga:memory');
@@ -115,9 +115,9 @@ let updateRoots;
  */
 export function constructHeap(numWords: number, updateRootsFn): DataView {
     if (numWords > 2 ** 64) {
-        throw new OogaError("Can't use a memory model with more than 2**32 words");
+        throw new HeapError("Can't use a memory model with more than 2**32 words");
     } else if (numWords % 2 !== 0) {
-        throw new OogaError("Please use an even number of words for Ooga");
+        throw new HeapError('Please use an even number of words for Ooga');
     }
     heap = new DataView(new ArrayBuffer(numWords * wordSize));
     max = numWords;
@@ -317,7 +317,7 @@ const blockFrameEnvOffset = 2;
 
 export function allocateBlockFrame(envAddress: number): number {
     const address = allocate(Tag.BLOCKFRAME, 3);
-    log("BlockFrame at addr " + address + " will point to E=" + envAddress);
+    log('BlockFrame at addr ' + address + ' will point to E=' + envAddress);
     setWord(address + blockFrameEnvOffset, envAddress);
     return address;
 }
@@ -371,7 +371,12 @@ export function getEnvironmentValue(envAddress: number, frameIndex: number, valu
     return getWordOffset(frameAddress, valueIndex + headerSize);
 }
 
-export function setEnvironmentValue(envAddress: number, frameIndex: number, valueIndex: number, value: number) {
+export function setEnvironmentValue(
+    envAddress: number,
+    frameIndex: number,
+    valueIndex: number,
+    value: number
+) {
     const frameAddress = getWordOffset(envAddress, frameIndex + headerSize);
     setWord(frameAddress + valueIndex + headerSize, value);
 }
@@ -536,13 +541,13 @@ export function printStringPoolMapping() {
 
 // TODO: Use this to visualize the heap
 export function debugHeap(): void {
-    log("DEBUG HEAP");
+    log('DEBUG HEAP');
     let curr = 0;
     while (curr < free) {
-        log("**********************************************************");
-        log("Address " + curr + ": ");
-        log("Tag: " + getTagString(getTag(curr)));
-        log("Size: " + getSize(curr));
+        log('**********************************************************');
+        log('Address ' + curr + ': ');
+        log('Tag: ' + getTagString(getTag(curr)));
+        log('Size: ' + getSize(curr));
         switch (getTag(curr)) {
             case Tag.FALSE:
             case Tag.TRUE:
@@ -551,39 +556,39 @@ export function debugHeap(): void {
             case Tag.UNDEFINED:
                 break;
             case Tag.NUMBER:
-                log("Value: " + addressToTSValue(curr));
+                log('Value: ' + addressToTSValue(curr));
                 break;
             case Tag.BLOCKFRAME:
-                log("Env address: " + getBlockFrameEnvironment(curr));
+                log('Env address: ' + getBlockFrameEnvironment(curr));
                 break;
             case Tag.BUILTIN:
-                log("ID: " + getBuiltinID(curr));
+                log('ID: ' + getBuiltinID(curr));
                 break;
             case Tag.STACK:
-                log("Previous: " + getPrevStackAddress(curr));
-                log("Entry: " + addressToTSValue(peekStack(curr)) + " at " + peekStack(curr));
+                log('Previous: ' + getPrevStackAddress(curr));
+                log('Entry: ' + addressToTSValue(peekStack(curr)) + ' at ' + peekStack(curr));
                 break;
             case Tag.ENVIRONMENT:
                 for (let i = 0; i < getSize(curr) - headerSize; i++) {
-                    log("Frame address: " + getWordOffset(curr, i + headerSize));
+                    log('Frame address: ' + getWordOffset(curr, i + headerSize));
                 }
                 break;
             case Tag.STRUCT:
                 // TODO
                 break;
             case Tag.CALLFRAME:
-                log("PC: " + getCallFramePC(curr));
-                log("Env Addr: " + getCallFrameEnvironment(curr));
+                log('PC: ' + getCallFramePC(curr));
+                log('Env Addr: ' + getCallFrameEnvironment(curr));
                 break;
             case Tag.FRAME:
                 for (let i = 0; i < getSize(curr) - headerSize; i++) {
-                    log("Frame " + i + ": " + getWordOffset(curr, i + headerSize));
+                    log('Frame ' + i + ': ' + getWordOffset(curr, i + headerSize));
                 }
                 break;
             case Tag.CLOSURE:
-                log("Arity: " + getClosureArity(curr));
-                log("PC" + getClosurePC(curr));
-                log("Env Addr: " + getClosureEnvironment(curr));
+                log('Arity: ' + getClosureArity(curr));
+                log('PC' + getClosurePC(curr));
+                log('Env Addr: ' + getClosureEnvironment(curr));
                 break;
             case Tag.STRING:
                 log("String value: " + getStringValue(curr));
@@ -626,7 +631,7 @@ export function addressToTSValue(address: number) {
     } else if (isString(address)) {
         return getStringValue(address);
     } else {
-        throw new Error("bagoog");
+        throw new Error('bagoog');
     }
 }
 
@@ -757,7 +762,7 @@ function updateReferences() {
         if (isMarked(curr)) {
             const markedTag = getTag(curr);
             const originalTag = -1 - markedTag;
-            switch(originalTag) {
+            switch (originalTag) {
                 case Tag.BLOCKFRAME:
                     const originalBlockEnvAddr = getBlockFrameEnvironment(curr);
                     const forwardedBlockEnvAddr = getForwardingAddress(originalBlockEnvAddr);

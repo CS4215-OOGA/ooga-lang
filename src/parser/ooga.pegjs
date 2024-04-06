@@ -823,13 +823,13 @@ GoroutineStatement
 
 LambdaDeclaration
   = FunctionToken __ "(" __ params:(FormalParameterList __)? ")" __
-    "("? __ type:(ReturnTypeList)? __ ")"? __
+    "("? __ type:(ReturnType)? __ ")"? __
     "{" __ body:FunctionBody __ "}"
     {
       return {
         tag: "LambdaDeclaration",
         params: optionalList(extractOptional(params, 0)),
-        type: type || ["Null"],
+        type: type || "Null",
         body: body
       }
     }
@@ -837,14 +837,14 @@ LambdaDeclaration
 FunctionDeclaration
   = FunctionToken __ id:Identifier __
     "(" __ params:(FormalParameterList __)? ")" __
-    "("? __ type:(ReturnTypeList)? __ ")"? __
+    "("? __ type:(ReturnType)? __ ")"? __
     "{" __ body:FunctionBody __ "}"
     {
       return {
         tag: "FunctionDeclaration",
         id: id,
         params: optionalList(extractOptional(params, 0)),
-        type: type || ["Null"],
+        type: type || "Null",
         body: body
       };
     }
@@ -853,7 +853,7 @@ FunctionDeclaration
 FunctionExpression
   = FunctionToken __ id:(Identifier __)?
     "(" __ params:(FormalParameterList __)? ")" __
-    "("? __ type:(ReturnTypeList)? __ ")"? __
+    "("? __ type:(ReturnType)? __ ")"? __
     "{" __ body:FunctionBody __ "}"
     {
       return {
@@ -861,7 +861,7 @@ FunctionExpression
         id: extractOptional(id, 0),
         params: optionalList(extractOptional(params, 0)),
         body: body,
-        type: type || ["Null"]
+        type: type || "Null"
       };
     }
 
@@ -878,11 +878,6 @@ FormalParameter
       return { tag: id.tag, name: id.name, type: type };
     }
 
-
-ReturnTypeList
-  = head:ReturnType tail:(__ "," __ ReturnType)* {
-      return buildList(head, tail, 3);
-    }
 
 ReturnType
   = type:InitType {
@@ -942,6 +937,9 @@ StructField
   = id:Identifier __ type:InitType EOS {
       return { tag: "StructField", name: id, type: type };
     }
+    / id:Identifier __ type:StructIdentifier EOS {
+        return { tag: "StructField", name: id, type: type };
+    }
 
 // ----- Struct Initializers -----
 Struct
@@ -981,7 +979,7 @@ StructValueInitializerList
 MethodDeclaration
   = FunctionToken __ "(" __ receiver:Receiver __ ")" __ id:Identifier __
     "(" __ params:(FormalParameterList __)? ")" __
-    "("? __ type:(ReturnTypeList)? __ ")"? __
+    "("? __ type:(ReturnType)? __ ")"? __
     "{" __ body:FunctionBody __ "}"
     {
       return {
@@ -989,7 +987,7 @@ MethodDeclaration
         receiver: receiver,
         id: id,
         params: optionalList(extractOptional(params, 0)),
-        type: type || ["Null"],
+        type: type || "Null",
         body: body
       };
     }
