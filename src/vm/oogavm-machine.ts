@@ -23,7 +23,7 @@ import {
     isUnassigned,
     peekStack,
     peekStackN,
-    popStack,
+    popStack, printHeapUsage, printStringPoolMapping,
     pushStack,
     setEnvironmentValue, setField,
     setFrameValue,
@@ -309,6 +309,9 @@ const microcode = {
     },
     LDU: instr => {
         pushTSValueOS(Undefined);
+    },
+    LDCS: instr => {
+        pushTSValueOS(instr.val);
     },
     POP: instr => {
         let _;
@@ -674,6 +677,8 @@ function runInstruction() {
     log("PC: " + E);
     debugHeap();
     printOSStack();
+    printHeapUsage();
+    printStringPoolMapping();
 }
 
 // TODO: Switch to low level memory representation
@@ -769,7 +774,7 @@ async function main() {
     const inputFilename = process.argv[2];
     let bytecode = await readFileAsync(inputFilename, 'utf8');
     processByteCode(bytecode);
-    return run(80);
+    return run(104);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

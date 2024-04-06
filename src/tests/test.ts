@@ -891,3 +891,21 @@ testProgram(`
 var x int = 5;
 var x int = 5;
 `, "Variable x declared more than once in the same block!", defaultNumWords)
+
+// Test String works locally
+// testProgram(`
+// var x string = "Jotham";
+// var y string = "Wong";
+// x + " " + y;
+// `, "Jotham Wong", defaultNumWords);
+
+// Test String with GC
+// 104 is just sufficient
+// testProgram(`
+// var x string = "Jotham";
+// var y string = "Wong";
+// {
+//     var z int = 5;
+// }
+// print(x + " " + y);
+// `, "Jotham Wong", 104);
