@@ -281,11 +281,11 @@ var a int = 1;
 var b int = 2;
 go func() {
   a = 2;
-}
+}()
 
 go func() {
   b = 3;
-}
+}()
 
 a + b;
 `,
@@ -729,11 +729,11 @@ var p Point = Point{1, 2};
 
 go func() {
     p.addX(5);
-}
+}()
 
 go func() {
     p.getX();
-}
+}()
 
 p.x;
 `,
