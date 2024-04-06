@@ -818,13 +818,6 @@ GoroutineStatement
   = GoroutineToken _ argument:GoroutineCallExpression EOS {
       return { tag: "CallGoroutine", expression: argument }
     }
-  / GoroutineToken _ lambda:LambdaDeclaration
-    {
-      return {
-        tag: "GoroutineDeclaration",
-        expression: lambda
-      }
-    }
 
 // ----- A.5 Functions and Programs -----
 
