@@ -777,6 +777,7 @@ async function main() {
     return run(104);
 }
 
+// @ts-ignore
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     main().catch(err => {
         console.error(err);
