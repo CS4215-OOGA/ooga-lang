@@ -1,6 +1,7 @@
 import Opcodes from './opcodes.js';
 import { builtinMappings, initializeBuiltinTable } from './oogavm-machine.js';
 import debug from 'debug';
+import {OogaRedeclarationError} from "./oogavm-errors.js";
 const log = debug('ooga:compiler');
 
 let wc;
@@ -108,7 +109,7 @@ function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
         ) {
             // could probably use an extra set but i rather have smaller code
             if (declarations.find(decl => decl.name === comp.id.name) !== undefined) {
-                throw Error(
+                throw new OogaRedeclarationError(
                     'Variable ' + comp.id.name + ' declared more than once in the same block!'
                 );
             }

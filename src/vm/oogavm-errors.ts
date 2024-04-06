@@ -26,3 +26,9 @@ export class HeapDeadError extends OogaError {
         super('Out of memory!');
     }
 }
+
+export class OogaRedeclarationError extends OogaError {
+    constructor(msg: string) {
+        super(msg);
+    }
+}

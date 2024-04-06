@@ -5,6 +5,7 @@ import { compile_program } from '../vm/oogavm-compiler.js';
 import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
 import { checkTypes } from '../vm/oogavm-typechecker.js';
+import {OogaError, OogaRedeclarationError} from "../vm/oogavm-errors.js";
 
 const log = debug('ooga:tests');
 
@@ -35,6 +36,11 @@ export function testProgram(
         processByteCode(bytecode);
         value = run(numWords);
     } catch (e) {
+        if (e.message === expectedValue) {
+            logTest('Test passed');
+            logTest('--------------------------------------------');
+            return;
+        }
         logTest('--------------------------------------------', true);
         logTest('Test failed with exception', true);
         logTest(`Error: ${e.message}`, true);
@@ -878,3 +884,10 @@ var y int = 25;
 var z int = 26;
 a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w +x + y + z;
 `, 351, defaultNumWords);
+
+
+// Negative test for more than once variable declaration
+testProgram(`
+var x int = 5;
+var x int = 5;
+`, "Variable x declared more than once in the same block!", defaultNumWords)
