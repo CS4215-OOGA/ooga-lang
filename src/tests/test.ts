@@ -408,29 +408,18 @@ x;
 );
 
 // *******************************
-// Testing mark and sweep
+// Notes on Memory Model
 // *******************************
-// NOTE: All the mark and sweep test cases are super fragile
-//       and will break upon any feature we add that increases the
-//       number of words used at initialization!
-//       For the sake of our sanities, this place will be source of
-//       truth for how much memory the operation currently takes!
-//       The literal allocations will consume 50 words
-//       Allocating the starting OS will consume 20 words
-//       Allocating the builtin frame will consume 10 words
-//       Allocating the initial global environment will consume 10 words
-//       Initializing the environment to point to the builtin frame will consume
-//       another 10 words.
-//       Entering the global frame (which pushes onto RTS) will consume
-//       10 words for each variable/const/func declaration (and can't exceed 10)
-//       Then you gotta allocate the new environment frame which is another 10 words
-//       for each.
-//       And then you need to push two values onto the OS, which is 20 words.
-//       So if you do the bare math, the basic minimum number of words OOGAVM
-//       needs to run the following test case is 170.
-//       50 + 20 + 10 + 10 + 10 + 10 + 20 + 20 + 20
-//       If future test cases break cos we do something to the initialization
-//       look over here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Minimal memory required for the OOGA-VM: 32 words or 32 * 8 = 256 bytes
+// Built-ins occupy up till address 10
+// OS first entry is at address 10
+// RTS first entry is at address 14
+// Builtin Frame is at address 18
+// // TODO: This will change as we add more builtins
+// E Frame is at address 24
+// Second E frame that contains Builtin frame is at address 26
+// BlockFrame that contains entire program is at address 29 up till 32
+
 testProgram(
     `
 var x int = 5;
