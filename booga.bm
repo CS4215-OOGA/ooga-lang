@@ -8,6 +8,11 @@
 {"tag":"INIT_FIELD","fieldIndex":1}
 {"tag":"ASSIGN","pos":[1,0]}
 {"tag":"POP"}
+{"tag":"LDCI","val":3}
+{"tag":"LD","sym":"p","pos":[1,0]}
+{"tag":"LDCI","val":0}
+{"tag":"SET_FIELD"}
+{"tag":"POP"}
 {"tag":"LD","sym":"p","pos":[1,0]}
 {"tag":"LDCI","val":0}
 {"tag":"ACCESS_FIELD"}

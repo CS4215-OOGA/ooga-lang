@@ -302,28 +302,26 @@ const compileComp = {
             compile(comp.left.object, ce);
             // Determine the struct type and member's index
             const variableType = findVariableTypeInCE(ce, comp.left.object.name);
-            log(variableType);
-            if (
-                !variableType ||
-                typeof variableType !== 'object' ||
-                variableType.tag !== 'Struct' ||
-                !StructTable[variableType.name]
-            ) {
-                throw new Error(
-                    `Type of variable ${comp.left.object.name} is undefined or not a struct.`
+            log('Variable type: ' + JSON.stringify(variableType, null, 2));
+
+            if (!variableType) {
+                throw new CompilerError(`Variable ${comp.left.object.name} is not defined.`);
+            }
+
+            if (!is_type(variableType, StructType)) {
+                throw new CompilerError(
+                    `Variable ${comp.left.object.name} is not a struct. Found type: ${variableType}`
                 );
             }
 
-            assert(variableType instanceof StructType, 'Variable type is not a struct');
-
-            const structInfo = StructTable.get(variableType.name);
-            // At this point, we know that the variableType is a StructType
-            if (structInfo === undefined) {
-                throw new Error(`Struct ${variableType.name} is not defined.`);
+            if (!StructTable.has(variableType.structName)) {
+                throw new CompilerError(`Undefined struct type: ${variableType.structName}`);
             }
 
+            const structInfo = StructTable.get(variableType.structName)!;
+
             const fieldIndex = structInfo.fields.findIndex(
-                field => field.name === comp.left.property.name
+                field => field.fieldName === comp.left.property.name
             );
             if (fieldIndex === -1) {
                 throw new CompilerError(
@@ -694,7 +692,7 @@ const compileComp = {
             comp.fields.forEach(fieldInit => {
                 // Find field index in struct definition
                 const fieldIndex = structInfo.fields.findIndex(
-                    field => field.name === fieldInit.name.name
+                    field => field.fieldName === fieldInit.name.name
                 );
                 if (fieldIndex === -1) {
                     throw new CompilerError(

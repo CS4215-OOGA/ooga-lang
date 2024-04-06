@@ -52,7 +52,29 @@
             "name": "Point"
           }
         },
-        "type": "Unknown"
+        "type": {
+          "tag": "Struct",
+          "name": "Point"
+        }
+      },
+      {
+        "tag": "AssignmentExpression",
+        "operator": "=",
+        "left": {
+          "tag": "MemberExpression",
+          "object": {
+            "tag": "Name",
+            "name": "p"
+          },
+          "property": {
+            "tag": "Name",
+            "name": "x"
+          }
+        },
+        "right": {
+          "tag": "Integer",
+          "value": 3
+        }
       },
       {
         "tag": "MemberExpression",
