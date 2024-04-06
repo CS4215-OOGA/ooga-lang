@@ -28,6 +28,7 @@ export enum Tag {
     BUILTIN,
     STRUCT,
     STRUCT_FIELD,
+    STRING,
 }
 
 function getTagString(tag: Tag): string {
@@ -99,6 +100,8 @@ export let True;
 export let Null;
 export let Unassigned;
 export let Undefined;
+
+let emptyString;
 
 let literals = [];
 
@@ -182,6 +185,7 @@ function allocateLiteralValues() {
     Null = allocate(Tag.NULL, 2);
     Unassigned = allocate(Tag.UNASSIGNED, 2);
     Undefined = allocate(Tag.UNDEFINED, 2);
+    emptyString = allocateString("");
     literals = [False, True, Null, Unassigned, Undefined];
 }
 
@@ -439,6 +443,67 @@ function isNumber(address: number): boolean {
     return getTag(address) === Tag.NUMBER;
 }
 
+// *********************
+// Strings
+// *********************
+// Strings have their raw values stored in the heap and are never
+// garbage collected. They are considered immutable
+// As strings are merely char arrays, the size of a string
+// is 1byte * length of char
+// But we are working in word aligned strings, so the size of a string
+// is the closest 8byte ceiling
+// Furthermore, we need a way to distinguish the end of the string
+// As such, we use the third word to represent the true length of the string
+// in chars.
+// "" is considered the null string and is a literal
+// The StringPool is a Javascript map that maps the string to its address
+// This is not low memory thing but we are assuming that OogaVM
+// has a dedicated, optimized section for Strings just as in C# or JVM
+// Although Strings are never garbage collected, they need to be moved to
+// compact the heap, and so the StringPool needs to be updated appropriately
+// as well.
+let StringPool = new Map<string, number>;
+
+const StringSizeOffset = 2;
+const StringValueOffset = 3;
+
+function allocateString(s: string): number {
+    if (StringPool.has(s)) {
+        return StringPool.get(s);
+    }
+
+    const size = Math.ceil(s.length / 8.0);
+    // 1 comes from using the third word to store the actual string length
+    const sAddress = allocate(Tag.STRING, size + headerSize + 1);
+
+    // Store the actual length in the second word.
+    heap.setUint32(sAddress + StringSizeOffset, s.length);
+
+    // Allocate byte by byte
+    for (let i = 0; i < s.length; i++) {
+        heap.setUint8((sAddress + StringValueOffset) * wordSize + i, s.charCodeAt(i));
+    }
+
+    StringPool.set(s, sAddress);
+    return sAddress;
+}
+
+function getStringValue(address: number): string {
+    // get the actual string length
+    const stringLength = heap.getUint32(address + StringSizeOffset);
+    let resultString = "";
+    // read byte by byte
+    for (let i = 0; i < stringLength; i++) {
+        const c = heap.getUint8((address + StringValueOffset) * wordSize + i);
+        resultString = resultString + c;
+    }
+    return resultString;
+}
+
+function isString(address: number): boolean {
+    return getTag(address) === Tag.STRING;
+}
+
 // TODO: Use this to visualize the heap
 export function debugHeap(): void {
     log("DEBUG HEAP");
@@ -525,13 +590,17 @@ export function addressToTSValue(address: number) {
         return '<blockframe>';
     } else if (isCallFrame(address)) {
         return '<callframe>';
+    } else if (isString(address)) {
+        return getStringValue(address);
     } else {
         throw new Error("bagoog");
     }
 }
 
 export function TSValueToAddress(value: any) {
-    if (typeof value === 'boolean') {
+    if (typeof value === 'string') {
+      return allocateString(value);
+    } else if (typeof value === 'boolean') {
         return value ? True : False;
     } else if (typeof value === 'number') {
         return allocateNumber(value);
@@ -693,6 +762,11 @@ function updateReferences() {
                         const forwardedAddr = getForwardingAddress(originalChildAddr);
                         setWord(curr + i + headerSize, forwardedAddr);
                     }
+                    break;
+                case Tag.STRING:
+                    const stringValue = getStringValue(curr);
+                    const forwardedAddr = getForwardingAddress(curr);
+                    StringPool.set(stringValue, forwardedAddr);
                     break;
                 default:
                     // no special case for builtins, struct fields
