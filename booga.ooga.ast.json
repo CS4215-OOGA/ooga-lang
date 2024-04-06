@@ -17,6 +17,14 @@
               "name": "x"
             },
             "type": "Integer"
+          },
+          {
+            "tag": "StructField",
+            "name": {
+              "tag": "Name",
+              "name": "y"
+            },
+            "type": "Integer"
           }
         ]
       },
@@ -32,6 +40,10 @@
             {
               "tag": "Integer",
               "value": 1
+            },
+            {
+              "tag": "Integer",
+              "value": 2
             }
           ],
           "named": false,
@@ -40,9 +52,17 @@
             "name": "Point"
           }
         },
-        "type": {
-          "tag": "Struct",
-          "name": "Point"
+        "type": "Unknown"
+      },
+      {
+        "tag": "MemberExpression",
+        "object": {
+          "tag": "Name",
+          "name": "p"
+        },
+        "property": {
+          "tag": "Name",
+          "name": "x"
         }
       }
     ]

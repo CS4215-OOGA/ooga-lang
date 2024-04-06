@@ -18,7 +18,7 @@ import {
 
 const log = debug('ooga:typechecker');
 
-const StructTable = new Map<string, StructType>();
+let StructTable = new Map<string, StructType>();
 
 function getType(t, te) {
     log('getType: ', t);
@@ -452,6 +452,8 @@ const type_comp = {
 
         // Capture all struct declarations
         const struct_decls = comp.body.body.filter(comp => comp.tag === 'StructDeclaration');
+        log('StructTable: ', StructTable);
+        log('StructDeclarations: ', struct_decls);
         for (let i = 0; i < struct_decls.length; i++) {
             log('StructDeclaration for', struct_decls[i].id.name);
             const comp = struct_decls[i];
@@ -702,28 +704,29 @@ const type_comp = {
         log('MemberExpression');
         log(JSON.stringify(comp, null, 2));
         const obj_type = type(comp.object, te);
-        if (obj_type.tag !== types.Struct || !StructTable[obj_type.name]) {
+        log('obj_type', obj_type);
+
+        if (!is_type(obj_type, StructType)) {
             throw new Error('expected struct type, got ' + unparse_types(obj_type));
         }
-        const struct = StructTable[obj_type.name];
-        const field = struct.fields.find(f => f.name === comp.property.name);
-        const method = struct.methods.find(m => m.methodName === comp.property.name);
-        log('Method:');
-        log(JSON.stringify(method, null, 2));
+
+        if (!StructTable.has(obj_type.structName)) {
+            throw new Error('struct ' + obj_type.structName + ' not found');
+        }
+
+        const struct = StructTable.get(obj_type.structName)!;
+        log('Struct:', struct);
+        const field = struct.fields.find(f => f.fieldName === comp.property.name);
+        log('Field:', field);
+        const method = struct.methods.find(m => m.name === comp.property.name);
+        log('Method:', method);
         if (!field && !method) {
             throw new Error(
                 'field or method ' + comp.property.name + ' not found in struct ' + obj_type.name
             );
         }
         log('Exiting MemberExpression');
-        return field
-            ? field.type
-            : {
-                  tag: 'Method',
-                  args: method.params.map(p => p.type),
-                  res: method.type,
-                  receiver: method.receiver,
-              };
+        return field ? field.type : method;
     },
 };
 
@@ -735,6 +738,7 @@ const type_comp = {
  */
 const type = (comp, te): Type => {
     log('type');
+    log('StructTable: ', StructTable);
     log(JSON.stringify(comp, null, 2));
     const t: Type = type_comp[comp.tag](comp, te);
     log('exiting type');
@@ -749,6 +753,8 @@ const type = (comp, te): Type => {
  */
 export function checkTypes(program: object) {
     log('Checking types');
+    StructTable = new Map<string, StructType>();
+    log('StructTable: ', StructTable);
     // Make a deep copy of the program
     let program_copy = JSON.parse(JSON.stringify(program));
     const t = type(program_copy, global_type_environment);

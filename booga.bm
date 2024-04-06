@@ -1,9 +1,15 @@
 {"tag":"ENTER_SCOPE","num":1}
 {"tag":"LDCI","val":null}
 {"tag":"POP"}
-{"tag":"NEW_STRUCT","structType":"Point","numFields":1}
+{"tag":"NEW_STRUCT","structType":"Point","numFields":2}
 {"tag":"LDCI","val":1}
 {"tag":"INIT_FIELD","fieldIndex":0}
+{"tag":"LDCI","val":2}
+{"tag":"INIT_FIELD","fieldIndex":1}
 {"tag":"ASSIGN","pos":[1,0]}
+{"tag":"POP"}
+{"tag":"LD","sym":"p","pos":[1,0]}
+{"tag":"LDCI","val":0}
+{"tag":"ACCESS_FIELD"}
 {"tag":"EXIT_SCOPE"}
 {"tag":"DONE"}

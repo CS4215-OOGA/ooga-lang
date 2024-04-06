@@ -54,8 +54,10 @@ export class FunctionType extends Type {
 }
 
 export class MethodType extends FunctionType {
-    constructor(args: Type[], ret: Type, is_const: boolean = false) {
+    methodName: string;
+    constructor(methodName: string, args: Type[], ret: Type, is_const: boolean = false) {
         super(args, ret, is_const);
+        this.methodName = methodName;
         this.name = 'Method';
     }
 }

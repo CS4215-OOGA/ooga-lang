@@ -721,30 +721,43 @@ const compileComp = {
     },
     MemberExpression: (comp, ce) => {
         log('MemberExpression: ' + JSON.stringify(comp, null, 2));
+        log('StructTable: ', StructTable);
         const variableType = findVariableTypeInCE(ce, comp.object.name);
-        if (
-            !variableType ||
-            typeof variableType !== 'object' ||
-            variableType.tag !== 'Struct' ||
-            !StructTable[variableType.name]
-        ) {
-            throw new Error(
-                `Type of variable ${comp.object.name} is undefined or not a struct. It is ${variableType}`
+        log('Variable type: ' + JSON.stringify(variableType, null, 2));
+        if (variableType === null) {
+            throw new CompilerError(`Variable ${comp.object.name} is not defined.`);
+        }
+
+        if (!is_type(variableType, StructType)) {
+            throw new CompilerError(
+                `Variable ${comp.object.name} is not a struct. Found type: ${variableType}`
             );
         }
 
-        assert(variableType instanceof StructType, 'Variable type is not a struct');
+        log('StructTable: ', StructTable);
 
-        const structInfo = StructTable.get(variableType.name);
-        // At this point, we know that the variableType is a StructType
-        if (structInfo === undefined) {
-            throw new Error(`Struct ${variableType.name} is not defined.`);
+        if (!StructTable.has(variableType.structName)) {
+            throw new CompilerError(`Undefined struct type: ${variableType.structName}`);
         }
 
-        const fieldIndex = structInfo.fields.findIndex(field => field.name === comp.property.name);
-        const methodIndex = structInfo.methods.findIndex(
-            method => method.name === comp.property.name
+        const structInfo = StructTable.get(variableType.structName)!;
+        // At this point, we know that the variableType is a StructType
+        if (structInfo === undefined) {
+            throw new Error(`Struct ${variableType.structName} is not defined.`);
+        }
+
+        const fieldIndex = structInfo.fields.findIndex(
+            field => field.fieldName === comp.property.name
         );
+        const methodIndex = structInfo.methods.findIndex(
+            method => method.methodName === comp.property.name
+        );
+
+        if (fieldIndex === -1 && methodIndex === -1) {
+            throw new CompilerError(
+                `Field or method ${comp.property.name} does not exist in struct ${variableType}`
+            );
+        }
 
         if (fieldIndex !== -1) {
             log(
@@ -758,10 +771,6 @@ const compileComp = {
             instrs[wc++] = { tag: Opcodes.ACCESS_FIELD }; // Access the field value
         } else if (methodIndex !== -1) {
             // TODO: Implement method calls
-        } else {
-            throw new CompilerError(
-                `Field ${comp.property.name} does not exist in struct ${variableType}`
-            );
         }
 
         log('Exiting MemberExpression');
@@ -845,6 +854,8 @@ export function compile_program(program) {
     initializeBuiltinTable();
     wc = 0;
     instrs = [];
+    loopMarkers = [];
+    StructTable = new Map<string, StructType>();
     compile(program, globalCompileTimeEnvironment);
     instrs[wc++] = { tag: Opcodes.DONE };
     return instrs;

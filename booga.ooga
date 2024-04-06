@@ -1,5 +1,6 @@
 type Point struct {
 	x int
+	y int
 }
-
-var p Point = Point{1}
+p := Point{1, 2}
+p.x

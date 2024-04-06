@@ -23,6 +23,7 @@ export function testProgram(
 ) {
     debug.disable(); // Disable debug logs initially
     debug.enable('ooga:tests');
+    // debug.enable('ooga:typechecker');
     log(`Running program:\n\`\`\`${program}\`\`\`\nExpected value: ${expectedValue}`);
 
     let value;
@@ -34,7 +35,7 @@ export function testProgram(
         const instrs = compile_program(programBlock);
         const bytecode = assemble(instrs);
         processByteCode(bytecode);
-        value = run(numWords);
+        value = run();
     } catch (e) {
         if (e.message === expectedValue) {
             logTest('Test passed');
