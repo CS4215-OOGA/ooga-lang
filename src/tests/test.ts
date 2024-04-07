@@ -922,3 +922,16 @@ var x int = 5;
 // }
 // print(x + " " + y);
 // `, "Jotham Wong", 104);
+
+// Test GC with NEW_THREAD instruction to make sure everything works
+testProgram(`
+var x int = 5;
+var y int = 10;
+
+func googa(x int, y int) int {
+    print(x + y);
+    return x + y;
+}
+
+go googa(x, y);
+`, true, 104);
