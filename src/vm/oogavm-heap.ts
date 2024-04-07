@@ -855,7 +855,7 @@ function collectGarbage() {
         mark(root[0]);
     }
     for (let literal of literals) {
-        mark(literal[0]);
+        mark(literal);
     }
     // To avoid freeing strings, just mark them from the StringPool
     // This is safe to do because we haven't moved anything yet
