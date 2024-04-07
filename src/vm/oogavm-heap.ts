@@ -126,6 +126,7 @@ export function constructHeap(numWords: number, updateRootsFn): DataView {
     free = 0;
     allocateLiteralValues();
     updateRoots = updateRootsFn;
+    StringPool.clear();
     return heap;
 }
 

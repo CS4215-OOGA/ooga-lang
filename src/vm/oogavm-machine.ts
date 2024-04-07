@@ -693,8 +693,9 @@ export function run(numWords = 1000000) {
             throw Error('execution aborted due to: ' + getErrorType());
         }
     }
-    log("Program value is " + addressToTSValue(peekStack(OS[0])));
-    return addressToTSValue(peekStack(OS[0]));
+    const returnValue = addressToTSValue(peekStack(OS[0]));
+    log("Program value is " + returnValue);
+    return returnValue;
 }
 
 function getErrorType(): string {
