@@ -15,6 +15,7 @@ const log = debug('ooga:runOogaLang');
  */
 export function runOogaLangCode(code: string): Promise<string> {
     log(code);
+    debug.disable();
     return new Promise((resolve, reject) => {
         // Redirect console.log to capture output
         const originalConsoleLog = console.log;
