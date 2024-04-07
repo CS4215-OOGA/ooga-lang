@@ -1,7 +1,7 @@
 import Opcodes from './opcodes.js';
 import { builtinMappings, initializeBuiltinTable } from './oogavm-machine.js';
 import debug from 'debug';
-import { StructField, StructType, Type, is_type } from './oogavm-types.js';
+import { StructType, Type } from './oogavm-types.js';
 import assert from 'assert';
 import { CompilerError } from './oogavm-errors.js';
 import { unparse } from '../utils/utils.js';
@@ -155,17 +155,6 @@ function scanForLocalsSingle(comp): CompileTimeVariable[] {
     }
 }
 
-function findVariableTypeInCE(ce: CompileTimeEnvironment, variableName: string): Type | null {
-    // We should start from the last frame and go backwards
-    for (let i = ce.length - 1; i >= 0; i--) {
-        const variable = ce[i].find(variable => variable.name === variableName);
-        if (variable) {
-            return variable.type;
-        }
-    }
-    return null;
-}
-
 // ******************
 // Compilation
 // ******************
@@ -308,15 +297,7 @@ const compileComp = {
             const structInfo = comp.left.object.type;
             log('Variable type: ' + unparse(structInfo));
 
-            if (!structInfo) {
-                throw new CompilerError(`Variable ${comp.left.object.name} is not defined.`);
-            }
-
-            if (!is_type(structInfo, StructType)) {
-                throw new CompilerError(
-                    `Variable ${comp.left.object.name} is not a struct. Found type: ${structInfo}`
-                );
-            }
+            assert(structInfo instanceof StructType, 'Variable type is not a struct type');
 
             const fieldIndex = structInfo.fields.findIndex(
                 field => field.fieldName === comp.left.property.name
@@ -437,11 +418,6 @@ const compileComp = {
             log('Method call');
             log(unparse(comp.callee));
             const structDefinition = comp.callee.object.type;
-            if (!is_type(structDefinition, StructType)) {
-                throw new CompilerError(
-                    `Variable ${comp.callee.object.name} is not a struct. Found type: ${structDefinition}`
-                );
-            }
 
             assert(structDefinition instanceof StructType, 'Variable type is not a struct type');
 
@@ -689,18 +665,8 @@ const compileComp = {
         log('MemberExpression: ' + unparse(comp));
 
         log('Finding variable type in CE: ' + comp.object.name);
-        log(ce);
-        const structInfo = findVariableTypeInCE(ce, comp.object.name);
+        const structInfo = comp.object.type;
         log('Variable type: ' + unparse(structInfo));
-        if (structInfo === null) {
-            throw new CompilerError(`Variable ${comp.object.name} is not defined.`);
-        }
-
-        if (!is_type(structInfo, StructType)) {
-            throw new CompilerError(
-                `Variable ${comp.object.name} is not a struct. Found type: ${structInfo}`
-            );
-        }
 
         assert(structInfo instanceof StructType, 'Variable type is not a struct type');
 

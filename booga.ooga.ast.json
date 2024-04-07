@@ -7,7 +7,7 @@
         "tag": "StructDeclaration",
         "id": {
           "tag": "Name",
-          "name": "Vertex"
+          "name": "Point"
         },
         "fields": [
           {
@@ -29,181 +29,64 @@
         ]
       },
       {
-        "tag": "MethodDeclaration",
-        "receiver": {
-          "tag": "Receiver",
-          "name": {
-            "tag": "Name",
-            "name": "v"
-          },
-          "type": {
-            "tag": "Struct",
-            "name": "Vertex"
-          },
-          "pointer": true
-        },
-        "id": {
-          "tag": "Name",
-          "name": "AddX"
-        },
-        "params": [
-          {
-            "tag": "Name",
-            "name": "x",
-            "type": "Integer"
-          }
-        ],
-        "ret": {
-          "type": "Integer"
-        },
-        "type": "Method",
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "AssignmentExpression",
-                "operator": "=",
-                "left": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "v"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "X"
-                  }
-                },
-                "right": {
-                  "tag": "BinaryExpression",
-                  "operator": "+",
-                  "left": {
-                    "tag": "MemberExpression",
-                    "object": {
-                      "tag": "Name",
-                      "name": "v"
-                    },
-                    "property": {
-                      "tag": "Name",
-                      "name": "X"
-                    }
-                  },
-                  "right": {
-                    "tag": "Name",
-                    "name": "x"
-                  }
-                }
-              },
-              {
-                "tag": "ReturnStatement",
-                "expression": {
-                  "tag": "MemberExpression",
-                  "object": {
-                    "tag": "Name",
-                    "name": "v"
-                  },
-                  "property": {
-                    "tag": "Name",
-                    "name": "X"
-                  }
-                }
-              }
-            ]
-          }
-        }
-      },
-      {
         "tag": "VariableDeclaration",
         "id": {
           "tag": "Name",
-          "name": "v"
+          "name": "p"
         },
         "expression": {
           "tag": "StructInitializer",
           "fields": [
             {
-              "tag": "Integer",
-              "value": 1
+              "tag": "StructFieldInitializer",
+              "name": {
+                "tag": "Name",
+                "name": "X"
+              },
+              "value": {
+                "tag": "Integer",
+                "value": 1
+              }
             },
             {
-              "tag": "Integer",
-              "value": 2
+              "tag": "StructFieldInitializer",
+              "name": {
+                "tag": "Name",
+                "name": "Y"
+              },
+              "value": {
+                "tag": "Integer",
+                "value": 2
+              }
             }
           ],
-          "named": false,
+          "named": true,
           "type": {
             "tag": "Struct",
-            "name": "Vertex"
+            "name": "Point"
           }
         },
-        "type": {
-          "tag": "Struct",
-          "name": "Vertex"
-        }
-      },
-      {
-        "tag": "FunctionDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "main"
-        },
-        "params": [],
-        "ret": {
-          "type": "Null"
-        },
-        "type": "Function",
-        "body": {
-          "tag": "BlockStatement",
-          "body": {
-            "tag": "SequenceStatement",
-            "body": [
-              {
-                "tag": "CallGoroutine",
-                "expression": {
-                  "tag": "GoroutineCallExpression",
-                  "callee": {
-                    "tag": "MemberExpression",
-                    "object": {
-                      "tag": "Name",
-                      "name": "v"
-                    },
-                    "property": {
-                      "tag": "Name",
-                      "name": "AddX"
-                    }
-                  },
-                  "arguments": [
-                    {
-                      "tag": "Integer",
-                      "value": 3
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        }
+        "type": "Unknown"
       },
       {
         "tag": "CallExpression",
         "callee": {
           "tag": "Name",
-          "name": "main"
+          "name": "print"
         },
-        "arguments": []
-      },
-      {
-        "tag": "MemberExpression",
-        "object": {
-          "tag": "Name",
-          "name": "v"
-        },
-        "property": {
-          "tag": "Name",
-          "name": "X"
-        }
+        "arguments": [
+          {
+            "tag": "MemberExpression",
+            "object": {
+              "tag": "Name",
+              "name": "p"
+            },
+            "property": {
+              "tag": "Name",
+              "name": "X"
+            }
+          }
+        ]
       }
     ]
   }

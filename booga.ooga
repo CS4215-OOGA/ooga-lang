@@ -1,18 +1,8 @@
-type Vertex struct {
-	    X int
-	    Y int
-	}
+type Point struct {
+	X int
+	Y int
+}
 
-	func (v *Vertex) AddX(x int) int {
-	    v.X = v.X + x
-	    return v.X
-	}
+p := Point{X: 1, Y: 2}
 
-	var v Vertex = Vertex{1, 2}
-
-	func main() {
-	    go v.AddX(3)
-	}
-
-	main();
-	v.X;
+print(p.X)
