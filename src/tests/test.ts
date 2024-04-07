@@ -5,7 +5,7 @@ import { compile_program } from '../vm/oogavm-compiler.js';
 import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
 import { checkTypes } from '../vm/oogavm-typechecker.js';
-import {OogaError, OogaRedeclarationError} from "../vm/oogavm-errors.js";
+import { OogaError, OogaRedeclarationError } from '../vm/oogavm-errors.js';
 
 const log = debug('ooga:tests');
 
@@ -23,6 +23,7 @@ export function testProgram(
 ) {
     debug.disable(); // Disable debug logs initially
     debug.enable('ooga:tests');
+    // debug.enable('ooga:typechecker');
     log(`Running program:\n\`\`\`${program}\`\`\`\nExpected value: ${expectedValue}`);
 
     let value;
@@ -855,7 +856,8 @@ p.addX(r.getX());
 );
 
 // Test a lot of declarations
-testProgram(`
+testProgram(
+    `
 var a int = 1;
 var b int = 2;
 var c int = 3;
@@ -883,10 +885,14 @@ var x int = 24;
 var y int = 25;
 var z int = 26;
 a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w +x + y + z;
-`, 351, defaultNumWords);
+`,
+    351,
+    defaultNumWords
+);
 
 // Test re-allocation GC
-testProgram(`
+testProgram(
+    `
 var x int = 5;
 var y int = 10;
 var z int = 15;
@@ -896,14 +902,20 @@ func googa(x int, y int, z int) int {
 }
 
 googa(x, y, z);
-`, 30, 104);
-
+`,
+    30,
+    104
+);
 
 // Negative test for more than once variable declaration
-testProgram(`
+testProgram(
+    `
 var x int = 5;
 var x int = 5;
-`, "Variable x declared more than once in the same block!", defaultNumWords)
+`,
+    'Variable x declared more than once in the same block!',
+    defaultNumWords
+);
 
 // Test String works locally
 // testProgram(`
@@ -924,7 +936,8 @@ var x int = 5;
 // `, "Jotham Wong", 104);
 
 // Test GC with NEW_THREAD instruction to make sure everything works
-testProgram(`
+testProgram(
+    `
 var x int = 5;
 var y int = 10;
 
@@ -934,4 +947,7 @@ func googa(x int, y int) int {
 }
 
 go googa(x, y);
-`, true, 104);
+`,
+    true,
+    104
+);

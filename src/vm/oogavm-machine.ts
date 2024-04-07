@@ -6,10 +6,15 @@ import debug from 'debug';
 import { HeapDeadError, HeapOutOfMemoryError } from './oogavm-errors.js';
 import {
     addressToTSValue,
-    allocateBlockFrame, allocateBuiltin,
+    allocateBlockFrame,
+    allocateBuiltin,
     allocateCallFrame,
-    allocateClosure, allocateEnvironment,
-    allocateFrame, allocateStruct, constructHeap, debugHeap,
+    allocateClosure,
+    allocateEnvironment,
+    allocateFrame,
+    allocateStruct,
+    constructHeap,
+    debugHeap,
     extendEnvironment,
     getBlockFrameEnvironment,
     getBuiltinID,
@@ -17,18 +22,26 @@ import {
     getCallFramePC,
     getClosureEnvironment,
     getClosurePC,
-    getEnvironmentValue, getField, getPrevStackAddress, initializeStack,
+    getEnvironmentValue,
+    getField,
+    getPrevStackAddress,
+    initializeStack,
     isBuiltin,
-    isCallFrame, isClosure,
+    isCallFrame,
+    isClosure,
     isUnassigned,
     peekStack,
     peekStackN,
-    popStack, printHeapUsage, printStringPoolMapping,
+    popStack,
+    printHeapUsage,
+    printStringPoolMapping,
     pushStack,
-    setEnvironmentValue, setField,
+    setEnvironmentValue,
+    setField,
     setFrameValue,
     TSValueToAddress,
-    Unassigned, Undefined,
+    Unassigned,
+    Undefined,
 } from './oogavm-heap.js';
 
 const log = debug('ooga:vm');
@@ -169,7 +182,7 @@ export const builtinMappings = {
 
 let builtins = {};
 // The array is required cos we are using CTE which is indexed by integers
-let builtinArray = [];
+let builtinArray: object[] = [];
 
 // This method is called by both Compilation and Machine at runtime
 export function initializeBuiltinTable() {
@@ -425,8 +438,8 @@ const microcode = {
         tempRoots.pop();
         tempRoots.pop();
         tempRoots.pop();
-        log("newPC = " + newPC);
-        log("PC = " + PC);
+        log('newPC = ' + newPC);
+        log('PC = ' + PC);
         PC = newPC;
     },
     TAIL_CALL: instr => {
@@ -472,7 +485,7 @@ const microcode = {
         // Expects a closure on operand stack
         let closure = [peekStackN(OS[0], instr.arity)];
         tempRoots.push(closure);
-        log("Closure: " + closure);
+        log('Closure: ' + closure);
         if (!isClosure(closure[0])) {
             throw Error('NOT A CLOSURE!!!!!!!!!!!!!!!');
         }
@@ -490,7 +503,7 @@ const microcode = {
         // likewise this newFrame allocation can free newOS and newRTS
         // so we make sure to temporarily make both tempRoots
         // arity can become undefined
-        log("Arity is : " + arity);
+        log('Arity is : ' + arity);
         // FIXME: Temporarily bandaid
         if (arity === undefined) {
             arity = 0;
@@ -584,7 +597,7 @@ const microcode = {
     },
     END_ATOMIC: instr => {
         isAtomicSection = false;
-    }
+    },
 };
 
 // ********************************
@@ -665,10 +678,10 @@ function runInstruction() {
     if (!isAtomicSection) {
         TimeQuanta--;
     }
-    log("RTS: " + RTS[0]);
-    log("OS: " + OS[0]);
-    log("E: " + E[0]);
-    log("PC: " + PC);
+    log('RTS: ' + RTS[0]);
+    log('OS: ' + OS[0]);
+    log('E: ' + E[0]);
+    log('PC: ' + PC);
     debugHeap();
     // printOSStack();
     // printHeapUsage();
@@ -694,7 +707,7 @@ export function run(numWords = 1000000) {
         }
     }
     const returnValue = addressToTSValue(peekStack(OS[0]));
-    log("Program value is " + returnValue);
+    log('Program value is ' + returnValue);
     return returnValue;
 }
 
@@ -722,7 +735,7 @@ function printOSStack() {
     log('Printing OS Stack...');
     let currOS = OS[0];
     while (currOS != -1) {
-        log("****************************")
+        log('****************************');
         log('currOS');
         log(currOS);
         let value: any = addressToTSValue(peekStack(currOS));
@@ -732,7 +745,7 @@ function printOSStack() {
         value = peekStack(currOS);
         log(value);
         currOS = getPrevStackAddress(currOS);
-        log("****************************")
+        log('****************************');
     }
     log('Done printing OS Stack...');
 }
@@ -769,7 +782,7 @@ async function main() {
     const inputFilename = process.argv[2];
     let bytecode = await readFileAsync(inputFilename, 'utf8');
     processByteCode(bytecode);
-    return run(104);
+    return run();
 }
 
 // @ts-ignore

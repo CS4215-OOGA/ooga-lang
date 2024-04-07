@@ -1,6 +1,8 @@
 type Point struct {
-	x int
-	y int
+	X int
+	Y int
 }
-const p Point = Point{1, 2}
-p.x
+
+p := Point{X: 1, Y: 2}
+
+print(p.X)

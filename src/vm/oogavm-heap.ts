@@ -1,5 +1,5 @@
 import debug from 'debug';
-import { HeapOutOfMemoryError, OogaError } from './oogavm-errors.js';
+import { HeapError, HeapOutOfMemoryError } from './oogavm-errors.js';
 import { getRoots, E, OS, RTS } from './oogavm-machine.js';
 
 const log = debug('ooga:memory');
@@ -117,9 +117,9 @@ let updateRoots;
  */
 export function constructHeap(numWords: number, updateRootsFn): DataView {
     if (numWords > 2 ** 64) {
-        throw new OogaError("Can't use a memory model with more than 2**32 words");
+        throw new HeapError("Can't use a memory model with more than 2**32 words");
     } else if (numWords % 2 !== 0) {
-        throw new OogaError("Please use an even number of words for Ooga");
+        throw new HeapError('Please use an even number of words for Ooga');
     }
     heap = new DataView(new ArrayBuffer(numWords * wordSize));
     max = numWords;
@@ -190,7 +190,7 @@ function allocateLiteralValues() {
     Null = allocate(Tag.NULL, 2);
     Unassigned = allocate(Tag.UNASSIGNED, 2);
     Undefined = allocate(Tag.UNDEFINED, 2);
-    emptyString = allocateString("");
+    emptyString = allocateString('');
     literals = [False, True, Null, Unassigned, Undefined];
 }
 
@@ -320,7 +320,7 @@ const blockFrameEnvOffset = 2;
 
 export function allocateBlockFrame(envAddress: number[]): number {
     const address = allocate(Tag.BLOCKFRAME, 3);
-    log("BlockFrame at addr " + address + " will point to E=" + envAddress[0]);
+    log('BlockFrame at addr ' + address + ' will point to E=' + envAddress[0]);
     setWord(address + blockFrameEnvOffset, envAddress[0]);
     return address;
 }
@@ -374,7 +374,12 @@ export function getEnvironmentValue(envAddress: number, frameIndex: number, valu
     return getWordOffset(frameAddress, valueIndex + headerSize);
 }
 
-export function setEnvironmentValue(envAddress: number, frameIndex: number, valueIndex: number, value: number) {
+export function setEnvironmentValue(
+    envAddress: number,
+    frameIndex: number,
+    valueIndex: number,
+    value: number
+) {
     const frameAddress = getWordOffset(envAddress, frameIndex + headerSize);
     setWord(frameAddress + valueIndex + headerSize, value);
 }
@@ -467,27 +472,27 @@ function isNumber(address: number): boolean {
 // Although Strings are never garbage collected, they need to be moved to
 // compact the heap, and so the StringPool needs to be updated appropriately
 // as well.
-let StringPool = new Map<string, number>;
+let StringPool = new Map<string, number>();
 
 const StringSizeOffset = 2;
 const StringValueOffset = 3;
 
 function allocateString(s: string): number {
-    log("Inside allocateString for " + s);
+    log('Inside allocateString for ' + s);
     if (StringPool.has(s)) {
         return StringPool.get(s);
     }
 
     const size = Math.ceil(s.length / 8);
     const actualSize = size + headerSize + 1;
-    log("Size of string in words is " + actualSize);
+    log('Size of string in words is ' + actualSize);
     // 1 comes from using the third word to store the actual string length
     const sAddress = allocate(Tag.STRING, actualSize);
 
     // Store the actual length in the second word.
     heap.setUint32((sAddress + StringSizeOffset) * wordSize, s.length);
 
-    log("Length of string in word is " + heap.getUint32((sAddress + StringSizeOffset) * wordSize));
+    log('Length of string in word is ' + heap.getUint32((sAddress + StringSizeOffset) * wordSize));
 
     // Allocate byte by byte
     for (let i = 0; i < s.length; i++) {
@@ -496,8 +501,8 @@ function allocateString(s: string): number {
 
     StringPool.set(s, sAddress);
 
-    log("StringPool set to " + StringPool.get(s));
-    log("StringValue is " + getStringValue(sAddress));
+    log('StringPool set to ' + StringPool.get(s));
+    log('StringValue is ' + getStringValue(sAddress));
 
     return sAddress;
 }
@@ -505,13 +510,13 @@ function allocateString(s: string): number {
 function getStringValue(address: number): string {
     // Handle the empty string appropriately
     if (address === emptyString) {
-        return "";
+        return '';
     }
 
     // get the actual string length
-    log("getStringValue for " + address);
+    log('getStringValue for ' + address);
     const stringLength = heap.getUint32((address + StringSizeOffset) * wordSize);
-    let resultString = "";
+    let resultString = '';
     // read byte by byte
     for (let i = 0; i < stringLength; i++) {
         const c = String.fromCharCode(heap.getUint8((address + StringValueOffset) * wordSize + i));
@@ -525,27 +530,27 @@ function isString(address: number): boolean {
 }
 
 export function printHeapUsage() {
-    log("Heap: " + free + "/" + max + " words.");
+    log('Heap: ' + free + '/' + max + ' words.');
 }
 
 export function printStringPoolMapping() {
-    log("************************StringPool************************");
+    log('************************StringPool************************');
     // @ts-ignore
     for (let key of StringPool.keys()) {
-        log(key + " -> " + StringPool.get(key));
+        log(key + ' -> ' + StringPool.get(key));
     }
-    log("************************StringPool************************");
+    log('************************StringPool************************');
 }
 
 // TODO: Use this to visualize the heap
 export function debugHeap(): void {
-    log("DEBUG HEAP");
+    log('DEBUG HEAP');
     let curr = 0;
     while (curr < free) {
-        log("**********************************************************");
-        log("Address " + curr + ": ");
-        log("Tag: " + getTagString(getTag(curr)));
-        log("Size: " + getSize(curr));
+        log('**********************************************************');
+        log('Address ' + curr + ': ');
+        log('Tag: ' + getTagString(getTag(curr)));
+        log('Size: ' + getSize(curr));
         switch (getTag(curr)) {
             case Tag.FALSE:
             case Tag.TRUE:
@@ -554,44 +559,44 @@ export function debugHeap(): void {
             case Tag.UNDEFINED:
                 break;
             case Tag.NUMBER:
-                log("Value: " + addressToTSValue(curr));
+                log('Value: ' + addressToTSValue(curr));
                 break;
             case Tag.BLOCKFRAME:
-                log("Env address: " + getBlockFrameEnvironment(curr));
+                log('Env address: ' + getBlockFrameEnvironment(curr));
                 break;
             case Tag.BUILTIN:
-                log("ID: " + getBuiltinID(curr));
+                log('ID: ' + getBuiltinID(curr));
                 break;
             case Tag.STACK:
-                log("Previous: " + getPrevStackAddress(curr));
-                log("Entry: " + addressToTSValue(peekStack(curr)) + " at " + peekStack(curr));
+                log('Previous: ' + getPrevStackAddress(curr));
+                log('Entry: ' + addressToTSValue(peekStack(curr)) + ' at ' + peekStack(curr));
                 break;
             case Tag.ENVIRONMENT:
                 for (let i = 0; i < getSize(curr) - headerSize; i++) {
-                    log("Frame address: " + getWordOffset(curr, i + headerSize));
+                    log('Frame address: ' + getWordOffset(curr, i + headerSize));
                 }
                 break;
             case Tag.STRUCT:
                 for (let i = 0; i < getSize(curr) - headerSize; i++) {
-                    log("Field " + i + ": " + getWordOffset(curr, i + headerSize));
+                    log('Field ' + i + ': ' + getWordOffset(curr, i + headerSize));
                 }
                 break;
             case Tag.CALLFRAME:
-                log("PC: " + getCallFramePC(curr));
-                log("Env Addr: " + getCallFrameEnvironment(curr));
+                log('PC: ' + getCallFramePC(curr));
+                log('Env Addr: ' + getCallFrameEnvironment(curr));
                 break;
             case Tag.FRAME:
                 for (let i = 0; i < getSize(curr) - headerSize; i++) {
-                    log("Frame " + i + ": " + getWordOffset(curr, i + headerSize));
+                    log('Frame ' + i + ': ' + getWordOffset(curr, i + headerSize));
                 }
                 break;
             case Tag.CLOSURE:
-                log("Arity: " + getClosureArity(curr));
-                log("PC" + getClosurePC(curr));
-                log("Env Addr: " + getClosureEnvironment(curr));
+                log('Arity: ' + getClosureArity(curr));
+                log('PC' + getClosurePC(curr));
+                log('Env Addr: ' + getClosureEnvironment(curr));
                 break;
             case Tag.STRING:
-                log("String value: " + getStringValue(curr));
+                log('String value: ' + getStringValue(curr));
                 break;
             default:
                 break;
@@ -631,13 +636,13 @@ export function addressToTSValue(address: number) {
     } else if (isString(address)) {
         return getStringValue(address);
     } else {
-        throw new Error("bagoog");
+        throw new Error('bagoog');
     }
 }
 
 export function TSValueToAddress(value: any) {
     if (typeof value === 'string') {
-      return allocateString(value);
+        return allocateString(value);
     } else if (typeof value === 'boolean') {
         return value ? True : False;
     } else if (typeof value === 'number') {
@@ -746,8 +751,16 @@ function computeForwardingAddresses() {
         // to the current freePtr and increment the freePtr according to
         // the object's size.
         if (isMarked(livePtr)) {
-            const originalTag = -1-getTag(livePtr);
-            log("Forwarding " + livePtr + " of <" + getTagString(originalTag) + ">" + " to " + freePtr);
+            const originalTag = -1 - getTag(livePtr);
+            log(
+                'Forwarding ' +
+                    livePtr +
+                    ' of <' +
+                    getTagString(originalTag) +
+                    '>' +
+                    ' to ' +
+                    freePtr
+            );
             setForwardingAddress(livePtr, freePtr);
             rootMappings.set(livePtr, freePtr);
             freePtr += size;
@@ -765,7 +778,7 @@ function updateReferences() {
         if (isMarked(curr)) {
             const markedTag = getTag(curr);
             const originalTag = -1 - markedTag;
-            switch(originalTag) {
+            switch (originalTag) {
                 case Tag.BLOCKFRAME:
                     const originalBlockEnvAddr = getBlockFrameEnvironment(curr);
                     const forwardedBlockEnvAddr = getForwardingAddress(originalBlockEnvAddr);
@@ -844,12 +857,12 @@ function moveLiveObjects() {
     free = freePtr;
 }
 
-let roots = [];
-let rootMappings = new Map<number, number>;
+let roots: number[][] = [];
+let rootMappings = new Map<number, number>();
 
 function collectGarbage() {
     // First pass: marking
-    log("Collecting da garbage...");
+    log('Collecting da garbage...');
     roots = getRoots();
     rootMappings.clear();
     for (let root of roots) {
@@ -863,7 +876,7 @@ function collectGarbage() {
     // The Strings will then be compacted appropriately
     // @ts-ignore
     for (let sKey of StringPool.keys()) {
-        log(sKey + " -> " + StringPool.get(sKey));
+        log(sKey + ' -> ' + StringPool.get(sKey));
         mark(StringPool.get(sKey));
     }
     // Second pass: Compute forwarding location for live objects

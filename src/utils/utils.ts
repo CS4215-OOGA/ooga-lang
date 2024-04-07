@@ -34,3 +34,22 @@ export function error(value, ...strs) {
     const output = strs.length === 0 ? value : value + ' ' + strs.join(' ');
     throw new Error(output);
 }
+
+export function unparse(t: any): string {
+    let cache = new Set();
+    return JSON.stringify(
+        t,
+        (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+                if (cache.has(value)) {
+                    // Circular reference found, discard key
+                    return;
+                }
+                // Store value in our collection
+                cache.add(value);
+            }
+            return value;
+        },
+        2
+    );
+}

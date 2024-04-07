@@ -1,20 +1,17 @@
 import Opcodes from './opcodes.js';
 import { builtinMappings, initializeBuiltinTable } from './oogavm-machine.js';
 import debug from 'debug';
-import {OogaError, OogaRedeclarationError} from "./oogavm-errors.js";
+import { StructType, Type } from './oogavm-types.js';
+import assert from 'assert';
+import { CompilerError } from './oogavm-errors.js';
+import { unparse } from '../utils/utils.js';
+
 const log = debug('ooga:compiler');
 
 let wc;
 let instrs;
 let loopMarkers: any[] = []; // For loop markers
-let StructTable = {
-    // StructName: {
-    // fields: [
-    //    {name: "memberName", type: "memberType"},
-    //   ...],
-    // methods: [{methodName: "methodName", params: [{name: "paramName", type: "paramType"}], body: "methodBody, type: "methodType"}]
-    // }
-}; // For struct declarations
+
 const push = (array, ...items) => {
     for (let item of items) {
         array.push(item);
@@ -45,7 +42,7 @@ class Method {
 
 type CompileTimeVariable = {
     name: string | Method; // This would be an object if it is a method - {receiver: string, methodName: string}
-    type: string | Object | null;
+    type: Type | null;
     // Currently, we are assuming that all variables are of size 1
     // TODO: Keep track of the size of variable here - this is needed for storing structs in structs
 };
@@ -56,17 +53,23 @@ type CompileTimeEnvironment = CompileTimeFrame[];
 // x could be an object if it is a method as stated above
 function compileTimeEnvironmentPosition(env: CompileTimeEnvironment, x: string | Method) {
     let frameIndex = env.length;
-    log('Finding position of ' + JSON.stringify(x, null, 2));
+    log('Finding position of ' + unparse(x));
     while (frameIndex > 0 && valueIndex(env[--frameIndex], x) === -1) {}
     let vIndex = valueIndex(env[frameIndex], x);
     if (vIndex === -1) {
-        throw Error('unbound name: ' + JSON.stringify(x, null, 2));
+        throw Error('unbound name: ' + unparse(x));
     }
     return [frameIndex, vIndex];
 }
 
 function valueIndex(frame: CompileTimeFrame, x: string | Method) {
+    log('Finding value index of ' + unparse(x));
     for (let i = 0; i < frame.length; i++) {
+        log(
+            'Comparing ' + unparse(frame[i].name) + ' with ' + unparse(x),
+            typeof x === 'string',
+            frame[i].name === x
+        );
         if (typeof x === 'string' && frame[i].name === x) {
             return i;
         } else if (
@@ -109,7 +112,7 @@ function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
         ) {
             // could probably use an extra set but i rather have smaller code
             if (declarations.find(decl => decl.name === comp.id.name) !== undefined) {
-                throw new OogaRedeclarationError(
+                throw new CompilerError(
                     'Variable ' + comp.id.name + ' declared more than once in the same block!'
                 );
             }
@@ -122,17 +125,24 @@ function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
             const method = { receiver: comp.receiver.type.name, methodName: comp.id.name };
             if (declarations.find(decl => decl.name === method) !== undefined) {
                 const methodName = method.receiver + '.' + method.methodName;
-                throw new OogaRedeclarationError('Method ' + methodName + ' declared more than once in the same block!');
+                throw new CompilerError(
+                    'Method ' + methodName + ' declared more than once in the same block!'
+                );
             }
 
             declarations.push({
-                name: new Method(comp.receiver.type.name, comp.id.name, comp.receiver.pointer),
-                type: 'method',
+                name: new Method(
+                    comp.receiver.type.structName,
+                    comp.id.name,
+                    comp.receiver.pointer
+                ),
+                type: comp.type,
             });
 
             log('Added method ' + method.receiver + '.' + method.methodName);
         }
     }
+    log('Declarations: ' + unparse(declarations));
     return declarations;
 }
 
@@ -143,20 +153,6 @@ function scanForLocalsSingle(comp): CompileTimeVariable[] {
     } else {
         return [];
     }
-}
-
-function findVariableTypeInCE(
-    ce: CompileTimeEnvironment,
-    variableName: string
-): string | Object | null {
-    // We should start from the last frame and go backwards
-    for (let i = ce.length - 1; i >= 0; i--) {
-        const variable = ce[i].find(variable => variable.name === variableName);
-        if (variable) {
-            return variable.type;
-        }
-    }
-    return null;
 }
 
 // ******************
@@ -217,6 +213,7 @@ const compileComp = {
         }
         instrs[wc++] = { tag: Opcodes.ENTER_SCOPE, num: declarations.length };
         ce = compileTimeEnvironmentExtend(declarations, ce);
+        log('Extended CE: ' + unparse(ce));
         // TODO: Add enclosing environment
         // See: https://go101.org/article/blocks-and-scopes.html
         // For now, we simply compile as per normal
@@ -236,7 +233,7 @@ const compileComp = {
             if (first) {
                 first = false;
             } else {
-                instrs[wc++] = {tag: Opcodes.POP};
+                instrs[wc++] = { tag: Opcodes.POP };
             }
             compile(comp.body[i], ce);
         }
@@ -268,7 +265,7 @@ const compileComp = {
         // const x = 5;
         // note that it is not possible for the RHS to be empty, so if it is, we will throw an error
         if (comp.expression === null) {
-            throw new OogaError('Cannot have a null RHS expression for a const declaration');
+            throw new CompilerError('Cannot have a null RHS expression for a const declaration');
         }
         compile(comp.expression, ce);
         // TODO: Actually prevent constant reassignment
@@ -285,33 +282,29 @@ const compileComp = {
     },
     // TODO: The parser treats expressions of the form
     AssignmentExpression: (comp, ce) => {
+        log('AssignmentExpression: ' + unparse(comp));
         // Compile the value to be assigned
         compile(comp.right, ce);
 
         // If LHS is a MemberExpression, handle field assignment
         if (comp.left.tag === 'MemberExpression') {
+            log('MemberExpression: ' + unparse(comp.left));
+
             // Push the struct address onto the stack
             compile(comp.left.object, ce);
+
             // Determine the struct type and member's index
-            const variableType = findVariableTypeInCE(ce, comp.left.object.name);
-            log(variableType);
-            if (
-                !variableType ||
-                typeof variableType !== 'object' ||
-                variableType.tag !== 'Struct' ||
-                !StructTable[variableType.name]
-            ) {
-                throw new OogaError(
-                    `Type of variable ${comp.left.object.name} is undefined or not a struct.`
-                );
-            }
-            const structDefinition = StructTable[variableType.name].fields;
-            const fieldIndex = structDefinition.findIndex(
-                field => field.name === comp.left.property.name
+            const structInfo = comp.left.object.type;
+            log('Variable type: ' + unparse(structInfo));
+
+            assert(structInfo instanceof StructType, 'Variable type is not a struct type');
+
+            const fieldIndex = structInfo.fields.findIndex(
+                field => field.fieldName === comp.left.property.name
             );
             if (fieldIndex === -1) {
-                throw new OogaError(
-                    `Field ${comp.left.property.name} does not exist in struct ${variableType}`
+                throw new CompilerError(
+                    `Field ${comp.left.property.name} does not exist in struct ${structInfo}`
                 );
             }
             // Push the field index onto the stack
@@ -340,10 +333,10 @@ const compileComp = {
     // ++x;
     // --y;
     UpdateExpression: (comp, ce) => {
-        log('UpdateExpression: ' + JSON.stringify(comp, null, 2));
-        instrs[wc++] = {tag: Opcodes.START_ATOMIC};
+        log('UpdateExpression: ' + unparse(comp));
+        instrs[wc++] = { tag: Opcodes.START_ATOMIC };
         compile(comp.id, ce);
-        log(JSON.stringify(comp, null, 2));
+        log('UpdateExpression: comp ', unparse(comp));
         instrs[wc++] = { tag: Opcodes.UNARY, operator: comp.operator };
         if (comp.id.tag === 'Name') {
             instrs[wc++] = {
@@ -358,25 +351,15 @@ const compileComp = {
             // Push the struct address onto the stack
             compile(comp.id.object, ce);
             // Determine the struct type and member's index
-            const variableType = findVariableTypeInCE(ce, comp.id.object.name);
-            log(variableType);
-            if (
-                !variableType ||
-                typeof variableType !== 'object' ||
-                variableType.tag !== 'Struct' ||
-                !StructTable[variableType.name]
-            ) {
-                throw new OogaError(
-                    `Type of variable ${comp.id.object.name} is undefined or not a struct.`
-                );
-            }
-            const structDefinition = StructTable[variableType.name].fields;
-            const fieldIndex = structDefinition.findIndex(
-                field => field.name === comp.id.property.name
+            const structDefinition = comp.id.object.type;
+            log('Variable type: ' + unparse(structDefinition));
+            log(structDefinition);
+            const fieldIndex = structDefinition.fields.findIndex(
+                field => field.fieldName === comp.id.property.name
             );
             if (fieldIndex === -1) {
-                throw new OogaError(
-                    `Field ${comp.id.property.name} does not exist in struct ${variableType}`
+                throw new CompilerError(
+                    `Field ${comp.id.property.name} does not exist in struct ${structDefinition}`
                 );
             }
             // Push the field index onto the stack
@@ -384,7 +367,7 @@ const compileComp = {
             // Generate instruction to set the field's value
             instrs[wc++] = { tag: Opcodes.SET_FIELD };
         }
-        instrs[wc++] = {tag: Opcodes.END_ATOMIC};
+        instrs[wc++] = { tag: Opcodes.END_ATOMIC };
         log('Exiting UpdateExpression');
     },
     FunctionDeclaration: (comp, ce) => {
@@ -428,27 +411,23 @@ const compileComp = {
         gotoInstruction.addr = wc;
     },
     CallExpression: (comp, ce) => {
+        log('CallExpression: ' + unparse(comp));
+        log(comp);
         if (comp.callee.tag === 'MemberExpression') {
             // Method call
-            const variableType = findVariableTypeInCE(ce, comp.callee.object.name);
-            if (
-                !variableType ||
-                typeof variableType !== 'object' ||
-                variableType.tag !== 'Struct' ||
-                !StructTable[variableType.name]
-            ) {
-                throw new OogaError(
-                    `Type of variable ${comp.callee.object.name} is undefined or not a struct.`
-                );
-            }
-            const structDefinition = StructTable[variableType.name];
+            log('Method call');
+            log(unparse(comp.callee));
+            const structDefinition = comp.callee.object.type;
+
+            assert(structDefinition instanceof StructType, 'Variable type is not a struct type');
+
             const methodIndex = structDefinition.methods.findIndex(
                 method => method.methodName === comp.callee.property.name
             );
 
             if (methodIndex === -1) {
-                throw new OogaError(
-                    `Method ${comp.callee.property.name} does not exist in struct ${variableType}`
+                throw new CompilerError(
+                    `Method ${comp.callee.property.name} does not exist in struct ${structDefinition.structName}`
                 );
             }
 
@@ -457,15 +436,15 @@ const compileComp = {
                 {
                     tag: 'Name',
                     name: new Method(
-                        variableType.name,
+                        structDefinition.structName,
                         comp.callee.property.name,
                         structDefinition.methods[methodIndex].isPointer
                     ),
                 },
                 ce
             );
-            // Push the struct address onto the stack as well as the arguments
 
+            // Push the struct address onto the stack as well as the arguments
             for (let arg of comp.arguments) {
                 compile(arg, ce);
             }
@@ -507,26 +486,18 @@ const compileComp = {
     },
     CallGoroutine: (comp, ce) => {
         if (comp.expression.callee.tag === 'MemberExpression') {
-            // Method call
-            const variableType = findVariableTypeInCE(ce, comp.expression.callee.object.name);
-            if (
-                !variableType ||
-                typeof variableType !== 'object' ||
-                variableType.tag !== 'Struct' ||
-                !StructTable[variableType.name]
-            ) {
-                throw new OogaError(
-                    `Type of variable ${comp.expression.callee.object.name} is undefined or not a struct.`
-                );
-            }
-            const structDefinition = StructTable[variableType.name];
-            const methodIndex = structDefinition.methods.findIndex(
+            log('Method call');
+            log(unparse(comp));
+            // Method call - handle this similarly to CallExpression
+            const structInfo = comp.expression.callee.object.type;
+
+            const methodIndex = structInfo.methods.findIndex(
                 method => method.methodName === comp.expression.callee.property.name
             );
 
             if (methodIndex === -1) {
-                throw new OogaError(
-                    `Method ${comp.expression.callee.property.name} does not exist in struct ${variableType}`
+                throw new CompilerError(
+                    `Method ${comp.expression.callee.property.name} does not exist in struct ${structInfo.structName}`
                 );
             }
 
@@ -535,9 +506,9 @@ const compileComp = {
                 {
                     tag: 'Name',
                     name: new Method(
-                        variableType.name,
+                        structInfo.structName,
                         comp.expression.callee.property.name,
-                        structDefinition.methods[methodIndex].isPointer
+                        structInfo.methods[methodIndex].isPointer
                     ),
                 },
                 ce
@@ -626,7 +597,7 @@ const compileComp = {
     },
     BreakStatement: (comp, ce) => {
         if (loopMarkers.length === 0) {
-            throw new OogaError('Break statement not within loop');
+            throw new CompilerError('Break statement not within loop');
         }
         const breakInstr = { tag: Opcodes.GOTO, addr: null }; // Placeholder for now
         instrs[wc++] = breakInstr;
@@ -635,7 +606,7 @@ const compileComp = {
     },
     ContinueStatement: (comp, ce) => {
         if (loopMarkers.length === 0) {
-            throw new OogaError('Continue statement not within loop');
+            throw new CompilerError('Continue statement not within loop');
         }
         const continueInstr = { tag: Opcodes.GOTO, addr: null }; // Placeholder for now
         instrs[wc++] = continueInstr;
@@ -643,24 +614,20 @@ const compileComp = {
         loopMarkers[loopMarkers.length - 1].continues.push(wc - 1);
     },
     StructDeclaration: (comp, ce) => {
-        StructTable[comp.id.name] = {
-            fields: comp.fields.map(f => ({ name: f.name.name, type: f.type })),
-            methods: [],
-        };
         instrs[wc++] = { tag: Opcodes.LDCI, val: null };
     },
     StructInitializer: (comp, ce) => {
-        // First, verify the struct type exists
-        const structInfo = StructTable[comp.type.name]?.fields;
-        if (!structInfo) {
-            throw new OogaError(`Undefined struct type: ${comp.type.name}`);
-        }
+        log('StructInitializer: ' + unparse(comp));
+
+        const structInfo = comp.type;
+
+        assert(structInfo instanceof StructType, 'Variable type is not a struct type');
 
         // Allocate space for the new struct
         instrs[wc++] = {
             tag: Opcodes.NEW_STRUCT,
-            structType: comp.type.name,
-            numFields: structInfo.length,
+            structType: structInfo.structName,
+            numFields: structInfo.fields.length,
         };
 
         // Handle field initialization
@@ -668,9 +635,11 @@ const compileComp = {
             // Named fields
             comp.fields.forEach(fieldInit => {
                 // Find field index in struct definition
-                const fieldIndex = structInfo.findIndex(f => f.name === fieldInit.name.name);
+                const fieldIndex = structInfo.fields.findIndex(
+                    field => field.fieldName === fieldInit.name.name
+                );
                 if (fieldIndex === -1) {
-                    throw new OogaError(
+                    throw new CompilerError(
                         `Field ${fieldInit.name.name} does not exist in struct ${comp.type.name}`
                     );
                 }
@@ -693,57 +662,42 @@ const compileComp = {
         }
     },
     MemberExpression: (comp, ce) => {
-        log('MemberExpression: ' + JSON.stringify(comp, null, 2));
-        const variableType = findVariableTypeInCE(ce, comp.object.name);
-        if (
-            !variableType ||
-            typeof variableType !== 'object' ||
-            variableType.tag !== 'Struct' ||
-            !StructTable[variableType.name]
-        ) {
-            throw new OogaError(
-                `Type of variable ${comp.object.name} is undefined or not a struct. It is ${variableType}`
-            );
-        }
-        log('Variable type: ' + JSON.stringify(variableType, null, 2));
-        const structDefinition = StructTable[variableType.name];
-        const fieldIndex = structDefinition.fields.findIndex(
-            field => field.name === comp.property.name
+        log('MemberExpression: ' + unparse(comp));
+
+        log('Finding variable type in CE: ' + comp.object.name);
+        const structInfo = comp.object.type;
+        log('Variable type: ' + unparse(structInfo));
+
+        assert(structInfo instanceof StructType, 'Variable type is not a struct type');
+
+        const fieldIndex = structInfo.fields.findIndex(
+            field => field.fieldName === comp.property.name
         );
-        const methodIndex = structDefinition.methods.findIndex(
+        const methodIndex = structInfo.methods.findIndex(
             method => method.methodName === comp.property.name
         );
 
-        if (fieldIndex !== -1) {
-            log(
-                'Field index: ' +
-                    fieldIndex +
-                    ', comping field: ' +
-                    JSON.stringify(comp.object, null, 2)
+        if (fieldIndex === -1 && methodIndex === -1) {
+            throw new CompilerError(
+                `Field or method ${comp.property.name} does not exist in struct ${structInfo}`
             );
+        }
+
+        if (fieldIndex !== -1) {
+            log('Field index: ' + fieldIndex + ', comping field: ' + unparse(comp.object));
             compile(comp.object, ce); // Push the struct's address onto the OS
             instrs[wc++] = { tag: Opcodes.LDCI, val: fieldIndex }; // Field index
             instrs[wc++] = { tag: Opcodes.ACCESS_FIELD }; // Access the field value
         } else if (methodIndex !== -1) {
             // TODO: Implement method calls
-        } else {
-            throw new OogaError(`Field ${comp.property.name} does not exist in struct ${variableType}`);
         }
 
         log('Exiting MemberExpression');
     },
     MethodDeclaration: (comp, ce) => {
-        const structName = comp.receiver.type.name;
-        if (!StructTable[structName]) {
-            throw new OogaError(`Undefined struct type: ${structName}`);
-        }
-        const structInfo = StructTable[structName];
-        const methodIndex = structInfo.methods.findIndex(
-            method => method.methodName === comp.id.name
-        );
-        if (methodIndex !== -1) {
-            throw new OogaError(`Method ${comp.id.name} already exists in struct ${structName}`);
-        }
+        log('MethodDeclaration: ' + unparse(comp));
+        const structInfo = comp.receiver.type;
+        assert(structInfo instanceof StructType, 'Variable type is not a struct type');
 
         // Generate the method's code
         instrs[wc++] = { tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1 };
@@ -764,23 +718,14 @@ const compileComp = {
         instrs[wc++] = { tag: Opcodes.LDU };
         instrs[wc++] = { tag: Opcodes.RESET };
         gotoInstruction.addr = wc;
-        log(JSON.stringify(ce, null, 2));
+        log(unparse(ce));
         instrs[wc++] = {
             tag: Opcodes.ASSIGN,
             pos: compileTimeEnvironmentPosition(
                 ce,
-                new Method(comp.receiver.type.name, comp.id.name, comp.receiver.pointer)
+                new Method(comp.receiver.type.structName, comp.id.name, comp.receiver.pointer)
             ),
         };
-        // Store the method in the struct's method table
-        structInfo.methods.push({
-            methodName: comp.id.name,
-            params: comp.params,
-            body: comp.body,
-            type: comp.type,
-            addr: gotoInstruction.addr,
-            isPointer: comp.receiver.pointer,
-        });
     },
 };
 
@@ -788,7 +733,7 @@ const compileComp = {
 // we compile the left then the right
 function compile(component, ce) {
     log('Compiling: ');
-    log(JSON.stringify(component, null, 2));
+    log(unparse(component));
     return compileComp[component.tag](component, ce);
 }
 
@@ -804,6 +749,7 @@ export function compile_program(program) {
     initializeBuiltinTable();
     wc = 0;
     instrs = [];
+    loopMarkers = [];
     compile(program, globalCompileTimeEnvironment);
     instrs[wc++] = { tag: Opcodes.DONE };
     return instrs;
