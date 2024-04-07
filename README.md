@@ -1,5 +1,95 @@
 # Ooga
 
+Ooga is a VM-based sub-language of Go developed using TypeScript.
+It includes the Ooga toolchain and a web-based playground website using Microsoft's Monaco
+editor for execution of code.
+
+## Quick Start
+
+Set up instructions here.
+
+## Features 
+
+### Sequential Programming Constructs
+
+- Expressions
+- Conditionals
+- For loops
+- Block Scoping
+- Function Declarations
+- Variable Declarations
+- Constant Declarations
+- Structs
+
+### Concurrent Programming Constructs
+
+- Goroutines
+- WaitGroups
+
+Behind the scenes, Ooga uses a Round Robin scheduler to provide "concurrency" and allows for users
+to construct race conditions.
+
+### Garbage Collection
+
+Ooga uses the LISP 2 Garbage Collection algorithm and supports an unlimited number of declarations (up 
+to available memory), with no arbitrary node size restriction. Programs such as
+
+```go
+func OOGA() int {
+    var a int = 1;
+    var b int = 2;
+    var c int = 3;
+    var d int = 4;
+    var e int = 5;
+    var f int = 6;
+    var g int = 7;
+    var h int = 8;
+    var i int = 9;
+    var j int = 10;
+    var k int = 11;
+    var l int = 12;
+    var m int = 13;
+    var n int = 14;
+    var o int = 15;
+    var p int = 16;
+    var q int = 17;
+    var r int = 18;
+    var s int = 19;
+    var t int = 20;
+    var u int = 21;
+    var v int = 22;
+    var w int = 23;
+    var x int = 24;
+    var y int = 25;
+    var z int = 26;
+    return a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w +x + y + z;
+}
+```
+
+### Type Checker
+
+Ooga is a strongly statically typed language that comes with a type checker for ensuring the type safety
+of programs.
+
+### Types
+
+Ooga supports integers, floats, booleans, strings and custom Struct expressions.
+
+WORK IN PROGRESS: Slices and Channels
+
+### Test Suite
+
+Ooga comes with a comprehensive test suite that tests all included features. Run `yarn tooga` to see the tests.
+
+### Memory Visualization
+
+Ooga uses a low-level memory model and comes with three built-in functions that lets you visualize
+the contents of the heap-based memory model.
+
+The Operating Stack, Runtime Stack and the Environment can be visualized using their corresponding
+helper functions.
+
+
 ## Plan
 
 Implementing Type checking
@@ -29,28 +119,11 @@ A convenient function that does compile and run is `yarn booga`.
 
 ## Structure
 
-`oogavm-compiler`: in charge of compiling `*.ooga` files to `*.bm` files.
 `oogavm-assembler`: tbh idk why i put this file, got inspired by martin
+`oogavm-compiler`: in charge of compiling `*.ooga` files to `*.bm` files.
+`oogavm-errors`: ooga errors to distinguish user error from typescript errors.
+`oogavm-heap`: low level memory implementation.
 `oogavm-machine`: run the `*.bm` file.
-
-## TODOs
-
-1. Think at high level how we want to implement all 3 stretch features.
-2. The basic features can be directly mapped from the existing HW and really don't require that much IQ
-
-Some differences from the Homework VM that I know of
-1. we do not start from the first line
-2. we need to spawn goroutines, therefore, each thread needs its own copies of OS, E and so on
-3. I am thinking that we use oogavm-scheduler as in martin, with the main thread spawning a copy of itself for goroutines
-4. we would need to handle the goroutine case of binding to heap for closure (see cs3211)
-5. we need proper error handling and type system as in golang, return errors???
-
-
-## Concurrency
-
-To handle concurrency, each 
-
-
-## Parser
-
-Currently do not support nested functions (inside a {} block)
+`oogavm-scheduler`: process scheduler.
+`oogavm-typechecker`: ooga's typechecker.
+`opcodes`: enumeration of machine opcodes.

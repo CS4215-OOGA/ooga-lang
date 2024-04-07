@@ -890,6 +890,23 @@ a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + 
     defaultNumWords
 );
 
+// Test re-allocation GC
+testProgram(
+    `
+var x int = 5;
+var y int = 10;
+var z int = 15;
+
+func googa(x int, y int, z int) int {
+    return x + y + z;
+}
+
+googa(x, y, z);
+`,
+    30,
+    104
+);
+
 // Negative test for more than once variable declaration
 testProgram(
     `
@@ -917,3 +934,20 @@ var x int = 5;
 // }
 // print(x + " " + y);
 // `, "Jotham Wong", 104);
+
+// Test GC with NEW_THREAD instruction to make sure everything works
+testProgram(
+    `
+var x int = 5;
+var y int = 10;
+
+func googa(x int, y int) int {
+    print(x + y);
+    return x + y;
+}
+
+go googa(x, y);
+`,
+    true,
+    104
+);
