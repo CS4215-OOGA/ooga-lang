@@ -75,12 +75,12 @@ enum ProgramState {
 // When instantiated, it expects a closure on the Operand stack as described in the lecture notes.
 // The operand and runtime stack are initialized to be empty stacks.
 export class Thread {
-    _OS: number;
-    _E: number;
+    _OS: number[];
+    _E: number[];
     _PC: number;
-    _RTS: number;
+    _RTS: number[];
     // TODO: Do this properly
-    constructor(OS: number, E: number, PC: number, RTS: number) {
+    constructor(OS: number[], E: number[], PC: number, RTS: number[]) {
         this._OS = OS;
         this._E = E;
         this._PC = PC;
@@ -104,18 +104,18 @@ function initScheduler() {
     const [newMainThreadId, newTimeQuanta] = scheduler.runThread(); // main thread
     mainThreadId = newMainThreadId;
     TimeQuanta = newTimeQuanta;
-    threads.set(mainThreadId, new Thread(OS[0], E[0], PC, RTS[0]));
+    threads.set(mainThreadId, new Thread(OS, E, PC, RTS));
     currentThreadId = mainThreadId;
 }
 
-function newThread(newOS: number, newRTS: number, newPC: number, newE: number) {
+function newThread(newOS: number[], newRTS: number[], newPC: number, newE: number[]) {
     const newThreadId = scheduler.newThread();
     threads.set(newThreadId, new Thread(newOS, newE, newPC, newRTS));
 }
 
 function pauseThread() {
     // save current state
-    threads.set(currentThreadId, new Thread(OS[0], E[0], PC, RTS[0]));
+    threads.set(currentThreadId, new Thread(OS, E, PC, RTS));
     scheduler.pauseThread(currentThreadId);
 }
 
@@ -129,10 +129,10 @@ function runThread() {
     [currentThreadId, TimeQuanta] = scheduler.runThread();
     // TODO: Load thread state
     let thread = threads.get(currentThreadId);
-    OS[0] = thread._OS;
+    OS = thread._OS;
     PC = thread._PC;
-    RTS[0] = thread._RTS;
-    E[0] = thread._E;
+    RTS = thread._RTS;
+    E = thread._E;
 }
 
 function timeoutThread() {
@@ -519,7 +519,7 @@ const microcode = {
         let newCallFrame = [allocateCallFrame(E, PC)];
         tempRoots.push(newCallFrame);
         newRTS[0] = pushStack(newRTS, newCallFrame);
-        newThread(newOS[0], newRTS[0], newPC, newE[0]);
+        newThread(newOS, newRTS, newPC, newE);
         PC++; // avoid stepping onto DONE as the original thread.
         timeoutThread();
         // finally we can reset the temp roots
@@ -609,9 +609,9 @@ export function getRoots(): number[][] {
         if (threadId == currentThreadId) {
             continue;
         }
-        roots.push([thread._OS]);
-        roots.push([thread._E]);
-        roots.push([thread._RTS]);
+        roots.push(thread._OS);
+        roots.push(thread._E);
+        roots.push(thread._RTS);
     }
     return roots;
 }
