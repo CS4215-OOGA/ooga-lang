@@ -541,13 +541,15 @@ const microcode = {
         let fieldValue;
         [OS[0], fieldValue] = popStack(OS[0]); // Next, the value to be set for the field
         log('Field value is ' + addressToTSValue(fieldValue));
-        let structAddress;
-        [OS[0], structAddress] = popStack(OS[0]); // Assuming struct is on top of OS
+        let structAddress = [];
+        [OS[0], structAddress[0]] = popStack(OS[0]); // Assuming struct is on top of OS
         log('Struct address is ' + structAddress);
         log('Field index is ' + instr.fieldIndex);
         log('Field value is ' + fieldValue);
-        setField(structAddress, instr.fieldIndex, fieldValue);
-        pushAddressOS(structAddress); // Push back the struct address if necessary, or adjust as per your design
+        setField(structAddress[0], instr.fieldIndex, fieldValue);
+        tempRoots.push(structAddress);
+        pushAddressOS(structAddress);
+        tempRoots.pop();
     },
     ACCESS_FIELD: instr => {
         let fieldIndex;
@@ -557,20 +559,24 @@ const microcode = {
         let structAddress;
         [OS[0], structAddress] = popStack(OS[0]);
         log('Struct address is ' + structAddress);
-        let fieldValue = getField(structAddress, fieldIndex);
+        let fieldValue = [getField(structAddress, fieldIndex)];
         log('Field value is ' + fieldValue);
-        OS[0] = pushStack(OS, [fieldValue]);
+        tempRoots.push(fieldValue);
+        OS[0] = pushStack(OS, fieldValue);
+        tempRoots.pop();
     },
     SET_FIELD: instr => {
         let fieldIndex;
         [OS[0], fieldIndex] = popStack(OS[0]);
         fieldIndex = addressToTSValue(fieldIndex);
-        let structAddress;
-        [OS[0], structAddress] = popStack(OS[0]);
+        let structAddress = [];
+        [OS[0], structAddress[0]] = popStack(OS[0]);
         let fieldValue;
         [OS[0], fieldValue] = popStack(OS[0]);
-        setField(structAddress, fieldIndex, fieldValue);
+        setField(structAddress[0], fieldIndex, fieldValue);
+        tempRoots.push(structAddress);
         pushAddressOS(structAddress);
+        tempRoots.pop();
     },
     START_ATOMIC: instr => {
         isAtomicSection = true;
@@ -662,7 +668,7 @@ function runInstruction() {
     log("OS: " + OS[0]);
     log("E: " + E[0]);
     log("PC: " + PC);
-    // debugHeap();
+    debugHeap();
     // printOSStack();
     // printHeapUsage();
     // printStringPoolMapping();

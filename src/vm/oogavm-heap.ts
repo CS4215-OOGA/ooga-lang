@@ -61,6 +61,8 @@ function getTagString(tag: Tag): string {
             return 'BUILTIN';
         case Tag.STRING:
             return 'STRING';
+        case Tag.STRUCT:
+            return 'STRUCT';
         default:
             return 'UNKNOWN';
     }
@@ -569,7 +571,9 @@ export function debugHeap(): void {
                 }
                 break;
             case Tag.STRUCT:
-                // TODO
+                for (let i = 0; i < getSize(curr) - headerSize; i++) {
+                    log("Field " + i + ": " + getWordOffset(curr, i + headerSize));
+                }
                 break;
             case Tag.CALLFRAME:
                 log("PC: " + getCallFramePC(curr));
