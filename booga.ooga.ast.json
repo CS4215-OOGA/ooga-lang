@@ -4,88 +4,52 @@
     "tag": "SequenceStatement",
     "body": [
       {
-        "tag": "StructDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "Point"
-        },
-        "fields": [
-          {
-            "tag": "StructField",
-            "name": {
-              "tag": "Name",
-              "name": "x"
-            },
-            "type": "Integer"
-          },
-          {
-            "tag": "StructField",
-            "name": {
-              "tag": "Name",
-              "name": "y"
-            },
-            "type": "Integer"
-          }
-        ]
-      },
-      {
         "tag": "VariableDeclaration",
         "id": {
           "tag": "Name",
-          "name": "p"
+          "name": "foo"
         },
         "expression": {
-          "tag": "StructInitializer",
-          "fields": [
-            {
-              "tag": "Integer",
-              "value": 1
+          "tag": "CallExpression",
+          "callee": {
+            "tag": "LambdaDeclaration",
+            "id": null,
+            "params": [
+              {
+                "tag": "Name",
+                "name": "n",
+                "type": "Integer"
+              }
+            ],
+            "body": {
+              "tag": "BlockStatement",
+              "body": {
+                "tag": "SequenceStatement",
+                "body": [
+                  {
+                    "tag": "ReturnStatement",
+                    "expression": {
+                      "tag": "Name",
+                      "name": "n"
+                    }
+                  }
+                ]
+              }
             },
+            "type": "Integer"
+          },
+          "arguments": [
             {
               "tag": "Integer",
-              "value": 2
+              "value": 5
             }
-          ],
-          "named": false,
-          "type": {
-            "tag": "Struct",
-            "name": "Point"
-          }
+          ]
         },
-        "type": {
-          "tag": "Struct",
-          "name": "Point"
-        }
+        "type": "Unknown"
       },
       {
-        "tag": "AssignmentExpression",
-        "operator": "=",
-        "left": {
-          "tag": "MemberExpression",
-          "object": {
-            "tag": "Name",
-            "name": "p"
-          },
-          "property": {
-            "tag": "Name",
-            "name": "x"
-          }
-        },
-        "right": {
-          "tag": "Integer",
-          "value": 3
-        }
-      },
-      {
-        "tag": "MemberExpression",
-        "object": {
-          "tag": "Name",
-          "name": "p"
-        },
-        "property": {
-          "tag": "Name",
-          "name": "x"
-        }
+        "tag": "Name",
+        "name": "foo"
       }
     ]
   }

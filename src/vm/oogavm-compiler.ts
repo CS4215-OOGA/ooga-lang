@@ -720,6 +720,8 @@ const compileComp = {
     MemberExpression: (comp, ce) => {
         log('MemberExpression: ' + JSON.stringify(comp, null, 2));
         log('StructTable: ', StructTable);
+        log('Finding variable type in CE: ' + comp.object.name);
+        log(ce);
         const variableType = findVariableTypeInCE(ce, comp.object.name);
         log('Variable type: ' + JSON.stringify(variableType, null, 2));
         if (variableType === null) {
@@ -731,6 +733,8 @@ const compileComp = {
                 `Variable ${comp.object.name} is not a struct. Found type: ${variableType}`
             );
         }
+
+        assert(variableType instanceof StructType, 'Variable type is not a struct type');
 
         log('StructTable: ', StructTable);
 
@@ -774,8 +778,9 @@ const compileComp = {
         log('Exiting MemberExpression');
     },
     MethodDeclaration: (comp, ce) => {
+        log('MethodDeclaration: ' + JSON.stringify(comp, null, 2));
         const structName = comp.receiver.type.name;
-        if (!StructTable[structName]) {
+        if (!StructTable.has(structName)) {
             throw new CompilerError(`Undefined struct type: ${structName}`);
         }
 

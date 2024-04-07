@@ -15,42 +15,63 @@ import {
     StringType,
     ReturnType,
 } from './oogavm-types.js';
+import assert from 'assert';
 
 const log = debug('ooga:typechecker');
 
 let StructTable = new Map<string, StructType>();
 
-function getType(t, te) {
+function getType(t) {
     log('getType: ', t);
-    if (t.tag === 'Method') {
-        return new MethodType(
-            t.args.map(arg => getType(arg, te)),
-            getType({ type: t.res }, te)
-        );
-    } else if (t.tag === 'FunctionDeclaration') {
-        return new FunctionType(
-            t.params.map(p => getType(p, te)),
-            getType({ type: t.type }, te)
-        );
+    if (is_type(t.type, Type)) {
+        return t.type;
+    }
+    if (t.tag === 'FunctionDeclaration') {
+        let args: Type[] = [];
+        for (let i = 0; i < t.params.length; i++) {
+            const param_t = getType(t.params[i]);
+            args.push(param_t);
+        }
+        const ret_t = getType({ type: t.type });
+        log('Returning FunctionType');
+        return new FunctionType(args, ret_t);
     } else if (t.tag === 'LambdaDeclaration') {
-        return new FunctionType(
-            t.params.map(p => getType(p, te)),
-            getType({ type: t.type }, te)
+        let args: Type[] = [];
+        for (let i = 0; i < t.params.length; i++) {
+            const param_t = getType(t.params[i]);
+            args.push(param_t);
+        }
+        const ret_t = getType({ type: t.type });
+        return new FunctionType(args, ret_t);
+    } else if (t.tag === 'MethodDeclaration') {
+        // We also have to handle the receiver
+        getType(t.receiver);
+
+        return new MethodType(
+            t.id.name,
+            t.params.map(p => getType(p)),
+            getType({ type: t.type })
         );
+    } else if (t.type === 'Integer' || t.tag === 'Integer') {
+        log('Returning IntegerType');
+        t.type = new IntegerType();
+        return new IntegerType();
+    } else if (t.type === 'Boolean' || t.tag === 'Boolean') {
+        t.type = new BooleanType();
+        return new BooleanType();
+    } else if (t.type === 'Null' || t.tag === 'Null') {
+        t.type = new NullType();
+        return new NullType();
+    } else if (t.type === 'String' || t.tag === 'String') {
+        t.type = new StringType();
+        return new StringType();
     } else if (t.type.tag === 'Struct') {
         if (!StructTable.has(t.type.name)) {
             throw new Error('struct ' + t.name + ' not found');
         }
+        t.type = StructTable.get(t.type.name);
+        log('Returning StructType');
         return StructTable.get(t.type.name);
-    } else if (t.type === 'Integer') {
-        log('Returning IntegerType');
-        return new IntegerType();
-    } else if (t.type === 'Boolean') {
-        return new BooleanType();
-    } else if (t.type === 'Null') {
-        return new NullType();
-    } else if (t === 'String') {
-        return new StringType();
     } else {
         throw new Error('Unknown type: ' + t.tag);
     }
@@ -245,7 +266,7 @@ const type_comp = {
         log(JSON.stringify(comp, null, 2));
         const new_te = extend_type_environment(
             comp.params.map(p => p.name),
-            comp.params.map(p => getType(p, te)),
+            comp.params.map(p => p.type),
             te
         );
 
@@ -268,6 +289,8 @@ const type_comp = {
             ret_type = new ReturnType(new NullType());
         }
 
+        assert(ret_type instanceof ReturnType, 'ret_type is not a ReturnType');
+
         if (!equal_type(ret_type.type, expected_ret)) {
             throw new Error(
                 'type error in function declaration; declared return type: ' +
@@ -283,11 +306,12 @@ const type_comp = {
     LambdaDeclaration: (comp, te) => {
         const new_te = extend_type_environment(
             comp.params.map(p => p.name),
-            comp.params.map(p => getType(p, te)),
+            comp.params.map(p => p.type),
             te
         );
 
-        const t = getType(comp, te);
+        log('LambdaDeclaration: new_te', new_te);
+        const t = getType(comp);
         log('LambdaDeclaration: t', t);
         let prev_in_func = in_func;
         let prev_expected_ret = expected_ret;
@@ -300,7 +324,7 @@ const type_comp = {
         if (!is_type(ret_type, ReturnType)) {
             ret_type = new ReturnType(new NullType());
         }
-
+        assert(ret_type instanceof ReturnType, 'ret_type is not a ReturnType');
         log('LambdaDeclaration: ret_type', ret_type);
         if (!equal_type(ret_type.type, expected_ret)) {
             throw new Error(
@@ -317,18 +341,9 @@ const type_comp = {
         return t;
     },
     MethodDeclaration: (comp, te) => {
+        log('MethodDeclaration');
+        log(JSON.stringify(comp, null, 2));
         // Check if the receiver type is a struct
-        if (comp.receiver.type.tag !== types.Struct || !StructTable[comp.receiver.type.name]) {
-            throw new Error('receiver type must be a struct');
-        }
-
-        StructTable[comp.receiver.type.name].methods.push({
-            methodName: comp.id.name,
-            params: comp.params,
-            body: comp.body,
-            type: comp.type,
-            receiver: comp.receiver.name.name,
-        });
 
         return type(
             {
@@ -336,6 +351,7 @@ const type_comp = {
                 id: comp.id,
                 params: [
                     {
+                        tag: 'Name',
                         name: comp.receiver.name.name,
                         type: comp.receiver.type,
                     },
@@ -360,6 +376,8 @@ const type_comp = {
                     unparse_types(fun_type)
             );
         }
+
+        assert(fun_type instanceof FunctionType, 'fun_type is not a FunctionType');
         const expected_arg_types = fun_type.args;
         // The reason we need to flatten the arguments is because the arguments can be nested
         // e.g.
@@ -409,7 +427,7 @@ const type_comp = {
     },
     VariableDeclaration: (comp, te) => {
         log('VariableDeclaration');
-        const actual_type = comp.expression ? type(comp.expression, te) : types.Any;
+        const actual_type = comp.expression ? type(comp.expression, te) : new AnyType();
         const prev_type = lookup_type(comp.id.name, te);
         log('VariableDeclaration: actual_type', actual_type, 'comp.type', prev_type);
 
@@ -479,7 +497,10 @@ const type_comp = {
         const method_decls = comp.body.body.filter(comp => comp.tag === 'MethodDeclaration');
         for (let i = 0; i < method_decls.length; i++) {
             log('MethodDeclaration for', method_decls[i].id.name);
-            type(method_decls[i], te);
+            const comp = method_decls[i];
+            comp.type = getType(comp, te);
+            // comp.receiver.type = getType(comp.receiver);
+            log('MethodDeclaration: t', comp.type);
         }
 
         const decls = comp.body.body.filter(
@@ -510,11 +531,6 @@ const type_comp = {
             );
         }
 
-        const decls_method = comp.body.body.filter(comp => comp.tag === 'MethodDeclaration');
-        for (let i = 0; i < decls_method.length; i++) {
-            log('MethodDeclaration for', decls_method[i].id.name);
-            type(decls_method[i], extended_te);
-        }
         // log('Extended type environment');
         // log(JSON.stringify(extended_te));
         const decls_unknown_type = decls.filter(comp => comp.type === 'Unknown');
@@ -523,7 +539,7 @@ const type_comp = {
         let extended_te2 = extended_te;
         // We have to use a for loop here because one unknown type declaration can depend on another
         for (let i = 0; i < decls_unknown_type.length; i++) {
-            const t = type(decls_unknown_type[i].expression, extended_te2);
+            const t = getType(decls_unknown_type[i].expression);
             decls_unknown_type[i].type = t;
             extended_te2 = extend_current_type_environment(
                 [decls_unknown_type[i].id.name],

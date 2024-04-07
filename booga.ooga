@@ -1,7 +1,4 @@
-type Point struct {
-	x int
-	y int
-}
-var p Point = Point{1, 2}
-p.x = 3
-p.x
+foo := func(n int) int {
+	return n
+}(5)
+foo
