@@ -1,4 +1,5 @@
 import debug from 'debug';
+import { unparse } from '../utils/utils.js';
 
 const log = debug('ooga:vm:types');
 
@@ -55,9 +56,17 @@ export class FunctionType extends Type {
 
 export class MethodType extends FunctionType {
     methodName: string;
-    constructor(methodName: string, args: Type[], ret: Type, is_const: boolean = false) {
+    isPointer: boolean;
+    constructor(
+        methodName: string,
+        args: Type[],
+        ret: Type,
+        is_pointer: boolean = true,
+        is_const: boolean = false
+    ) {
         super(args, ret, is_const);
         this.methodName = methodName;
+        this.isPointer = is_pointer;
         this.name = 'Method';
     }
 }
@@ -107,7 +116,15 @@ export function is_type(ts1: Type, ts2: Function) {
     return ts1 instanceof ts2;
 }
 
-export function equal_type(ts1: Type, ts2: Type) {
+export function equal_type(ts1: Type, ts2: Type, cache = new Set<string>()): boolean {
+    const cache_key = `${unparse(ts1)}:${unparse(ts2)}`;
+
+    if (cache.has(cache_key)) {
+        return true;
+    }
+
+    cache.add(cache_key);
+
     if (ts1 instanceof AnyType || ts2 instanceof AnyType) {
         return true;
     }
@@ -129,26 +146,31 @@ export function equal_type(ts1: Type, ts2: Type) {
     }
 
     if (ts1 instanceof ArrayType && ts2 instanceof ArrayType) {
-        return equal_type(ts1.elem_type, ts2.elem_type);
+        const result = equal_type(ts1.elem_type, ts2.elem_type, cache);
+
+        return result;
     }
 
     if (ts1 instanceof StructType && ts2 instanceof StructType) {
         log('Comparing struct types', ts1, ts2);
         if (ts1.structName !== ts2.structName) {
             log('Struct names do not match');
+
             return false;
         }
 
         if (ts1.fields.length !== ts2.fields.length) {
             log('Field lengths do not match');
+
             return false;
         }
 
         // Check fields
         for (let i = 0; i < ts1.fields.length; i++) {
             log('Comparing field', ts1.fields[i], ts2.fields[i]);
-            if (!equal_type(ts1.fields[i].type, ts2.fields[i].type)) {
+            if (!equal_type(ts1.fields[i].type, ts2.fields[i].type, cache)) {
                 log('Field types do not match', ts1.fields[i].type, ts2.fields[i].type);
+
                 return false;
             }
         }
@@ -156,12 +178,14 @@ export function equal_type(ts1: Type, ts2: Type) {
         // Check methods
         if (ts1.methods.length !== ts2.methods.length) {
             log('Method lengths do not match');
+
             return false;
         }
 
         for (let i = 0; i < ts1.methods.length; i++) {
-            if (!equal_type(ts1.methods[i], ts2.methods[i])) {
+            if (!equal_type(ts1.methods[i], ts2.methods[i], cache)) {
                 log('Method types do not match');
+
                 return false;
             }
         }
@@ -174,27 +198,23 @@ export function equal_type(ts1: Type, ts2: Type) {
             return false;
         }
 
-        if (ts1.ret.length !== ts2.ret.length) {
-            return false;
-        }
-
         for (let i = 0; i < ts1.args.length; i++) {
-            if (!equal_type(ts1.args[i], ts2.args[i])) {
+            if (!equal_type(ts1.args[i], ts2.args[i], cache)) {
                 return false;
             }
         }
 
-        for (let i = 0; i < ts1.ret.length; i++) {
-            if (!equal_type(ts1.ret[i], ts2.ret[i])) {
-                return false;
-            }
+        if (!equal_type(ts1.ret, ts2.ret)) {
+            return false;
         }
 
         return true;
     }
 
     if (ts1 instanceof ReturnType && ts2 instanceof ReturnType) {
-        return equal_type(ts1.type, ts2.type);
+        const result = equal_type(ts1.type, ts2.type, cache);
+
+        return result;
     }
 
     return false;

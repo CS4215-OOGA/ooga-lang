@@ -768,7 +768,8 @@ function peg$parse(input, options) {
       return {
         tag: "LambdaDeclaration",
         params: optionalList(extractOptional(params, 0)),
-        type: type || "Null",
+        ret: {type:type || "Null"},
+        type: "Function",
         body: body
       }
     };
@@ -777,7 +778,8 @@ function peg$parse(input, options) {
         tag: "FunctionDeclaration",
         id: id,
         params: optionalList(extractOptional(params, 0)),
-        type: type || "Null",
+        ret: {type: type || "Null"},
+        type: "Function",
         body: body
       };
     };
@@ -787,7 +789,8 @@ function peg$parse(input, options) {
         id: extractOptional(id, 0),
         params: optionalList(extractOptional(params, 0)),
         body: body,
-        type: type || "Null"
+        ret: {type:type || "Null"},
+        type: "Function"
       };
     };
   var peg$f87 = function(head, tail) {
@@ -867,7 +870,8 @@ function peg$parse(input, options) {
         receiver: receiver,
         id: id,
         params: optionalList(extractOptional(params, 0)),
-        type: type || "Null",
+        ret: {type: type || "Null"},
+        type: "Method",
         body: body
       };
     };

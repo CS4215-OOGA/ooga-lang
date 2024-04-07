@@ -829,7 +829,8 @@ LambdaDeclaration
       return {
         tag: "LambdaDeclaration",
         params: optionalList(extractOptional(params, 0)),
-        type: type || "Null",
+        ret: {type:type || "Null"},
+        type: "Function",
         body: body
       }
     }
@@ -844,7 +845,8 @@ FunctionDeclaration
         tag: "FunctionDeclaration",
         id: id,
         params: optionalList(extractOptional(params, 0)),
-        type: type || "Null",
+        ret: {type: type || "Null"},
+        type: "Function",
         body: body
       };
     }
@@ -861,7 +863,8 @@ FunctionExpression
         id: extractOptional(id, 0),
         params: optionalList(extractOptional(params, 0)),
         body: body,
-        type: type || "Null"
+        ret: {type:type || "Null"},
+        type: "Function"
       };
     }
 
@@ -987,7 +990,8 @@ MethodDeclaration
         receiver: receiver,
         id: id,
         params: optionalList(extractOptional(params, 0)),
-        type: type || "Null",
+        ret: {type: type || "Null"},
+        type: "Method",
         body: body
       };
     }

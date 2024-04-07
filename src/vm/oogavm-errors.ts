@@ -36,3 +36,9 @@ export class CompilerError extends OogaError {
         super(msg);
     }
 }
+
+export class TypecheckError extends OogaError {
+    constructor(msg: string) {
+        super(msg);
+    }
+}
