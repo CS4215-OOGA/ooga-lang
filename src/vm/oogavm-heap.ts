@@ -245,10 +245,10 @@ export function getPrevStackAddress(address: number): number {
     return getWordOffset(address, prevStackElementOffset);
 }
 
-export function pushStack(stackAddress: number, stackElementAddress: number): number {
+export function pushStack(stackAddress: number[], stackElementAddress: number[]): number {
     const nextStack = allocate(Tag.STACK, 4);
-    setWord(nextStack + prevStackElementOffset, stackAddress);
-    setWord(nextStack + stackEntryOffset, stackElementAddress);
+    setWord(nextStack + prevStackElementOffset, stackAddress[0]);
+    setWord(nextStack + stackEntryOffset, stackElementAddress[0]);
     return nextStack;
 }
 
@@ -285,11 +285,11 @@ const closureArityOffset = 1;
 const closurePcOffset = 3;
 // 3 words
 const closureEnvOffset = 3;
-export function allocateClosure(arity: number, pc: number, envAddress: number): number {
+export function allocateClosure(arity: number, pc: number, envAddress: number[]): number {
     const address = allocate(Tag.CLOSURE, 4);
     setByteAtOffset(address + headerSize, closureArityOffset, arity);
     set2ByteAtOffset(address + headerSize, closurePcOffset, pc);
-    setWord(address + closureEnvOffset, envAddress);
+    setWord(address + closureEnvOffset, envAddress[0]);
     return address;
 }
 
@@ -315,10 +315,10 @@ export function isClosure(address: number): boolean {
 // 3rd word is blockFrameEnv
 const blockFrameEnvOffset = 2;
 
-export function allocateBlockFrame(envAddress: number): number {
+export function allocateBlockFrame(envAddress: number[]): number {
     const address = allocate(Tag.BLOCKFRAME, 3);
-    log("BlockFrame at addr " + address + " will point to E=" + envAddress);
-    setWord(address + blockFrameEnvOffset, envAddress);
+    log("BlockFrame at addr " + address + " will point to E=" + envAddress[0]);
+    setWord(address + blockFrameEnvOffset, envAddress[0]);
     return address;
 }
 
@@ -339,10 +339,10 @@ const callFramePCOffset = 2;
 // 4th word
 const callFrameEnvAddress = 3;
 
-export function allocateCallFrame(envAddress: number, pc: number): number {
+export function allocateCallFrame(envAddress: number[], pc: number): number {
     const address = allocate(Tag.CALLFRAME, 4);
     setWord(address + callFramePCOffset, pc);
-    setWord(address + callFrameEnvAddress, envAddress);
+    setWord(address + callFrameEnvAddress, envAddress[0]);
     return address;
 }
 
@@ -388,14 +388,14 @@ export function setFrameValue(frameAddress: number, i: number, value: number) {
 // creates a copy of an environment that is bigger by 1 frame slot than the previous env
 // and copies the frame addresses of the given env to the new env
 // then sets the address of te new frame to the end of the new env
-export function extendEnvironment(frameAddress: number, envAddress: number): number {
-    const oldSize = getSize(envAddress) - headerSize;
+export function extendEnvironment(frameAddress: number[], envAddress: number[]): number {
+    const oldSize = getSize(envAddress[0]) - headerSize;
     const newEnvAddress = allocateEnvironment(oldSize + 1);
     let i = 0;
     for (i = 0; i < oldSize; i++) {
-        setWord(newEnvAddress + i + headerSize, getWordOffset(envAddress, i + headerSize));
+        setWord(newEnvAddress + i + headerSize, getWordOffset(envAddress[0], i + headerSize));
     }
-    setWord(newEnvAddress + i + headerSize, frameAddress);
+    setWord(newEnvAddress + i + headerSize, frameAddress[0]);
     return newEnvAddress;
 }
 
@@ -741,7 +741,10 @@ function computeForwardingAddresses() {
         // to the current freePtr and increment the freePtr according to
         // the object's size.
         if (isMarked(livePtr)) {
+            const originalTag = -1-getTag(livePtr);
+            log("Forwarding " + livePtr + " of <" + getTagString(originalTag) + ">" + " to " + freePtr);
             setForwardingAddress(livePtr, freePtr);
+            rootMappings.set(livePtr, freePtr);
             freePtr += size;
         }
         livePtr += size;
@@ -836,15 +839,19 @@ function moveLiveObjects() {
     free = freePtr;
 }
 
+let roots = [];
+let rootMappings = new Map<number, number>;
+
 function collectGarbage() {
     // First pass: marking
     log("Collecting da garbage...");
-    let roots = getRoots();
+    roots = getRoots();
+    rootMappings.clear();
     for (let root of roots) {
-        mark(root);
+        mark(root[0]);
     }
     for (let literal of literals) {
-        mark(literal);
+        mark(literal[0]);
     }
     // To avoid freeing strings, just mark them from the StringPool
     // This is safe to do because we haven't moved anything yet
@@ -854,8 +861,6 @@ function collectGarbage() {
         log(sKey + " -> " + StringPool.get(sKey));
         mark(StringPool.get(sKey));
     }
-
-
     // Second pass: Compute forwarding location for live objects
     computeForwardingAddresses();
     // Third pass: update all pointers to the forwarding addresses
@@ -863,7 +868,7 @@ function collectGarbage() {
     // we need to update the roots first because if the root is at a place
     // after free, the forwarding address there is basically garbage data
     // can't avoid this tight coupling unfortunately
-    updateRoots(getForwardingAddress(E), getForwardingAddress(OS), getForwardingAddress(RTS));
+    updateRoots(roots, rootMappings);
     // Final pass: move all live objects to their forwarding address
     moveLiveObjects();
 }
