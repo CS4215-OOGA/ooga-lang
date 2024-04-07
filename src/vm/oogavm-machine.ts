@@ -185,10 +185,12 @@ export function initializeBuiltinTable() {
 }
 
 function applyBuiltin(builtinId: number) {
-    const result = builtinArray[builtinId]();
+    const result = [builtinArray[builtinId]()];
     let _;
     [OS[0], _] = popStack(OS[0]); // pop fun
+    tempRoots.push(result);
     OS[0] = pushStack(OS, result);
+    tempRoots.pop();
 }
 
 function apply_binop(sym: string, left: any, right: any) {
@@ -402,11 +404,10 @@ const microcode = {
         const arity = instr.arity;
         // fun is the closure
         const fun = [peekStackN(OS[0], arity)];
-        tempRoots.push(fun);
         if (isBuiltin(fun[0])) {
             return applyBuiltin(getBuiltinID(fun[0]));
         }
-
+        tempRoots.push(fun);
         let newPC = getClosurePC(fun[0]);
         const newFrame = [allocateFrame(arity)];
         tempRoots.push(newFrame);
