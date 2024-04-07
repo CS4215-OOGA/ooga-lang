@@ -35,7 +35,7 @@ export function testProgram(
         const instrs = compile_program(programBlock);
         const bytecode = assemble(instrs);
         processByteCode(bytecode);
-        value = run();
+        value = run(numWords);
     } catch (e) {
         if (e.message === expectedValue) {
             logTest('Test passed');
