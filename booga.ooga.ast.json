@@ -4,89 +4,60 @@
     "tag": "SequenceStatement",
     "body": [
       {
-        "tag": "StructDeclaration",
+        "tag": "VariableDeclaration",
         "id": {
           "tag": "Name",
-          "name": "Point"
+          "name": "x"
         },
-        "fields": [
-          {
-            "tag": "StructField",
-            "name": {
-              "tag": "Name",
-              "name": "X"
-            },
-            "type": "Integer"
-          },
-          {
-            "tag": "StructField",
-            "name": {
-              "tag": "Name",
-              "name": "Y"
-            },
-            "type": "Integer"
-          }
-        ]
+        "expression": {
+          "tag": "Integer",
+          "value": 5
+        },
+        "type": "Integer"
       },
       {
         "tag": "VariableDeclaration",
         "id": {
           "tag": "Name",
-          "name": "p"
+          "name": "y"
         },
         "expression": {
-          "tag": "StructInitializer",
-          "fields": [
-            {
-              "tag": "StructFieldInitializer",
-              "name": {
-                "tag": "Name",
-                "name": "X"
-              },
-              "value": {
-                "tag": "Integer",
-                "value": 1
-              }
-            },
-            {
-              "tag": "StructFieldInitializer",
-              "name": {
-                "tag": "Name",
-                "name": "Y"
-              },
-              "value": {
-                "tag": "Integer",
-                "value": 2
-              }
-            }
-          ],
-          "named": true,
-          "type": {
-            "tag": "Struct",
-            "name": "Point"
-          }
+          "tag": "Integer",
+          "value": 10
         },
-        "type": "Unknown"
+        "type": "Integer"
       },
       {
-        "tag": "CallExpression",
-        "callee": {
+        "tag": "VariableDeclaration",
+        "id": {
           "tag": "Name",
-          "name": "print"
+          "name": "z"
         },
-        "arguments": [
-          {
-            "tag": "MemberExpression",
-            "object": {
-              "tag": "Name",
-              "name": "p"
-            },
-            "property": {
-              "tag": "Name",
-              "name": "X"
-            }
+        "expression": {
+          "tag": "Integer",
+          "value": 5.5
+        },
+        "type": "Integer"
+      },
+      {
+        "tag": "BinaryExpression",
+        "operator": "+",
+        "left": {
+          "tag": "BinaryExpression",
+          "operator": "+",
+          "left": {
+            "tag": "Name",
+            "name": "x"
+          },
+          "right": {
+            "tag": "Name",
+            "name": "y"
           }
-        ]
+        },
+        "right": {
+          "tag": "Name",
+          "name": "z"
+        }
       }
     ]
   }

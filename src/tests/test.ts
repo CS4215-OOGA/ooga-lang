@@ -918,22 +918,30 @@ var x int = 5;
 );
 
 // Test String works locally
-// testProgram(`
-// var x string = "Jotham";
-// var y string = "Wong";
-// x + " " + y;
-// `, "Jotham Wong", defaultNumWords);
+testProgram(
+    `
+var x string = "Jotham";
+var y string = "Wong";
+x + " " + y;
+`,
+    'Jotham Wong',
+    defaultNumWords
+);
 
 // Test String with GC
 // 104 is just sufficient
-// testProgram(`
-// var x string = "Jotham";
-// var y string = "Wong";
-// {
-//     var z int = 5;
-// }
-// print(x + " " + y);
-// `, "Jotham Wong", 104);
+testProgram(
+    `
+var x string = "Jotham";
+var y string = "Wong";
+{
+    var z int = 5;
+}
+print(x + " " + y);
+`,
+    'Jotham Wong',
+    104
+);
 
 // Test GC with NEW_THREAD instruction to make sure everything works
 testProgram(

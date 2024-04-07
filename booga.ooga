@@ -1,8 +1,5 @@
-type Point struct {
-	X int
-	Y int
-}
+var x int = 5
+var y int = 10
+var z float64 = 5.5
 
-p := Point{X: 1, Y: 2}
-
-print(p.X)
+x + y + z
