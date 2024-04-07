@@ -29,7 +29,7 @@
     "test": "yarn build && node ./dist/tests/test.js",
     "tooga": "yarn peggy && yarn build && yarn test",
     "pooga": "yarn peggy && yarn build",
-    "server": "node ./dist/server/server.js",
+    "server": "yarn build && node ./dist/server/server.js",
     "format": "npx prettier --write ./src/**/*.ts"
   },
   "devDependencies": {
