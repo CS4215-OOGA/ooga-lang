@@ -16,6 +16,7 @@ import {
     ReturnType,
 } from './oogavm-types.js';
 import assert from 'assert';
+import { TypecheckError } from './oogavm-errors.js';
 
 const log = debug('ooga:typechecker');
 
@@ -88,7 +89,7 @@ const global_type_environment = pair(global_type_frame, empty_type_environment);
 
 const lookup_type = (x, e) => {
     if (e === null) {
-        throw new TypeError('unbound name: ' + x);
+        throw new TypecheckError('unbound name: ' + x);
     }
     if (head(e).hasOwnProperty(x)) {
         return head(e)[x];
@@ -97,8 +98,10 @@ const lookup_type = (x, e) => {
 };
 
 const extend_type_environment = (xs, ts: Type[], e) => {
-    if (ts.length > xs.length) throw new TypeError('too few parameters in function declaration');
-    if (ts.length < xs.length) throw new TypeError('too many parameters in function declaration');
+    if (ts.length > xs.length)
+        throw new TypecheckError('too few parameters in function declaration');
+    if (ts.length < xs.length)
+        throw new TypecheckError('too many parameters in function declaration');
     if (xs.length === 0) return e;
     log('Extending type environment with', xs, ts);
     const new_frame = {};
@@ -107,8 +110,10 @@ const extend_type_environment = (xs, ts: Type[], e) => {
 };
 
 const extend_current_type_environment = (xs, ts: Type[], e) => {
-    if (ts.length > xs.length) throw new TypeError('too few parameters in function declaration');
-    if (ts.length < xs.length) throw new TypeError('too many parameters in function declaration');
+    if (ts.length > xs.length)
+        throw new TypecheckError('too few parameters in function declaration');
+    if (ts.length < xs.length)
+        throw new TypecheckError('too many parameters in function declaration');
     log('Extending current type environment with', xs, ts);
     // add the types to the current frame
     for (let i = 0; i < xs.length; i++) head(e)[xs[i]] = ts[i];
@@ -136,7 +141,7 @@ function getType(t) {
         log('Exiting getType, returning MethodType');
         t.receiver.type = getType(t.receiver);
         if (!is_type(t.receiver.type, StructType)) {
-            throw new TypeError('expected struct type');
+            throw new TypecheckError('expected struct type');
         }
 
         const methodType = new MethodType(
@@ -171,14 +176,14 @@ function getType(t) {
     } else if (t.type.tag === 'Struct') {
         // Ensure that the struct is defined
         if (!StructTable.has(t.type.name)) {
-            throw new TypeError('struct ' + t.type.name + ' not found');
+            throw new TypecheckError('struct ' + t.type.name + ' not found');
         }
         t.type = StructTable.get(t.type.name);
         log('Exiting getType, returning StructType, ', t.type);
         return t.type;
     }
 
-    throw new TypeError('Unknown type: ' + t.type);
+    throw new TypecheckError('Unknown type: ' + t.type);
 }
 /**
  * Represents a collection of type checking functions for different AST node types.
@@ -189,28 +194,28 @@ function getType(t) {
 const type_comp = {
     Integer: (comp, te) => {
         if (!is_integer(comp.value)) {
-            throw new TypeError('expected number, got ' + comp.value);
+            throw new TypecheckError('expected number, got ' + comp.value);
         }
 
         return new IntegerType();
     },
     Boolean: (comp, te) => {
         if (!is_boolean(comp.value)) {
-            throw new TypeError('expected boolean, got ' + comp.value);
+            throw new TypecheckError('expected boolean, got ' + comp.value);
         }
 
         return new BooleanType();
     },
     String: (comp, te) => {
         if (!is_string(comp.value)) {
-            throw new TypeError('expected string, got ' + comp.value);
+            throw new TypecheckError('expected string, got ' + comp.value);
         }
 
         return new StringType();
     },
     Null: (comp, te) => {
         if (!is_null(comp.value)) {
-            throw new TypeError('expected null, got ' + comp.value);
+            throw new TypecheckError('expected null, got ' + comp.value);
         }
 
         return new NullType();
@@ -243,7 +248,7 @@ const type_comp = {
             log('StructDeclaration for', structName);
             // Check that the struct name is unique
             if (StructTable.has(structName)) {
-                throw new TypeError('struct ' + struct_decls[i].id.name + ' already declared');
+                throw new TypecheckError('struct ' + struct_decls[i].id.name + ' already declared');
             }
 
             const struct_t = new StructType(structName, []);
@@ -327,7 +332,7 @@ const type_comp = {
         const t0 = type(comp.test, te);
         log('IfStatement: t0', t0);
         if (!is_type(t0, BooleanType))
-            throw new TypeError('expected predicate type: Boolean, got ' + t0);
+            throw new TypecheckError('expected predicate type: Boolean, got ' + t0);
         const t1 = type(comp.consequent, te);
         log('IfStatement: t1', t1);
         const t2 = type(comp.alternate, te);
@@ -370,7 +375,7 @@ const type_comp = {
         assert(ret_type instanceof ReturnType, 'expected return type');
 
         if (!equal_type(ret_type.type, expected_ret)) {
-            throw new TypeError(
+            throw new TypecheckError(
                 'type error in function declaration; declared return type: ' +
                     unparse_types(expected_ret) +
                     ', actual return type: ' +
@@ -404,7 +409,7 @@ const type_comp = {
         const methodType = comp.type;
 
         if (!is_type(methodType, MethodType)) {
-            throw new TypeError('expected method type');
+            throw new TypecheckError('expected method type');
         }
 
         const structType = comp.receiver.type;
@@ -434,7 +439,7 @@ const type_comp = {
         const fun_type = type(comp.callee, te);
         log('fun_type', fun_type);
         if (!is_type(fun_type, FunctionType)) {
-            throw new TypeError(
+            throw new TypecheckError(
                 'type error in application; function ' +
                     'expression must have function type; ' +
                     'actual type: ' +
@@ -449,7 +454,7 @@ const type_comp = {
         log('expected_arg_types', expected_arg_types);
         log('actual_arg_types', actual_arg_types);
         if (actual_arg_types.length !== expected_arg_types.length) {
-            throw new TypeError(
+            throw new TypecheckError(
                 'type error in application; ' +
                     'expected number of arguments: ' +
                     expected_arg_types.length +
@@ -461,7 +466,7 @@ const type_comp = {
 
         for (let i = 0; i < actual_arg_types.length; i++) {
             if (!equal_type(actual_arg_types[i], expected_arg_types[i])) {
-                throw new TypeError(
+                throw new TypecheckError(
                     'type error in application; ' +
                         'expected argument types: ' +
                         unparse_types(expected_arg_types) +
@@ -492,7 +497,7 @@ const type_comp = {
         log('VariableDeclaration: actual_type', actual_type, 'comp.type', expected_type);
 
         if (!equal_type(expected_type, actual_type)) {
-            throw new TypeError(
+            throw new TypecheckError(
                 'type error in variable declaration; ' +
                     'expected type: ' +
                     unparse_types(comp.type) +
@@ -532,7 +537,7 @@ const type_comp = {
         log('Expected return type:', expected_ret);
         if (in_func) {
             if (!equal_type(ret_type, expected_ret)) {
-                throw new TypeError(
+                throw new TypecheckError(
                     'type error in return statement; ' +
                         'expected return type: ' +
                         unparse_types(expected_ret) +
@@ -552,7 +557,7 @@ const type_comp = {
         const id_type = type(comp.left, te);
         const expr_type = type(comp.right, te);
         if (!equal_type(id_type, expr_type)) {
-            throw new TypeError(
+            throw new TypecheckError(
                 'type error in assignment; ' +
                     'expected type: ' +
                     unparse_types(id_type) +
@@ -589,7 +594,7 @@ const type_comp = {
         log(unparse(comp));
         // we need to extend the type environment with the type of the init expression, init can be null
         if (comp.init && comp.init.tag !== 'VariableDeclaration') {
-            throw new TypeError('for loop init expression must be a variable declaration');
+            throw new TypecheckError('for loop init expression must be a variable declaration');
         }
         const extended_te = comp.init
             ? extend_type_environment([comp.init.id.name], [type(comp.init.expression, te)], te)
@@ -599,7 +604,7 @@ const type_comp = {
         const t0 = comp.test ? type(comp.test, extended_te) : new BooleanType();
         log('ForStatement: t0', t0);
         if (!is_type(t0, BooleanType)) {
-            throw new TypeError('expected predicate type: Boolean, got ' + t0);
+            throw new TypecheckError('expected predicate type: Boolean, got ' + t0);
         }
         // check the update expression, this can be null as well
         // the update expression should either be a CallExpression or an AssignmentExpression
@@ -625,7 +630,7 @@ const type_comp = {
         const struct = comp.type;
 
         if (struct.fields.length !== comp.fields.length) {
-            throw new TypeError(
+            throw new TypecheckError(
                 'expected ' + struct.fields.length + ' fields, got ' + comp.fields.length
             );
         }
@@ -635,11 +640,11 @@ const type_comp = {
             for (let i = 0; i < struct.fields.length; i++) {
                 const field = comp.fields.find(f => f.name.name === struct.fields[i].fieldName);
                 if (!field) {
-                    throw new TypeError('field ' + struct.fields[i].fieldName + ' not found');
+                    throw new TypecheckError('field ' + struct.fields[i].fieldName + ' not found');
                 }
                 const field_type = type(field.value, te);
                 if (!equal_type(field_type, struct.fields[i].type)) {
-                    throw new TypeError(
+                    throw new TypecheckError(
                         'type error in struct initializer; ' +
                             'expected type: ' +
                             unparse_types(struct.fields[i].type) +
@@ -651,7 +656,7 @@ const type_comp = {
             }
         } else {
             if (struct.fields.length !== comp.fields.length) {
-                throw new TypeError(
+                throw new TypecheckError(
                     'expected ' + struct.fields.length + ' fields, got ' + comp.fields.length
                 );
             }
@@ -660,7 +665,7 @@ const type_comp = {
                 const field = comp.fields[i];
                 const field_type = type(field, te);
                 if (!equal_type(field_type, struct.fields[i].type)) {
-                    throw new TypeError(
+                    throw new TypecheckError(
                         'type error in struct initializer; ' +
                             'expected type: ' +
                             unparse_types(struct.fields[i].type) +
@@ -682,7 +687,7 @@ const type_comp = {
         log('obj_type', struct);
 
         if (!is_type(struct, StructType)) {
-            throw new TypeError('expected struct type, got ' + unparse_types(struct));
+            throw new TypecheckError('expected struct type, got ' + unparse_types(struct));
         }
 
         assert(struct instanceof StructType, 'expected struct type');
@@ -693,7 +698,7 @@ const type_comp = {
         log('Methods', struct.methods);
 
         if (!field && !method) {
-            throw new TypeError(
+            throw new TypecheckError(
                 'field or method ' + comp.property.name + ' not found in struct ' + struct.name
             );
         }
