@@ -19,6 +19,12 @@ export class IntegerType extends Type {
     }
 }
 
+export class FloatType extends Type {
+    constructor(is_const: boolean = false) {
+        super('Float', is_const);
+    }
+}
+
 export class BooleanType extends Type {
     constructor(is_const: boolean = false) {
         super('Boolean', is_const);
@@ -105,10 +111,19 @@ export class ReturnType extends Type {
 
 export class ArrayType extends Type {
     elem_type: Type;
+    length: number;
+    is_array: boolean;
 
-    constructor(elem_type: Type, is_const: boolean = false) {
+    constructor(
+        elem_type: Type,
+        length: number,
+        is_array: boolean = false,
+        is_const: boolean = false
+    ) {
         super('Array', is_const);
         this.elem_type = elem_type;
+        this.length = length;
+        this.is_array = is_array;
     }
 }
 
@@ -137,6 +152,10 @@ export function equal_type(ts1: Type, ts2: Type, cache = new Set<string>()): boo
         return true;
     }
 
+    if (ts1 instanceof FloatType && ts2 instanceof FloatType) {
+        return true;
+    }
+
     if (ts1 instanceof BooleanType && ts2 instanceof BooleanType) {
         return true;
     }
@@ -146,7 +165,10 @@ export function equal_type(ts1: Type, ts2: Type, cache = new Set<string>()): boo
     }
 
     if (ts1 instanceof ArrayType && ts2 instanceof ArrayType) {
-        const result = equal_type(ts1.elem_type, ts2.elem_type, cache);
+        const result =
+            equal_type(ts1.elem_type, ts2.elem_type, cache) &&
+            ts1.is_array === ts2.is_array &&
+            (ts1.is_array ? ts1.length === ts2.length : true);
 
         return result;
     }

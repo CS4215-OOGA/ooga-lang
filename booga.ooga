@@ -1,5 +1,1 @@
-var x int = 5
-var y int = 10
-var z float64 = 5.5
-
-x + y + z
+var x [3]float64 = [3]float64{1.0, 2.3, 3.4}

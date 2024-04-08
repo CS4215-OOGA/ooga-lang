@@ -14,15 +14,22 @@ import {
     StringType,
     Type,
     ReturnType,
+    ArrayType,
+    FloatType,
 } from './oogavm-types.js';
 import assert from 'assert';
 import { TypecheckError } from './oogavm-errors.js';
+import { Null } from './oogavm-heap.js';
 
 const log = debug('ooga:typechecker');
 
 let StructTable = new Map<string, StructType>();
 
 function is_integer(x) {
+    return typeof x === 'number' && Number.isInteger(x);
+}
+
+function is_float(x) {
     return typeof x === 'number';
 }
 
@@ -42,16 +49,23 @@ const unparse_types = t => {
     return JSON.stringify(t, null, 2);
 };
 
-const unary_arith_type = new FunctionType([new IntegerType()], new IntegerType());
+const unary_arith_type = [
+    new FunctionType([new IntegerType()], new IntegerType()),
+    new FunctionType([new FloatType()], new FloatType()),
+];
 
 const binary_arith_type = new FunctionType(
     [new IntegerType(), new IntegerType()],
     new IntegerType()
 );
-const number_comparison_type = new FunctionType(
-    [new IntegerType(), new IntegerType()],
-    new BooleanType()
-);
+
+// TODO: This is abit annoying and error-prone - is there a better way to do this?
+const number_comparison_type = [
+    new FunctionType([new IntegerType(), new IntegerType()], new BooleanType()),
+    new FunctionType([new FloatType(), new FloatType()], new BooleanType()),
+    new FunctionType([new IntegerType(), new FloatType()], new BooleanType()),
+    new FunctionType([new FloatType(), new IntegerType()], new BooleanType()),
+];
 
 const binary_bool_type = new FunctionType(
     [new BooleanType(), new BooleanType()],
@@ -65,6 +79,9 @@ const binary_equal_type = new FunctionType([new AnyType(), new AnyType()], new B
 const binary_add_type = [
     new FunctionType([new StringType(), new StringType()], new StringType()),
     new FunctionType([new IntegerType(), new IntegerType()], new IntegerType()),
+    new FunctionType([new FloatType(), new FloatType()], new FloatType()),
+    new FunctionType([new IntegerType(), new FloatType()], new FloatType()),
+    new FunctionType([new FloatType(), new IntegerType()], new FloatType()),
 ];
 
 const global_type_frame = {
@@ -160,6 +177,10 @@ function getType(t) {
         log('Exiting getType, returning IntegerType');
         t.type = new IntegerType();
         return new IntegerType();
+    } else if (t.type === 'Float') {
+        log('Exiting getType, returning FloatType');
+        t.type = new FloatType();
+        return new FloatType();
     } else if (t.type === 'Boolean') {
         log('Exiting getType, returning BooleanType');
         t.type = new BooleanType();
@@ -184,6 +205,9 @@ function getType(t) {
         t.type = StructTable.get(t.type.name);
         log('Exiting getType, returning StructType, ', t.type);
         return t.type;
+    } else if (t.type.tag === 'Array') {
+        t.type = new ArrayType(getType(t.type.elementType), t.type.length, t.type.is_bound);
+        return t.type;
     }
 
     throw new TypecheckError('Unknown type: ' + t.type);
@@ -197,16 +221,26 @@ function getType(t) {
 const type_comp = {
     Integer: (comp, te) => {
         if (!is_integer(comp.value)) {
-            throw new TypecheckError('expected number, got ' + comp.value);
+            throw new TypecheckError('expected integer, got ' + comp.value);
         }
 
+        comp.type = new IntegerType();
         return new IntegerType();
+    },
+    Float: (comp, te) => {
+        if (!is_float(comp.value)) {
+            throw new TypecheckError('expected float, got ' + comp.value);
+        }
+
+        comp.type = new FloatType();
+        return new FloatType();
     },
     Boolean: (comp, te) => {
         if (!is_boolean(comp.value)) {
             throw new TypecheckError('expected boolean, got ' + comp.value);
         }
 
+        comp.type = new BooleanType();
         return new BooleanType();
     },
     String: (comp, te) => {
@@ -214,6 +248,7 @@ const type_comp = {
             throw new TypecheckError('expected string, got ' + comp.value);
         }
 
+        comp.type = new StringType();
         return new StringType();
     },
     Null: (comp, te) => {
@@ -221,7 +256,33 @@ const type_comp = {
             throw new TypecheckError('expected null, got ' + comp.value);
         }
 
+        comp.type = new NullType();
         return new NullType();
+    },
+    ArraySliceLiteral: (comp, te) => {
+        log('ArraySliceLiteral');
+        comp.type = getType(comp);
+        log(unparse(comp));
+        if (comp.elements.length != comp.type.length) {
+            throw new TypecheckError(
+                'Array expected ' + comp.type.length + ' elements, got ' + comp.elements.length
+            );
+        }
+
+        const expected_type = comp.type.elem_type;
+        for (let i = 0; i < comp.elements.length; i++) {
+            const elem_type = type(comp.elements[i], te);
+            if (!equal_type(elem_type, expected_type)) {
+                throw new TypecheckError(
+                    'Expected element type: ' +
+                        unparse_types(comp.type.elem_type) +
+                        ', got ' +
+                        unparse_types(elem_type)
+                );
+            }
+        }
+
+        return comp.type;
     },
     Name: (comp, te) => {
         log('Name');
@@ -611,16 +672,19 @@ const type_comp = {
             te
         ),
     CallGoroutine: (comp, te) => type(comp.expression, te),
-    GoroutineCallExpression: (comp, te) =>
-        type(
+    GoroutineCallExpression: (comp, te) => {
+        const t = type(
             {
                 tag: 'CallExpression',
                 callee: comp.callee,
                 arguments: comp.arguments,
             },
             te
-        ),
-    GoroutineDeclaration: (comp, te) => type(comp.expression, te),
+        );
+
+        // Goroutines inherently discard any return values and return null
+        return new NullType();
+    },
     ForStatement: (comp, te) => {
         log('ForStatement');
         log(unparse(comp));
@@ -756,6 +820,8 @@ const type_comp = {
  * @returns {any} - The result of type checking the component.
  */
 const type = (comp, te): Type => {
+    // log('Type');
+    // log(unparse(comp));
     return type_comp[comp.tag](comp, te);
 };
 

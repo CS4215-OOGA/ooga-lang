@@ -79,10 +79,8 @@ InitType
       switch(type[0]) {
         case "int":
           return "Integer";
-        case "float32":
-          return "Integer";
         case "float64":
-            return "Integer";
+            return "Float";
         case "bool":
           return "Boolean";
         case "string":
@@ -90,6 +88,12 @@ InitType
         default:
           return "Null";
       }
+    }
+    / sliceType:"[]" _ type:InitType {
+        return { tag: "Array", elementType: {type: type}, length: -1, is_bound: false};
+    }
+    / arrayType:"[" length:DecimalDigit+ "]" _ type:InitType {
+        return { tag: "Array", elementType: {type: type}, length: parseInt(length.join("")), is_bound: true};
     }
 
 StructIdentifier
@@ -124,13 +128,16 @@ Keyword
   / VarToken
   / ConstToken
   / IntegerToken
+  / Float64Token
   / BooleanToken
   / StringToken
   / GoroutineToken
+  / StructToken
+  / TypeToken
+
 
 Type
   = IntegerToken
-  / Float32Token
   / Float64Token
   / BooleanToken
   / StringToken
@@ -155,7 +162,7 @@ NumericLiteral "number"
 
 DecimalLiteral
   = DecimalIntegerLiteral "." DecimalDigit* {
-      return { tag: "Integer", value: parseFloat(text()) };
+      return { tag: "Float", value: parseFloat(text()) };
     }
   / DecimalIntegerLiteral {
       return { tag: "Integer", value: parseFloat(text()) };
@@ -236,7 +243,6 @@ ThisToken       = "this"       !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 VarToken        = "var"        !IdentifierPart
 IntegerToken    = "int"        !IdentifierPart
-Float32Token    = "float32"    !IdentifierPart
 Float64Token    = "float64"    !IdentifierPart
 BooleanToken    = "bool"       !IdentifierPart
 StringToken     = "string"     !IdentifierPart
@@ -270,41 +276,9 @@ PrimaryExpression
   = Struct
   / Identifier
   / Literal
-  / ArrayLiteral
+  / ArraySliceLiteral
   / "(" __ expression:Expression __ ")" { return expression; }
 
-ArrayLiteral
-  = "[" __ elision:(Elision __)? "]" {
-      return {
-        tag: "ArrayExpression",
-        elements: optionalList(extractOptional(elision, 0))
-      };
-    }
-  / "[" __ elements:ElementList __ "]" {
-      return {
-        tag: "ArrayExpression",
-        elements: elements
-      };
-    }
-  / "[" __ elements:ElementList __ "," __ elision:(Elision __)? "]" {
-      return {
-        tag: "ArrayExpression",
-        elements: elements.concat(optionalList(extractOptional(elision, 0)))
-      };
-    }
-
-ElementList
-  = head:(
-      elision:(Elision __)? element:AssignmentExpression {
-        return optionalList(extractOptional(elision, 0)).concat(element);
-      }
-    )
-    tail:(
-      __ "," __ elision:(Elision __)? element:AssignmentExpression {
-        return optionalList(extractOptional(elision, 0)).concat(element);
-      }
-    )*
-    { return Array.prototype.concat.apply(head, tail); }
 
 Elision
   = "," commas:(__ ",")* { return filledArray(commas.length + 1, null); }
@@ -1002,4 +976,45 @@ Receiver
     }
     / id:Identifier __ type:StructIdentifier {
         return { tag: "Receiver", name: id, type: type, pointer: false };
+    }
+
+
+// Arrays
+
+// Handle trailing commas, not sure if needed!
+ElementList
+  = head:AssignmentExpression
+    tail:(_ "," _ element:AssignmentExpression)*
+    trailingComma:(_ ",")? {
+      var elements = buildList(head, tail, 3);
+      return elements;
+    }
+
+
+ArraySliceLiteral
+  = "[" _ length:DecimalDigit+ _ "]" _ type:InitType _ "{"_ elements:ElementList _"}" {
+      return {
+        tag: "ArraySliceLiteral",
+        type: {
+                tag:'Array',
+                elementType: {type: type},
+                length: parseInt(length.join("")),
+                is_bound: true
+            },
+        elements: elements,
+
+      };
+    }
+    / "[" _ "]" _ type:InitType _ "{"_ elements:ElementList _"}" {
+      return {
+        tag: "ArraySliceLiteral",
+        type: {
+                tag:'Array',
+                elementType: {type: type},
+                length: -1,
+                is_bound: false
+            },
+        elements: elements,
+
+      };
     }

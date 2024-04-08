@@ -10,53 +10,37 @@
           "name": "x"
         },
         "expression": {
-          "tag": "Integer",
-          "value": 5
-        },
-        "type": "Integer"
-      },
-      {
-        "tag": "VariableDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "y"
-        },
-        "expression": {
-          "tag": "Integer",
-          "value": 10
-        },
-        "type": "Integer"
-      },
-      {
-        "tag": "VariableDeclaration",
-        "id": {
-          "tag": "Name",
-          "name": "z"
-        },
-        "expression": {
-          "tag": "Integer",
-          "value": 5.5
-        },
-        "type": "Integer"
-      },
-      {
-        "tag": "BinaryExpression",
-        "operator": "+",
-        "left": {
-          "tag": "BinaryExpression",
-          "operator": "+",
-          "left": {
-            "tag": "Name",
-            "name": "x"
+          "tag": "ArraySliceLiteral",
+          "type": {
+            "tag": "Array",
+            "elementType": {
+              "type": "Float"
+            },
+            "length": 3,
+            "is_bound": true
           },
-          "right": {
-            "tag": "Name",
-            "name": "y"
-          }
+          "elements": [
+            {
+              "tag": "Float",
+              "value": 1
+            },
+            {
+              "tag": "Float",
+              "value": 2.3
+            },
+            {
+              "tag": "Float",
+              "value": 3.4
+            }
+          ]
         },
-        "right": {
-          "tag": "Name",
-          "name": "z"
+        "type": {
+          "tag": "Array",
+          "elementType": {
+            "type": "Float"
+          },
+          "length": 3,
+          "is_bound": true
         }
       }
     ]

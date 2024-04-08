@@ -183,6 +183,9 @@ const compileComp = {
     Integer: (comp, ce) => {
         instrs[wc++] = { tag: Opcodes.LDCI, val: comp.value };
     },
+    Float: (comp, ce) => {
+        instrs[wc++] = { tag: Opcodes.LDCI, val: comp.value };
+    },
     Boolean: (comp, ce) => {
         instrs[wc++] = { tag: Opcodes.LDBI, val: comp.value };
     },
