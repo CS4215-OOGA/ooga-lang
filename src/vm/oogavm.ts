@@ -1,18 +1,14 @@
 import * as fs from 'fs';
 import * as util from 'util';
-
-import { compile_program } from './oogavm-compiler.js';
-import { assemble } from './oogavm-assembler.js';
-import { parse } from '../parser/ooga.js';
-import { checkTypes } from './oogavm-typechecker.js';
-import { write } from 'fs';
 import debug from 'debug';
+import { prepare_and_compile } from './oogavm-toolchain.js';
 
 const log = debug('ooga:vm');
 interface CliOptions {
     compileTo: 'json';
     inputFilename: string;
     outputFilename: string;
+    logAst: boolean;
 }
 
 const readFileAsync = util.promisify(fs.readFile);
@@ -23,6 +19,7 @@ function parseOptions(): CliOptions | null {
         compileTo: 'json',
         inputFilename: '',
         outputFilename: null,
+        logAst: false
     };
 
     let endOfOptions = false;
@@ -39,6 +36,10 @@ function parseOptions(): CliOptions | null {
         }
         if (!endOfOptions && option.startsWith('-')) {
             switch (option) {
+                case '-l':
+                case '--logAst':
+                    ret.logAst = true;
+                    break;
                 case '--compile-to':
                 case '-t':
                     switch (argument) {
@@ -104,25 +105,14 @@ Options:
         process.exitCode = 1;
         return;
     }
-
+    // Parse the user program
     let source = await readFileAsync(options.inputFilename, 'utf8');
-    source = source.trimEnd();
-    let program = parse(source);
-    // wrap up the entire ast in a block tag
-    program = { tag: 'BlockStatement', body: program };
-    log('--------------------------------------------');
-    log('Parsed program:');
-    log(JSON.stringify(program, null, 2));
-    // always write the AST to a file
-    await writeFileAsync(options.inputFilename + '.ast.json', JSON.stringify(program, null, 2));
-    program = checkTypes(program);
-    log('--------------------------------------------');
-    const instrs = compile_program(program);
-    log('--------------------------------------------');
-    log('Compiled program:');
-    log(instrs);
-    log('--------------------------------------------');
-    const bytecode = assemble(instrs);
+    // Then parse the standard library
+    let standardSource = await readFileAsync('std/ooga-std.ooga', 'utf8');
+    if (options.logAst) {
+        await writeFileAsync(options.inputFilename + '.ast.json', JSON.stringify(source, null, 2));
+    }
+    const bytecode = prepare_and_compile(standardSource, source);
     return writeFileAsync(options.outputFilename, bytecode);
 }
 

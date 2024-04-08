@@ -7,10 +7,6 @@ const log = debug('ooga:memory');
 // number of bytes each word represents
 const wordSize = 8;
 
-const sizeOffset = 5;
-
-const emptyFreeList = -1;
-
 export enum Tag {
     UNINITIALIZED, // all starting heap are tag 0
     FALSE,
@@ -77,8 +73,8 @@ function getTagString(tag: Tag): string {
 //  4-7th byte: tag of node
 // 2nd word is the forwarding address
 // 3rd word onwards is tag dependent interpretation
-// For Tags without children, payload is the 3rd word
-// For Tags with children, num children is 3rd word
+// Payload is the 3rd word for all tags
+// 3rd word onwards is the children
 //
 // minimum number of words required to support each node in the
 // linear list is = 3 words
@@ -860,6 +856,7 @@ function moveLiveObjects() {
 let roots: number[][] = [];
 let rootMappings = new Map<number, number>();
 
+// Lisp 2 Garbage Collection!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function collectGarbage() {
     // First pass: marking
     log('Collecting da garbage...');

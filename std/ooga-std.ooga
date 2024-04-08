@@ -1,0 +1,30 @@
+// The Ooga Standard Library
+
+
+// Formatting
+type format struct {
+}
+
+func (f *format) Println(x any) {
+    print(x)
+}
+
+// Concurrency
+type WaitGroup struct {
+    counter int
+}
+
+func (wg *WaitGroup) Add(delta int) {
+    wg.counter += delta
+}
+
+func (wg *WaitGroup) Done() {
+    wg.counter--
+}
+
+func (wg *WaitGroup) Wait() {
+    for wg.counter > 0 {
+    }
+}
+
+var fmt format = format{}

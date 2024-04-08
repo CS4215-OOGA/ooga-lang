@@ -3,7 +3,6 @@ import * as util from 'util';
 import { RoundRobinScheduler, Scheduler, ThreadId } from './oogavm-scheduler.js';
 import { fileURLToPath } from 'url';
 import debug from 'debug';
-import { HeapDeadError, HeapOutOfMemoryError } from './oogavm-errors.js';
 import {
     addressToTSValue,
     allocateBlockFrame,
@@ -198,6 +197,7 @@ export function initializeBuiltinTable() {
 }
 
 function applyBuiltin(builtinId: number) {
+    // @ts-ignore
     const result = [builtinArray[builtinId]()];
     let _;
     [OS[0], _] = popStack(OS[0]); // pop fun
@@ -655,6 +655,8 @@ function initialize(numWords = 1000000) {
     running = true;
     State = ProgramState.NORMAL;
     initScheduler();
+    log("After initializing: ");
+    printHeapUsage();
 }
 
 function initializeBuiltins() {
@@ -708,6 +710,9 @@ export function run(numWords = 1000000) {
     }
     const returnValue = addressToTSValue(peekStack(OS[0]));
     log('Program value is ' + returnValue);
+    log("After STD initialization: ");
+    printHeapUsage();
+    console.log("Return value: " + returnValue);
     return returnValue;
 }
 
