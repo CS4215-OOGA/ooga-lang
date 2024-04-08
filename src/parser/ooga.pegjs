@@ -85,6 +85,8 @@ InitType
           return "Boolean";
         case "string":
           return "String";
+        case "any":
+            return "Any";
         default:
           return "Null";
       }
@@ -134,6 +136,7 @@ Keyword
   / GoroutineToken
   / StructToken
   / TypeToken
+  / AnyToken
 
 
 Type
@@ -141,6 +144,7 @@ Type
   / Float64Token
   / BooleanToken
   / StringToken
+  / AnyToken
 
 Literal
   = NullLiteral
@@ -249,6 +253,7 @@ StringToken     = "string"     !IdentifierPart
 GoroutineToken  = "go"         !IdentifierPart
 StructToken     = "struct"     !IdentifierPart
 TypeToken       = "type"       !IdentifierPart
+AnyToken        = "any"        !IdentifierPart
 
 SingleLineComment
   = "//" (!LineTerminatorSequence .)* (LineTerminatorSequence / !.)

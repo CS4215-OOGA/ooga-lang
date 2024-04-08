@@ -144,7 +144,7 @@ let in_func = false;
 let expected_ret;
 
 function getType(t) {
-    // log('getType: ', t);
+    log('getType: ', t);
     if (is_type(t.type, Type)) {
         log('Exiting getType, found Type');
         return t.type;

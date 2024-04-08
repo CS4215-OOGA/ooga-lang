@@ -4,44 +4,82 @@
     "tag": "SequenceStatement",
     "body": [
       {
-        "tag": "VariableDeclaration",
+        "tag": "FunctionDeclaration",
         "id": {
           "tag": "Name",
-          "name": "x"
+          "name": "foo"
         },
-        "expression": {
-          "tag": "ArraySliceLiteral",
-          "type": {
-            "tag": "Array",
-            "elementType": {
-              "type": "Float"
-            },
-            "length": 3,
-            "is_bound": true
-          },
-          "elements": [
-            {
-              "tag": "Float",
-              "value": 1
-            },
-            {
-              "tag": "Float",
-              "value": 2.3
-            },
-            {
-              "tag": "Float",
-              "value": 3.4
-            }
-          ]
+        "params": [
+          {
+            "tag": "Name",
+            "name": "x",
+            "type": "Any"
+          }
+        ],
+        "ret": {
+          "type": "Null"
         },
-        "type": {
-          "tag": "Array",
-          "elementType": {
-            "type": "Float"
-          },
-          "length": 3,
-          "is_bound": true
+        "type": "Function",
+        "body": {
+          "tag": "BlockStatement",
+          "body": {
+            "tag": "SequenceStatement",
+            "body": [
+              {
+                "tag": "CallExpression",
+                "callee": {
+                  "tag": "Name",
+                  "name": "print"
+                },
+                "arguments": [
+                  {
+                    "tag": "Name",
+                    "name": "x"
+                  }
+                ]
+              }
+            ]
+          }
         }
+      },
+      {
+        "tag": "CallExpression",
+        "callee": {
+          "tag": "Name",
+          "name": "foo"
+        },
+        "arguments": [
+          {
+            "tag": "Integer",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "tag": "CallExpression",
+        "callee": {
+          "tag": "Name",
+          "name": "foo"
+        },
+        "arguments": [
+          {
+            "tag": "Integer",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "tag": "CallExpression",
+        "callee": {
+          "tag": "Name",
+          "name": "foo"
+        },
+        "arguments": [
+          {
+            "tag": "String",
+            "value": "hello"
+          }
+        ]
       }
     ]
   }

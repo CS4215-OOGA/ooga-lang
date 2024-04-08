@@ -1,1 +1,7 @@
-var x [3]float64 = [3]float64{1.0, 2.3, 3.4}
+func foo(x any) {
+	print(x);
+}
+
+foo(1);
+foo(2);
+foo("hello")
