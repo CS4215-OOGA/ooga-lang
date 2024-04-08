@@ -1,11 +1,8 @@
-import { assemble } from '../vm/oogavm-assembler.js';
-import { parse } from '../parser/ooga.js';
 import { processByteCode } from '../vm/oogavm-machine.js';
-import { compile_program } from '../vm/oogavm-compiler.js';
 import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
-import { checkTypes } from '../vm/oogavm-typechecker.js';
-import { OogaError, OogaRedeclarationError } from '../vm/oogavm-errors.js';
+import { readFileSync } from 'fs';
+import { prepare_and_compile } from '../vm/oogavm-toolchain.js';
 
 const log = debug('ooga:tests');
 
@@ -15,6 +12,8 @@ function logTest(message: string, isError: boolean = false) {
     const color = isError ? '\x1b[31m%s\x1b[0m' : '\x1b[32m%s\x1b[0m';
     log(color, message);
 }
+
+const standardSource = readFileSync("std/ooga-std.ooga", 'utf8');
 
 export function testProgram(
     program: string,
@@ -28,12 +27,7 @@ export function testProgram(
 
     let value;
     try {
-        const trimmedProgram = program.trimEnd();
-        const programObj = parse(trimmedProgram);
-        let programBlock = { tag: 'BlockStatement', body: programObj };
-        programBlock = checkTypes(programBlock);
-        const instrs = compile_program(programBlock);
-        const bytecode = assemble(instrs);
+        const bytecode = prepare_and_compile(standardSource, program);
         processByteCode(bytecode);
         value = run(numWords);
     } catch (e) {
@@ -44,6 +38,7 @@ export function testProgram(
         }
         logTest('--------------------------------------------', true);
         logTest('Test failed with exception', true);
+        console.log(e.message);
         logTest(`Error: ${e.message}`, true);
         logTest('--------------------------------------------', true);
         throw e;
@@ -426,6 +421,7 @@ x;
 // E Frame is at address 24
 // Second E frame that contains Builtin frame is at address 26
 // BlockFrame that contains entire program is at address 29 up till 32
+// The standard library occupies up till 104 memory
 
 testProgram(
     `
@@ -750,34 +746,6 @@ p.x;
 
 testProgram(
     `
-type format struct{
-
-}
-
-func (f *format) Println(x int) {
-    print(x)
-}
-
-type WaitGroup struct {
-    counter int
-}
-
-func (wg *WaitGroup) Add(delta int) {
-    wg.counter += delta
-}
-
-func (wg *WaitGroup) Done() {
-    wg.counter--
-}
-
-func (wg *WaitGroup) Wait() {
-    for wg.counter > 0 {
-    }
-}
-
-
-var fmt format = format{}
-
 // USER PROGRAM
 type Vertex struct {
     X int
@@ -890,23 +858,6 @@ a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + 
     defaultNumWords
 );
 
-// Test re-allocation GC
-testProgram(
-    `
-var x int = 5;
-var y int = 10;
-var z int = 15;
-
-func googa(x int, y int, z int) int {
-    return x + y + z;
-}
-
-googa(x, y, z);
-`,
-    30,
-    104
-);
-
 // Negative test for more than once variable declaration
 testProgram(
     `
@@ -918,30 +869,22 @@ var x int = 5;
 );
 
 // Test String works locally
-testProgram(
-    `
+testProgram(`
 var x string = "Jotham";
 var y string = "Wong";
 x + " " + y;
-`,
-    'Jotham Wong',
-    defaultNumWords
-);
+`, "Jotham Wong", defaultNumWords);
 
 // Test String with GC
 // 104 is just sufficient
-testProgram(
-    `
+testProgram(`
 var x string = "Jotham";
 var y string = "Wong";
 {
     var z int = 5;
 }
 print(x + " " + y);
-`,
-    'Jotham Wong',
-    104
-);
+`, "Jotham Wong", 200);
 
 // Test GC with NEW_THREAD instruction to make sure everything works
 testProgram(
@@ -950,12 +893,12 @@ var x int = 5;
 var y int = 10;
 
 func googa(x int, y int) int {
-    print(x + y);
+    fmt.Println(x + y);
     return x + y;
 }
 
 go googa(x, y);
 `,
     true,
-    104
+    206
 );
