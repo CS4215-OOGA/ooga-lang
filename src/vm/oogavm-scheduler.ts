@@ -1,3 +1,5 @@
+import { RuntimeError } from './oogavm-errors.js';
+
 export type ThreadId = number;
 
 export interface Scheduler {
@@ -65,9 +67,8 @@ export class RoundRobinScheduler implements Scheduler {
     }
 
     runThread(): [ThreadId, number] | null {
-        // Arnav: When will this be 0? This will cause a crash because the callee assumes the tuple result
         if (this._idleThreads.length === 0) {
-            return null;
+            throw new RuntimeError("Expected a thread but nothing.");
         } else {
             // The ! is a non-null assertion operator
             const nextThread = this._idleThreads.shift()!;

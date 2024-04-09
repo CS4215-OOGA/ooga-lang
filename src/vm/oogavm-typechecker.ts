@@ -669,9 +669,6 @@ const type_comp = {
         log('AssignmentExpression');
         log(unparse(comp));
         const id_type = type(comp.left, te, struct_te);
-        if (id_type.is_const) {
-            throw new TypecheckError('cannot redeclare variable as it is constant');
-        }
         const expr_type = type(comp.right, te, struct_te);
         if (!equal_type(id_type, expr_type)) {
             throw new TypecheckError(
