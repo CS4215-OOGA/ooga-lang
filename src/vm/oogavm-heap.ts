@@ -103,7 +103,7 @@ export let Undefined;
 
 let emptyString;
 
-let literals = [];
+let literals: number[] = [];
 
 let updateRoots;
 
@@ -476,7 +476,7 @@ const StringValueOffset = 3;
 function allocateString(s: string): number {
     log('Inside allocateString for ' + s);
     if (StringPool.has(s)) {
-        return StringPool.get(s);
+        return StringPool.get(s)!;
     }
 
     const size = Math.ceil(s.length / 8);

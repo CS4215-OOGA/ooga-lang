@@ -140,7 +140,7 @@ function deleteThread() {
 function runThread() {
     [currentThreadId, TimeQuanta] = scheduler.runThread();
     // TODO: Load thread state
-    let thread = threads.get(currentThreadId);
+    let thread = threads.get(currentThreadId)!;
     OS = thread._OS;
     PC = thread._PC;
     RTS = thread._RTS;
@@ -555,7 +555,7 @@ const microcode = {
         let fieldValue;
         [OS[0], fieldValue] = popStack(OS[0]); // Next, the value to be set for the field
         log('Field value is ' + addressToTSValue(fieldValue));
-        let structAddress = [];
+        let structAddress: number[] = [];
         [OS[0], structAddress[0]] = popStack(OS[0]); // Assuming struct is on top of OS
         log('Struct address is ' + structAddress);
         log('Field index is ' + instr.fieldIndex);
@@ -583,7 +583,7 @@ const microcode = {
         let fieldIndex;
         [OS[0], fieldIndex] = popStack(OS[0]);
         fieldIndex = addressToTSValue(fieldIndex);
-        let structAddress = [];
+        let structAddress: number[] = [];
         [OS[0], structAddress[0]] = popStack(OS[0]);
         let fieldValue;
         [OS[0], fieldValue] = popStack(OS[0]);

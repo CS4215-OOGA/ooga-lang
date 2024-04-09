@@ -24,7 +24,9 @@ export function testProgram(
     debug.disable(); // Disable debug logs initially
     debug.enable('ooga:tests');
     // debug.enable('ooga:typechecker');
-    log(`Running program:\n\`\`\`${program}\`\`\`\nExpected value: ${expectedValue}`);
+    log(
+        `Running program:\n\`\`\`${program}\`\`\`\nExpected value: ${expectedValue}\nExpected output: ${expectedOutput}`
+    );
 
     let value;
     let capturedOutput = '';
@@ -38,7 +40,6 @@ export function testProgram(
         };
         value = run(numWords);
         console.log = originalLog;
-        log('Got output: ', capturedOutput);
     } catch (e) {
         if (e.message === expectedValue) {
             logTest('Test passed');
@@ -58,7 +59,7 @@ export function testProgram(
     if (value !== expectedValue) {
         logTest('--------------------------------------------', true);
         logTest('Test failed', true);
-        logTest(`Expected ${expectedValue} but got ${value}`, true);
+        logTest(`Expected result: ${expectedValue} but got ${value}`, true);
         logTest('--------------------------------------------', true);
         throw new Error(`Test failed: Expected ${expectedValue} but got ${value}`);
     } else if (capturedOutput.trim() !== expectedOutput?.trim()) {

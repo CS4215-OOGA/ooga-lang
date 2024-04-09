@@ -65,6 +65,7 @@ export class RoundRobinScheduler implements Scheduler {
     }
 
     runThread(): [ThreadId, number] | null {
+        // Arnav: When will this be 0? This will cause a crash because the callee assumes the tuple result
         if (this._idleThreads.length === 0) {
             return null;
         } else {

@@ -18,8 +18,8 @@ function parseOptions(): CliOptions | null {
     const ret: CliOptions = {
         compileTo: 'json',
         inputFilename: '',
-        outputFilename: null,
-        logAst: false
+        outputFilename: '',
+        logAst: false,
     };
 
     let endOfOptions = false;

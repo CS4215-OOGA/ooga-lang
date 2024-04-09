@@ -65,18 +65,15 @@ function compileTimeEnvironmentPosition(env: CompileTimeEnvironment, x: string |
 function valueIndex(frame: CompileTimeFrame, x: string | Method) {
     log('Finding value index of ' + unparse(x));
     for (let i = 0; i < frame.length; i++) {
+        const name = frame[i].name;
         log(
-            'Comparing ' + unparse(frame[i].name) + ' with ' + unparse(x),
+            'Comparing ' + unparse(name) + ' with ' + unparse(x),
             typeof x === 'string',
-            frame[i].name === x
+            name === x
         );
-        if (typeof x === 'string' && frame[i].name === x) {
+        if (typeof x === 'string' && name === x) {
             return i;
-        } else if (
-            x instanceof Method &&
-            frame[i].name instanceof Method &&
-            x.equals(frame[i].name)
-        ) {
+        } else if (x instanceof Method && name instanceof Method && x.equals(name)) {
             return i;
         }
     }
