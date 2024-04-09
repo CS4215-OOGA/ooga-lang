@@ -4,48 +4,46 @@ import { unparse } from '../utils/utils.js';
 const log = debug('ooga:vm:types');
 
 export class Type {
-    is_const: boolean;
     name: string;
 
-    constructor(name: string, is_const: boolean = false) {
+    constructor(name: string) {
         this.name = name;
-        this.is_const = is_const;
     }
 }
 
 export class IntegerType extends Type {
-    constructor(is_const: boolean = false) {
-        super('Integer', is_const);
+    constructor() {
+        super('Integer');
     }
 }
 
 export class FloatType extends Type {
-    constructor(is_const: boolean = false) {
-        super('Float', is_const);
+    constructor() {
+        super('Float');
     }
 }
 
 export class BooleanType extends Type {
-    constructor(is_const: boolean = false) {
-        super('Boolean', is_const);
+    constructor() {
+        super('Boolean');
     }
 }
 
 export class StringType extends Type {
-    constructor(is_const: boolean = false) {
-        super('String', is_const);
+    constructor() {
+        super('String');
     }
 }
 
 export class AnyType extends Type {
-    constructor(is_const: boolean = false) {
-        super('Any', is_const);
+    constructor() {
+        super('Any');
     }
 }
 
 export class NullType extends Type {
-    constructor(is_const: boolean = false) {
-        super('Null', is_const);
+    constructor() {
+        super('Null');
     }
 }
 
@@ -53,8 +51,8 @@ export class FunctionType extends Type {
     args: Type[];
     ret: Type;
 
-    constructor(args: Type[], ret: Type, is_const: boolean = false) {
-        super('Function', is_const);
+    constructor(args: Type[], ret: Type) {
+        super('Function');
         this.args = args;
         this.ret = ret;
     }
@@ -63,14 +61,8 @@ export class FunctionType extends Type {
 export class MethodType extends FunctionType {
     methodName: string;
     isPointer: boolean;
-    constructor(
-        methodName: string,
-        args: Type[],
-        ret: Type,
-        is_pointer: boolean = true,
-        is_const: boolean = false
-    ) {
-        super(args, ret, is_const);
+    constructor(methodName: string, args: Type[], ret: Type, is_pointer: boolean = true) {
+        super(args, ret);
         this.methodName = methodName;
         this.isPointer = is_pointer;
         this.name = 'Method';
@@ -81,8 +73,8 @@ export class StructField extends Type {
     fieldName: string;
     type: Type;
 
-    constructor(fieldName: string, type: Type, is_const: boolean = false) {
-        super('StructField', is_const);
+    constructor(fieldName: string, type: Type) {
+        super('StructField');
         this.fieldName = fieldName;
         this.type = type;
     }
@@ -92,19 +84,19 @@ export class StructType extends Type {
     structName: string;
     fields: StructField[];
     methods: MethodType[];
-    constructor(structName: string, fields: StructField[], is_const: boolean = false) {
-        super('Struct', is_const);
+    constructor(structName: string, fields: StructField[], methods: MethodType[] = []) {
+        super('Struct');
         this.structName = structName;
         this.fields = fields;
-        this.methods = [];
+        this.methods = methods;
     }
 }
 
 export class ReturnType extends Type {
     type: Type;
 
-    constructor(type: Type, is_const: boolean = false) {
-        super('Return', is_const);
+    constructor(type: Type) {
+        super('Return');
         this.type = type;
     }
 }
@@ -114,13 +106,8 @@ export class ArrayType extends Type {
     length: number;
     is_array: boolean;
 
-    constructor(
-        elem_type: Type,
-        length: number,
-        is_array: boolean = false,
-        is_const: boolean = false
-    ) {
-        super('Array', is_const);
+    constructor(elem_type: Type, length: number, is_array: boolean = false) {
+        super('Array');
         this.elem_type = elem_type;
         this.length = length;
         this.is_array = is_array;
@@ -198,6 +185,7 @@ export function equal_type(ts1: Type, ts2: Type, cache = new Set<string>()): boo
         }
 
         // Check methods
+        log('Comparing method lengths:', ts1.methods.length, ts2.methods.length);
         if (ts1.methods.length !== ts2.methods.length) {
             log('Method lengths do not match');
 
@@ -241,3 +229,76 @@ export function equal_type(ts1: Type, ts2: Type, cache = new Set<string>()): boo
 
     return false;
 }
+
+// export function deepCopyType(obj: Type, seen = new Map<Type, Type>()): Type {
+//     if (obj === null || typeof obj !== 'object') {
+//         return obj;
+//     }
+
+//     if (seen.has(obj)) {
+//         return seen.get(obj)!;
+//     }
+
+//     let copy: Type;
+
+//     // Handling StructField specifically
+//     if (obj instanceof StructField) {
+//         copy = new StructField(obj.fieldName, deepCopyType(obj.type, seen), obj.is_const);
+//         seen.set(obj, copy);
+//         return copy;
+//     }
+
+//     switch (obj.constructor) {
+//         case IntegerType:
+//         case FloatType:
+//         case BooleanType:
+//         case StringType:
+//         case AnyType:
+//         case NullType:
+//             copy = new (obj.constructor as any)(obj.is_const);
+//             break;
+//         case MethodType:
+//             copy = new MethodType(
+//                 obj.methodName,
+//                 obj.args.map(arg => deepCopyType(arg, seen)),
+//                 deepCopyType(obj.ret, seen),
+//                 obj.isPointer
+//             );
+//             break;
+//         case FunctionType:
+//             // Special handling for MethodType due to additional properties
+//             copy = new FunctionType(
+//                 obj.args.map(arg => deepCopyType(arg, seen)),
+//                 deepCopyType(obj.ret, seen),
+//                 obj.is_const
+//             );
+//             break;
+//         case StructType:
+//             copy = new StructType(
+//                 obj.structName,
+//                 obj.fields.map(field => deepCopyType(field, seen) as StructField),
+//                 obj.is_const
+//             );
+//             (copy as StructType).methods = obj.methods.map(
+//                 method => deepCopyType(method, seen) as MethodType
+//             );
+//             break;
+//         case ArrayType:
+//             copy = new ArrayType(
+//                 deepCopyType(obj.elem_type, seen),
+//                 obj.length,
+//                 obj.is_array,
+//                 obj.is_const
+//             );
+//             break;
+//         case ReturnType:
+//             copy = new ReturnType(deepCopyType(obj.type, seen), obj.is_const);
+//             break;
+//         default:
+//             throw new Error(`Unsupported type for deep copy: ${obj.constructor.name}`);
+//     }
+
+//     seen.set(obj, copy);
+//     log('Deep copy return:', unparse(copy));
+//     return copy;
+// }

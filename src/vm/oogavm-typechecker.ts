@@ -98,12 +98,26 @@ const global_type_frame = {
     '--': unary_arith_type,
     '==': binary_equal_type,
     print: new FunctionType([new AnyType()], new NullType()),
+    lockMutex: new FunctionType(
+        [
+            new StructType(
+                'Mutex',
+                [],
+                [
+                    new MethodType('Lock', [], new NullType(), true),
+                    new MethodType('Unlock', [], new NullType(), true),
+                ]
+            ),
+        ],
+        new NullType()
+    ),
 };
 
 const empty_type_environment = null;
 const global_type_environment = pair(global_type_frame, empty_type_environment);
 const global_struct_environment = pair({}, empty_type_environment);
-const lookup_type = (x, e) => {
+
+const lookup_type = (x, e): Type => {
     if (e === null) {
         throw new TypecheckError('unbound name: ' + x);
     }
@@ -124,21 +138,18 @@ const extend_type_environment = (xs, ts: Type[], e) => {
     return pair(new_frame, e);
 };
 
-const extend_current_type_environment = (xs, ts: Type[], e) => {
-    if (ts.length > xs.length)
-        throw new TypecheckError('too few parameters in function declaration');
-    if (ts.length < xs.length)
-        throw new TypecheckError('too many parameters in function declaration');
+const extend_current_type_environment = (xs: string, ts: Type, e) => {
     // add the types to the current frame
-    for (let i = 0; i < xs.length; i++) head(e)[xs[i]] = ts[i];
+    head(e)[xs] = ts;
     return e;
 };
 
 let in_func = false;
 let expected_ret;
 
-function getType(t, struct_te) {
-    log('getType: ', t);
+function getType(t, struct_te): Type {
+    log('getTType: ', t);
+    log('is_const');
     if (is_type(t.type, Type)) {
         log('Exiting getType, found Type');
         return t.type;
@@ -154,6 +165,7 @@ function getType(t, struct_te) {
     } else if (t.type === 'Method') {
         log('Exiting getType, returning MethodType');
         t.receiver.type = getType(t.receiver, struct_te);
+        log(t.receiver.type);
         if (!is_type(t.receiver.type, StructType)) {
             throw new TypecheckError('expected struct type');
         }
@@ -161,7 +173,8 @@ function getType(t, struct_te) {
         const methodType = new MethodType(
             t.id.name,
             t.params.map(p => getType(p, struct_te)),
-            getType(t.ret, struct_te)
+            getType(t.ret, struct_te),
+            t.receiver.pointer
         );
 
         t.receiver.type.methods.push(methodType);
@@ -170,27 +183,27 @@ function getType(t, struct_te) {
     } else if (t.type === 'Integer') {
         log('Exiting getType, returning IntegerType');
         t.type = new IntegerType();
-        return new IntegerType();
+        return t.type;
     } else if (t.type === 'Float') {
         log('Exiting getType, returning FloatType');
         t.type = new FloatType();
-        return new FloatType();
+        return t.type;
     } else if (t.type === 'Boolean') {
         log('Exiting getType, returning BooleanType');
         t.type = new BooleanType();
-        return new BooleanType();
+        return t.type;
     } else if (t.type === 'String') {
         log('Exiting getType, returning StringType');
         t.type = new StringType();
-        return new StringType();
+        return t.type;
     } else if (t.type === 'Null') {
         log('Exiting getType, returning NullType');
         t.type = new NullType();
-        return new NullType();
+        return t.type;
     } else if (t.type === 'Any') {
         log('Exiting getType, returning AnyType');
         t.type = new AnyType();
-        return new AnyType();
+        return t.type;
     } else if (t.type.tag === 'Struct') {
         // Ensure that the struct is defined
         const structType = lookup_type(t.type.name, struct_te);
@@ -313,8 +326,8 @@ const type_comp = {
                 comp.type = struct_t;
                 // StructTable.set(structName, struct_t);
                 extended_struct_te = extend_current_type_environment(
-                    [structName],
-                    [struct_t],
+                    structName,
+                    struct_t,
                     extended_struct_te
                 );
 
@@ -340,16 +353,16 @@ const type_comp = {
 
         const decls_known_type = decls.filter(comp => comp.type !== 'Unknown');
 
-        let extended_te = extend_type_environment(
-            decls_known_type.map(comp => comp.id.name),
-            decls_known_type.map(comp => {
-                // log('Setting known type for', comp.id.name);
-                comp.type = getType(comp, extended_struct_te);
-                return comp.type;
-            }),
-            te
-        );
+        let extended_te = extend_type_environment([], [], te);
+        for (let i = 0; i < decls_known_type.length; i++) {
+            const comp = decls_known_type[i];
+            const name = comp.id.name;
 
+            const type = getType(comp, extended_struct_te);
+            log('KNOWN VARIABLE', name);
+            log(unparse(type));
+            extended_te = extend_current_type_environment(name, type, extended_te);
+        }
         // log('Comp after setting known types');
         // log(unparse(comp));
         // log('Extended type environment');
@@ -360,13 +373,12 @@ const type_comp = {
         // We have to use a for loop here because one unknown type declaration can depend on another
         for (let i = 0; i < decls_unknown_type.length; i++) {
             // log('Setting unknown type for', decls_unknown_type[i].id.name);
-            const t = type(decls_unknown_type[i].expression, extended_te, extended_struct_te);
-            decls_unknown_type[i].type = t;
-            extended_te = extend_current_type_environment(
-                [decls_unknown_type[i].id.name],
-                [t],
-                extended_te
-            );
+            const comp = decls_unknown_type[i];
+            const name = comp.id.name;
+            const t = type(comp.expression, extended_te, extended_struct_te);
+
+            comp.type = t;
+            extended_te = extend_current_type_environment(name, t, extended_te);
         }
 
         // log('Extended type environment');
@@ -583,8 +595,12 @@ const type_comp = {
         // TODO: Check this properly and make sure constants can't be changed
         log('ConstantDeclaration');
         log(unparse(comp));
+        const expected_type = lookup_type(comp.id.name, te);
         const actual_type = type(comp.expression, te, struct_te);
-        actual_type.is_const = true;
+        log('Expected type: ', expected_type, 'Actual type:', actual_type);
+        if (!equal_type(expected_type, actual_type)) {
+            throw new TypecheckError('type error in const decl');
+        }
         // log(actual_type);
         log('Exiting ConstantDeclaration, returning', actual_type);
         return actual_type;
@@ -599,7 +615,7 @@ const type_comp = {
             throw new TypecheckError(
                 'type error in variable declaration; ' +
                     'expected type: ' +
-                    unparse_types(comp.type) +
+                    unparse_types(expected_type) +
                     ', ' +
                     'actual type: ' +
                     unparse_types(actual_type)
@@ -653,6 +669,9 @@ const type_comp = {
         log('AssignmentExpression');
         log(unparse(comp));
         const id_type = type(comp.left, te, struct_te);
+        if (id_type.is_const) {
+            throw new TypecheckError('cannot redeclare variable as it is constant');
+        }
         const expr_type = type(comp.right, te, struct_te);
         if (!equal_type(id_type, expr_type)) {
             throw new TypecheckError(
@@ -853,5 +872,6 @@ export function checkTypes(program: object) {
     log('Exiting checkTypes, returning', t);
     // This is a copy of the program where all unknown types have been resolved
     log(unparse(program_copy));
+
     return program_copy;
 }

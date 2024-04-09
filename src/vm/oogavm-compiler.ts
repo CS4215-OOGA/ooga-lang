@@ -43,6 +43,7 @@ class Method {
 type CompileTimeVariable = {
     name: string | Method; // This would be an object if it is a method - {receiver: string, methodName: string}
     type: Type | null;
+    is_const: boolean;
     // Currently, we are assuming that all variables are of size 1
     // TODO: Keep track of the size of variable here - this is needed for storing structs in structs
 };
@@ -85,10 +86,25 @@ function compileTimeEnvironmentExtend(vs: CompileTimeVariable[], e: CompileTimeE
     return push([...e], vs);
 }
 
+function getCompileTimeVariable(
+    env: CompileTimeEnvironment,
+    x: string
+): CompileTimeVariable | null {
+    log('Finding variableType of ' + unparse(x));
+    for (let i = env.length - 1; i >= 0; i--) {
+        const frame = env[i];
+        const variable = frame?.find(v => v.name === x);
+        if (variable) {
+            return variable;
+        }
+    }
+    return null;
+}
+
 const builtinFrame: string[] = Object.keys(builtinMappings);
 // TODO: Add builtins and constants frame to this
 const globalCompileTimeEnvironment: CompileTimeEnvironment = [
-    builtinFrame.map(name => ({ name, type: null })), // TODO: Add types here
+    builtinFrame.map(name => ({ name, type: null, is_const: true })), // TODO: Add types here
 ];
 
 // TODO: Add type annotation here
@@ -114,9 +130,11 @@ function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
                 );
             }
             declarations.push(
-                comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration'
-                    ? { name: comp.id.name, type: comp.type }
-                    : { name: comp.id.name, type: 'function' }
+                comp.tag === 'VariableDeclaration'
+                    ? { name: comp.id.name, type: comp.type, is_const: false }
+                    : comp.tag === 'ConstantDeclaration'
+                      ? { name: comp.id.name, type: comp.type, is_const: true }
+                      : { name: comp.id.name, type: 'function', is_const: false }
             );
         } else if (comp.tag === 'MethodDeclaration') {
             const method = { receiver: comp.receiver.type.name, methodName: comp.id.name };
@@ -134,6 +152,7 @@ function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
                     comp.receiver.pointer
                 ),
                 type: comp.type,
+                is_const: true,
             });
 
             log('Added method ' + method.receiver + '.' + method.methodName);
@@ -146,7 +165,9 @@ function scanForLocalsBlock(compBlock): CompileTimeVariable[] {
 // Helper function to scan for declaration within a for init component
 function scanForLocalsSingle(comp): CompileTimeVariable[] {
     if (comp.tag === 'VariableDeclaration' || comp.tag === 'ConstantDeclaration') {
-        return [{ name: comp.id.name, type: comp.type }];
+        return [
+            { name: comp.id.name, type: comp.type, is_const: comp.tag === 'ConstantDeclaration' },
+        ];
     } else {
         return [];
     }
@@ -268,17 +289,11 @@ const compileComp = {
             throw new CompilerError('Cannot have a null RHS expression for a const declaration');
         }
         compile(comp.expression, ce);
-        // TODO: Actually prevent constant reassignment
+
         instrs[wc++] = {
             tag: Opcodes.ASSIGN,
             pos: compileTimeEnvironmentPosition(ce, comp.id.name),
         };
-
-        if (comp.type === 'Unknown' && comp.expression.tag === 'StructInitializer') {
-            log('Setting constant ' + comp.id.name + ' to type ' + comp.expression.type.name);
-            comp.type = { tag: 'Struct', name: comp.expression.type.name };
-            ce[ce.length - 1].find(variable => variable.name === comp.id.name).type = comp.type;
-        }
     },
     // TODO: The parser treats expressions of the form
     AssignmentExpression: (comp, ce) => {
@@ -313,6 +328,13 @@ const compileComp = {
             instrs[wc++] = { tag: Opcodes.SET_FIELD };
         } else {
             // Handle normal variable assignment
+            // Check if left hand side is a const
+            const variable = getCompileTimeVariable(ce, comp.left.name);
+
+            if (variable && variable.is_const) {
+                throw new CompilerError('Cannot reassign constant ' + comp.left.name);
+            }
+
             instrs[wc++] = {
                 tag: Opcodes.ASSIGN,
                 pos: compileTimeEnvironmentPosition(ce, comp.left.name),
@@ -402,6 +424,7 @@ const compileComp = {
             paramNames.push({
                 name: comp.params[i].name,
                 type: comp.params[i].type,
+                is_const: true,
             });
         }
 
@@ -709,10 +732,15 @@ const compileComp = {
             paramNames.push({
                 name: comp.params[i].name,
                 type: comp.params[i].type,
+                is_const: false,
             });
         }
 
-        paramNames.push({ name: comp.receiver.name.name, type: comp.receiver.type });
+        paramNames.push({
+            name: comp.receiver.name.name,
+            type: comp.receiver.type,
+            is_const: false,
+        });
 
         compile(comp.body, compileTimeEnvironmentExtend(paramNames, ce));
         instrs[wc++] = { tag: Opcodes.LDU };
