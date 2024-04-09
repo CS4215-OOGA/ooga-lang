@@ -1,12 +1,11 @@
-import { assemble } from '../vm/oogavm-assembler.js';
-import { parse } from '../parser/ooga.js';
 import { processByteCode } from '../vm/oogavm-machine.js';
-import { compile_program } from '../vm/oogavm-compiler.js';
 import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
-import { checkTypes } from '../vm/oogavm-typechecker.js';
+import { readFileSync } from 'fs';
+import { prepare_and_compile } from '../vm/oogavm-toolchain.js';
 
 const log = debug('ooga:runOogaLang');
+const standardSource = readFileSync('std/ooga-std.ooga', 'utf8');
 
 /**
  * Executes the given ooga-lang code and captures the output.
@@ -29,11 +28,7 @@ export function runOogaLangCode(code: string): Promise<string> {
             code = code.trim();
 
             // Execute the ooga-lang code
-            let program = parse(code);
-            program = { tag: 'BlockStatement', body: program };
-            program = checkTypes(program);
-            const instrs = compile_program(program);
-            let bytecode = assemble(instrs);
+            const bytecode = prepare_and_compile(standardSource, code);
             processByteCode(bytecode);
             let value = run();
             capturedOutput += 'Output: ' + value + '\n';

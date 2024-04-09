@@ -7,7 +7,6 @@ import debug from 'debug';
 
 const log = debug('ooga:vm');
 
-
 // Common utility function to prepare the program for compilation
 export function prepare_and_compile(standardSource: string, programString: string) {
     const source = programString.trimEnd();
@@ -23,8 +22,8 @@ export function prepare_and_compile(standardSource: string, programString: strin
     // User block program
     // Design speaking wise, this just allows the user to redefine names
     // in the standard library and it's just a matter of preference
-    standardProgram["body"].push(userProgram);
-    let program = { tag: 'BlockStatement', body: standardProgram};
+    standardProgram['body'].push(userProgram);
+    let program = { tag: 'BlockStatement', body: standardProgram };
     log('--------------------------------------------');
     log('Parsed program:');
     log(JSON.stringify(program, null, 2));

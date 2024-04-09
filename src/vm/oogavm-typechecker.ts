@@ -19,11 +19,8 @@ import {
 } from './oogavm-types.js';
 import assert from 'assert';
 import { TypecheckError } from './oogavm-errors.js';
-import { Null } from './oogavm-heap.js';
 
 const log = debug('ooga:typechecker');
-
-let StructTable = new Map<string, StructType>();
 
 function is_integer(x) {
     return typeof x === 'number' && Number.isInteger(x);
@@ -103,12 +100,9 @@ const global_type_frame = {
     print: new FunctionType([new AnyType()], new NullType()),
 };
 
-// A type environment is null or a pair
-// whose head is a frame and whose tail
-// is a type environment.
 const empty_type_environment = null;
 const global_type_environment = pair(global_type_frame, empty_type_environment);
-
+const global_struct_environment = pair({}, empty_type_environment);
 const lookup_type = (x, e) => {
     if (e === null) {
         throw new TypecheckError('unbound name: ' + x);
@@ -143,7 +137,7 @@ const extend_current_type_environment = (xs, ts: Type[], e) => {
 let in_func = false;
 let expected_ret;
 
-function getType(t) {
+function getType(t, struct_te) {
     log('getType: ', t);
     if (is_type(t.type, Type)) {
         log('Exiting getType, found Type');
@@ -153,21 +147,21 @@ function getType(t) {
     if (t.type === 'Function') {
         log('Exiting getType, returning FunctionType');
         t.type = new FunctionType(
-            t.params.map(p => getType(p)),
-            getType(t.ret)
+            t.params.map(p => getType(p, struct_te)),
+            getType(t.ret, struct_te)
         );
         return t.type;
     } else if (t.type === 'Method') {
         log('Exiting getType, returning MethodType');
-        t.receiver.type = getType(t.receiver);
+        t.receiver.type = getType(t.receiver, struct_te);
         if (!is_type(t.receiver.type, StructType)) {
             throw new TypecheckError('expected struct type');
         }
 
         const methodType = new MethodType(
             t.id.name,
-            t.params.map(p => getType(p)),
-            getType(t.ret)
+            t.params.map(p => getType(p, struct_te)),
+            getType(t.ret, struct_te)
         );
 
         t.receiver.type.methods.push(methodType);
@@ -199,14 +193,16 @@ function getType(t) {
         return new AnyType();
     } else if (t.type.tag === 'Struct') {
         // Ensure that the struct is defined
-        if (!StructTable.has(t.type.name)) {
-            throw new TypecheckError('struct ' + t.type.name + ' not found');
-        }
-        t.type = StructTable.get(t.type.name);
-        log('Exiting getType, returning StructType, ', t.type);
-        return t.type;
+        const structType = lookup_type(t.type.name, struct_te);
+        t.type = structType;
+        log('Exiting getType, returning StructType, ', structType);
+        return structType;
     } else if (t.type.tag === 'Array') {
-        t.type = new ArrayType(getType(t.type.elementType), t.type.length, t.type.is_bound);
+        t.type = new ArrayType(
+            getType(t.type.elementType, struct_te),
+            t.type.length,
+            t.type.is_bound
+        );
         return t.type;
     }
 
@@ -219,7 +215,7 @@ function getType(t) {
  * It returns the inferred type of the AST node.
  */
 const type_comp = {
-    Integer: (comp, te) => {
+    Integer: (comp, te, struct_te) => {
         if (!is_integer(comp.value)) {
             throw new TypecheckError('expected integer, got ' + comp.value);
         }
@@ -227,7 +223,7 @@ const type_comp = {
         comp.type = new IntegerType();
         return new IntegerType();
     },
-    Float: (comp, te) => {
+    Float: (comp, te, struct_te) => {
         if (!is_float(comp.value)) {
             throw new TypecheckError('expected float, got ' + comp.value);
         }
@@ -235,7 +231,7 @@ const type_comp = {
         comp.type = new FloatType();
         return new FloatType();
     },
-    Boolean: (comp, te) => {
+    Boolean: (comp, te, struct_te) => {
         if (!is_boolean(comp.value)) {
             throw new TypecheckError('expected boolean, got ' + comp.value);
         }
@@ -243,7 +239,7 @@ const type_comp = {
         comp.type = new BooleanType();
         return new BooleanType();
     },
-    String: (comp, te) => {
+    String: (comp, te, struct_te) => {
         if (!is_string(comp.value)) {
             throw new TypecheckError('expected string, got ' + comp.value);
         }
@@ -251,7 +247,7 @@ const type_comp = {
         comp.type = new StringType();
         return new StringType();
     },
-    Null: (comp, te) => {
+    Null: (comp, te, struct_te) => {
         if (!is_null(comp.value)) {
             throw new TypecheckError('expected null, got ' + comp.value);
         }
@@ -259,9 +255,9 @@ const type_comp = {
         comp.type = new NullType();
         return new NullType();
     },
-    ArraySliceLiteral: (comp, te) => {
+    ArraySliceLiteral: (comp, te, struct_te) => {
         log('ArraySliceLiteral');
-        comp.type = getType(comp);
+        comp.type = getType(comp, struct_te);
         log(unparse(comp));
         if (comp.elements.length != comp.type.length) {
             throw new TypecheckError(
@@ -271,7 +267,7 @@ const type_comp = {
 
         const expected_type = comp.type.elem_type;
         for (let i = 0; i < comp.elements.length; i++) {
-            const elem_type = type(comp.elements[i], te);
+            const elem_type = type(comp.elements[i], te, struct_te);
             if (!equal_type(elem_type, expected_type)) {
                 throw new TypecheckError(
                     'Expected element type: ' +
@@ -284,7 +280,7 @@ const type_comp = {
 
         return comp.type;
     },
-    Name: (comp, te) => {
+    Name: (comp, te, struct_te) => {
         log('Name');
         log(unparse(comp));
         let ret_type = lookup_type(comp.name, te);
@@ -292,7 +288,7 @@ const type_comp = {
         log('Exiting Name, returning', unparse(ret_type));
         return ret_type;
     },
-    BlockStatement: (comp, te) => {
+    BlockStatement: (comp, te, struct_te) => {
         log('BlockStatement');
         log(unparse(comp));
         // Scan out declarations
@@ -306,26 +302,32 @@ const type_comp = {
 
         // NOTE: here we only set the "supposed" type of the declarations, as defined by the programmer
         const struct_decls = comp.body.body.filter(comp => comp.tag === 'StructDeclaration');
-        for (let i = 0; i < struct_decls.length; i++) {
-            const comp = struct_decls[i];
-            const structName = comp.id.name;
-            // log('StructDeclaration for', structName);
-            // Check that the struct name is unique
-            if (StructTable.has(structName)) {
-                throw new TypecheckError('struct ' + struct_decls[i].id.name + ' already declared');
+        let extended_struct_te = struct_te;
+        if (struct_decls.length > 0) {
+            extended_struct_te = extend_type_environment([], [], struct_te);
+            for (let i = 0; i < struct_decls.length; i++) {
+                const comp = struct_decls[i];
+                const structName = comp.id.name;
+
+                const struct_t = new StructType(structName, []);
+                comp.type = struct_t;
+                // StructTable.set(structName, struct_t);
+                extended_struct_te = extend_current_type_environment(
+                    [structName],
+                    [struct_t],
+                    extended_struct_te
+                );
+
+                // We now can set the fields of the struct. We do this now to allow for recursive struct definitions
+                const fields = comp.fields.map(
+                    f => new StructField(f.name.name, getType(f, struct_te))
+                );
+                // log('Fields for struct', structName);
+                // log(fields);
+                struct_t.fields = fields;
+
+                // log('StructDeclaration Comp:', unparse(comp));
             }
-
-            const struct_t = new StructType(structName, []);
-            comp.type = struct_t;
-            StructTable.set(structName, struct_t);
-
-            // We now can set the fields of the struct. We do this now to allow for recursive struct definitions
-            const fields = comp.fields.map(f => new StructField(f.name.name, getType(f)));
-            // log('Fields for struct', structName);
-            // log(fields);
-            struct_t.fields = fields;
-
-            // log('StructDeclaration Comp:', unparse(comp));
         }
 
         const decls = comp.body.body.filter(
@@ -338,11 +340,11 @@ const type_comp = {
 
         const decls_known_type = decls.filter(comp => comp.type !== 'Unknown');
 
-        const extended_te = extend_type_environment(
+        let extended_te = extend_type_environment(
             decls_known_type.map(comp => comp.id.name),
             decls_known_type.map(comp => {
                 // log('Setting known type for', comp.id.name);
-                comp.type = getType(comp);
+                comp.type = getType(comp, extended_struct_te);
                 return comp.type;
             }),
             te
@@ -355,51 +357,52 @@ const type_comp = {
         const decls_unknown_type = decls.filter(comp => comp.type === 'Unknown');
         // log('Unknown type declarations');
         // log(unparse(decls_unknown_type));
-        let extended_te2 = extended_te;
         // We have to use a for loop here because one unknown type declaration can depend on another
         for (let i = 0; i < decls_unknown_type.length; i++) {
             // log('Setting unknown type for', decls_unknown_type[i].id.name);
-            const t = type(decls_unknown_type[i].expression, extended_te2);
+            const t = type(decls_unknown_type[i].expression, extended_te, extended_struct_te);
             decls_unknown_type[i].type = t;
-            extended_te2 = extend_current_type_environment(
+            extended_te = extend_current_type_environment(
                 [decls_unknown_type[i].id.name],
                 [t],
-                extended_te2
+                extended_te
             );
         }
 
-        // log('Extended type environment 2');
-        // log(JSON.stringify(extended_te2, null, 2));
-        const ret_type = type(comp.body, extended_te2);
+        // log('Extended type environment');
+        // log(JSON.stringify(extended_te, null, 2));
+        const ret_type = type(comp.body, extended_te, extended_struct_te);
         log('Exiting BlockStatement, returning', ret_type);
         return ret_type;
     },
-    UpdateExpression: (comp, te) =>
+    UpdateExpression: (comp, te, struct_te) =>
         type(
             {
                 tag: 'CallExpression',
                 callee: { tag: 'Name', name: comp.operator },
                 arguments: [comp.id],
             },
-            te
+            te,
+            struct_te
         ),
-    BinaryExpression: (comp, te) =>
+    BinaryExpression: (comp, te, struct_te) =>
         type(
             {
                 tag: 'CallExpression',
                 callee: { tag: 'Name', name: comp.operator },
                 arguments: [comp.left, comp.right],
             },
-            te
+            te,
+            struct_te
         ),
-    IfStatement: (comp, te) => {
-        const t0 = type(comp.test, te);
+    IfStatement: (comp, te, struct_te) => {
+        const t0 = type(comp.test, te, struct_te);
         // log('IfStatement: t0', t0);
         if (!is_type(t0, BooleanType))
             throw new TypecheckError('expected predicate type: Boolean, got ' + t0);
-        const t1 = type(comp.consequent, te);
+        const t1 = type(comp.consequent, te, struct_te);
         // log('IfStatement: t1', t1);
-        const t2 = type(comp.alternate, te);
+        const t2 = type(comp.alternate, te, struct_te);
         // log('IfStatement: t2', t2);
         if (in_func) {
             if (is_type(t1, ReturnType) && equal_type(t1, t2)) {
@@ -409,17 +412,17 @@ const type_comp = {
 
         return new NullType();
     },
-    FunctionDeclaration: (comp, te) => {
+    FunctionDeclaration: (comp, te, struct_te) => {
         log('FunctionDeclaration');
         let prev_in_func = in_func;
         let prev_expected_ret = expected_ret;
 
-        comp.type = getType(comp);
+        comp.type = getType(comp, struct_te);
         log(unparse(comp));
 
         const new_te = extend_type_environment(
             comp.params.map(p => p.name),
-            comp.params.map(p => getType(p)),
+            comp.params.map(p => getType(p, struct_te)),
             te
         );
 
@@ -428,7 +431,7 @@ const type_comp = {
         const func_type = comp.type;
         assert(func_type instanceof FunctionType, 'expected function type');
         expected_ret = func_type.ret;
-        let ret_type = type(comp.body, new_te);
+        let ret_type = type(comp.body, new_te, struct_te);
         // log('FunctionDeclaration: Got ret_type: ', ret_type, 'Expected ret_type: ', expected_ret);
         if (!is_type(ret_type, ReturnType)) {
             ret_type = new ReturnType(new NullType());
@@ -449,7 +452,7 @@ const type_comp = {
         expected_ret = prev_expected_ret;
         return func_type;
     },
-    LambdaDeclaration: (comp, te) => {
+    LambdaDeclaration: (comp, te, struct_te) => {
         return type(
             {
                 tag: 'FunctionDeclaration',
@@ -458,14 +461,15 @@ const type_comp = {
                 body: comp.body,
                 ret: comp.ret,
             },
-            te
+            te,
+            struct_te
         );
     },
-    MethodDeclaration: (comp, te) => {
+    MethodDeclaration: (comp, te, struct_te) => {
         log('MethodDeclaration');
 
         // Check if the receiver type is a struct
-        comp.type = getType(comp);
+        comp.type = getType(comp, struct_te);
         log(unparse(comp));
 
         const methodType = comp.type;
@@ -495,16 +499,17 @@ const type_comp = {
                 type: comp.type,
                 body: comp.body,
             },
-            te
+            te,
+            struct_te
         );
     },
-    CallExpression: (comp, te) => {
+    CallExpression: (comp, te, struct_te) => {
         log('CallExpression');
         log(unparse(comp));
-        const fun_types: FunctionType | FunctionType[] = type(comp.callee, te);
+        const fun_types: Type = type(comp.callee, te, struct_te);
 
-        const actual_arg_types = comp.arguments.map(e => type(e, te));
-        let fun_type: FunctionType;
+        const actual_arg_types = comp.arguments.map(e => type(e, te, struct_te));
+        let fun_type: Type | undefined;
 
         if (Array.isArray(fun_types)) {
             // The function can take in/return multiple types, we need to check which one is the correct one and use that
@@ -574,20 +579,20 @@ const type_comp = {
         log('Exiting CallExpression, returning', fun_type.ret);
         return fun_type.ret;
     },
-    ConstantDeclaration: (comp, te) => {
+    ConstantDeclaration: (comp, te, struct_te) => {
         // TODO: Check this properly and make sure constants can't be changed
         log('ConstantDeclaration');
         log(unparse(comp));
-        const actual_type = type(comp.expression, te);
+        const actual_type = type(comp.expression, te, struct_te);
         actual_type.is_const = true;
         // log(actual_type);
         log('Exiting ConstantDeclaration, returning', actual_type);
         return actual_type;
     },
-    VariableDeclaration: (comp, te) => {
+    VariableDeclaration: (comp, te, struct_te) => {
         log('VariableDeclaration');
         log(unparse(comp));
-        const actual_type = comp.expression ? type(comp.expression, te) : new AnyType();
+        const actual_type = comp.expression ? type(comp.expression, te, struct_te) : new AnyType();
         const expected_type = lookup_type(comp.id.name, te);
 
         if (!equal_type(expected_type, actual_type)) {
@@ -604,7 +609,7 @@ const type_comp = {
         log('Exiting VariableDeclaration, returning', actual_type);
         return actual_type;
     },
-    SequenceStatement: (comp, te) => {
+    SequenceStatement: (comp, te, struct_te) => {
         log('SequenceStatement');
         log(unparse(comp));
         let latest_type = new NullType();
@@ -612,7 +617,7 @@ const type_comp = {
         let new_type;
         for (let i = 0; i < comp.body.length; i++) {
             stmt = comp.body[i];
-            new_type = type(stmt, te);
+            new_type = type(stmt, te, struct_te);
             latest_type = new_type;
             if (is_type(latest_type, ReturnType)) {
                 break;
@@ -621,11 +626,11 @@ const type_comp = {
         log('Exiting SequenceStatement, returning', latest_type);
         return latest_type;
     },
-    ReturnStatement: (comp, te) => {
+    ReturnStatement: (comp, te, struct_te) => {
         if (comp.expression === null) {
             return new ReturnType(new NullType());
         }
-        let ret_type = type(comp.expression, te);
+        let ret_type = type(comp.expression, te, struct_te);
         // log('Actual return type:', ret_type);
         // log('Expected return type:', expected_ret);
         if (in_func) {
@@ -644,11 +649,11 @@ const type_comp = {
         log('Exiting ReturnStatement, returning', to_return);
         return to_return;
     },
-    AssignmentExpression: (comp, te) => {
+    AssignmentExpression: (comp, te, struct_te) => {
         log('AssignmentExpression');
         log(unparse(comp));
-        const id_type = type(comp.left, te);
-        const expr_type = type(comp.right, te);
+        const id_type = type(comp.left, te, struct_te);
+        const expr_type = type(comp.right, te, struct_te);
         if (!equal_type(id_type, expr_type)) {
             throw new TypecheckError(
                 'type error in assignment; ' +
@@ -662,30 +667,32 @@ const type_comp = {
         log('Exiting AssignmentExpression, returning', id_type);
         return id_type;
     },
-    LogicalExpression: (comp, te) =>
+    LogicalExpression: (comp, te, struct_te) =>
         type(
             {
                 tag: 'CallExpression',
                 callee: { tag: 'Name', name: comp.operator },
                 arguments: [comp.left, comp.right],
             },
-            te
+            te,
+            struct_te
         ),
-    CallGoroutine: (comp, te) => type(comp.expression, te),
-    GoroutineCallExpression: (comp, te) => {
+    CallGoroutine: (comp, te, struct_te) => type(comp.expression, te, struct_te),
+    GoroutineCallExpression: (comp, te, struct_te) => {
         const t = type(
             {
                 tag: 'CallExpression',
                 callee: comp.callee,
                 arguments: comp.arguments,
             },
-            te
+            te,
+            struct_te
         );
 
         // Goroutines inherently discard any return values and return null
         return new NullType();
     },
-    ForStatement: (comp, te) => {
+    ForStatement: (comp, te, struct_te) => {
         log('ForStatement');
         log(unparse(comp));
         // we need to extend the type environment with the type of the init expression, init can be null
@@ -693,34 +700,38 @@ const type_comp = {
             throw new TypecheckError('for loop init expression must be a variable declaration');
         }
         const extended_te = comp.init
-            ? extend_type_environment([comp.init.id.name], [type(comp.init.expression, te)], te)
+            ? extend_type_environment(
+                  [comp.init.id.name],
+                  [type(comp.init.expression, te, struct_te)],
+                  te
+              )
             : te;
         // log('ForStatement: extended_te', extended_te);
         // check the test expression, this can be null as well
-        const t0 = comp.test ? type(comp.test, extended_te) : new BooleanType();
+        const t0 = comp.test ? type(comp.test, extended_te, struct_te) : new BooleanType();
         // log('ForStatement: t0', t0);
         if (!is_type(t0, BooleanType)) {
             throw new TypecheckError('expected predicate type: Boolean, got ' + t0);
         }
         // check the update expression, this can be null as well
         // the update expression should either be a CallExpression or an AssignmentExpression
-        const t1 = comp.update ? type(comp.update, extended_te) : new NullType();
+        const t1 = comp.update ? type(comp.update, extended_te, struct_te) : new NullType();
         // log('ForStatement: update type: ', t1);
-        const t2 = comp.body ? type(comp.body, extended_te) : new NullType();
+        const t2 = comp.body ? type(comp.body, extended_te, struct_te) : new NullType();
         // log('ForStatement: body type: ', t2);
         return t2;
     },
-    BreakStatement: (comp, te) => new NullType(),
-    ContinueStatement: (comp, te) => new NullType(),
-    StructDeclaration: (comp, te) => {
+    BreakStatement: (comp, te, struct_te) => new NullType(),
+    ContinueStatement: (comp, te, struct_te) => new NullType(),
+    StructDeclaration: (comp, te, struct_te) => {
         log('StructDeclaration');
         log(unparse(comp));
         // All struct declarations are handled in the BlockStatement type checker
         return new StructType(comp.id.name, []);
     },
-    StructInitializer: (comp, te) => {
+    StructInitializer: (comp, te, struct_te) => {
         log('StructInitializer');
-        comp.type = getType(comp);
+        comp.type = getType(comp, struct_te);
         log(unparse(comp));
 
         assert(comp.type instanceof StructType, 'expected struct type');
@@ -740,7 +751,7 @@ const type_comp = {
                 if (!field) {
                     throw new TypecheckError('field ' + struct.fields[i].fieldName + ' not found');
                 }
-                const field_type = type(field.value, te);
+                const field_type = type(field.value, te, struct_te);
                 if (!equal_type(field_type, struct.fields[i].type)) {
                     throw new TypecheckError(
                         'type error in struct initializer; ' +
@@ -761,7 +772,7 @@ const type_comp = {
 
             for (let i = 0; i < comp.fields.length; i++) {
                 const field = comp.fields[i];
-                const field_type = type(field, te);
+                const field_type = type(field, te, struct_te);
                 if (!equal_type(field_type, struct.fields[i].type)) {
                     throw new TypecheckError(
                         'type error in struct initializer; ' +
@@ -778,10 +789,10 @@ const type_comp = {
         log('Exiting StructInitializer, returning', struct);
         return struct;
     },
-    MemberExpression: (comp, te) => {
+    MemberExpression: (comp, te, struct_te) => {
         log('MemberExpression');
         log(unparse(comp));
-        const struct = type(comp.object, te);
+        const struct = type(comp.object, te, struct_te);
         // log('obj_type', struct);
 
         if (!is_type(struct, StructType)) {
@@ -819,10 +830,10 @@ const type_comp = {
  * @param {any} te - The type environment.
  * @returns {any} - The result of type checking the component.
  */
-const type = (comp, te): Type => {
+const type = (comp, te, struct_te): Type => {
     // log('Type');
     // log(unparse(comp));
-    return type_comp[comp.tag](comp, te);
+    return type_comp[comp.tag](comp, te, struct_te);
 };
 
 /**
@@ -833,10 +844,12 @@ const type = (comp, te): Type => {
  */
 export function checkTypes(program: object) {
     log('Checking types');
-    StructTable = new Map<string, StructType>();
+    // StructTable = new Map<string, StructType>();
     // Make a deep copy of the program
     let program_copy = JSON.parse(unparse(program));
-    const t = type(program_copy, global_type_environment);
+
+    // We let the initial
+    const t = type(program_copy, global_type_environment, global_struct_environment);
     log('Exiting checkTypes, returning', t);
     // This is a copy of the program where all unknown types have been resolved
     log(unparse(program_copy));

@@ -13,11 +13,12 @@ function logTest(message: string, isError: boolean = false) {
     log(color, message);
 }
 
-const standardSource = readFileSync("std/ooga-std.ooga", 'utf8');
+const standardSource = readFileSync('std/ooga-std.ooga', 'utf8');
 
 export function testProgram(
     program: string,
     expectedValue: any,
+    expectedOutput: string,
     numWords: number = defaultNumWords
 ) {
     debug.disable(); // Disable debug logs initially
@@ -26,10 +27,18 @@ export function testProgram(
     log(`Running program:\n\`\`\`${program}\`\`\`\nExpected value: ${expectedValue}`);
 
     let value;
+    let capturedOutput = '';
     try {
         const bytecode = prepare_and_compile(standardSource, program);
         processByteCode(bytecode);
+
+        const originalLog = console.log;
+        console.log = console.log = (message: any): void => {
+            capturedOutput += JSON.stringify(message) + '\n';
+        };
         value = run(numWords);
+        console.log = originalLog;
+        log('Got output: ', capturedOutput);
     } catch (e) {
         if (e.message === expectedValue) {
             logTest('Test passed');
@@ -52,6 +61,14 @@ export function testProgram(
         logTest(`Expected ${expectedValue} but got ${value}`, true);
         logTest('--------------------------------------------', true);
         throw new Error(`Test failed: Expected ${expectedValue} but got ${value}`);
+    } else if (capturedOutput.trim() !== expectedOutput?.trim()) {
+        logTest('--------------------------------------------', true);
+        logTest('Test failed', true);
+        logTest(`Expected output:\n${expectedOutput}\nBut got:\n${capturedOutput}`, true);
+        logTest('--------------------------------------------', true);
+        throw new Error(
+            `Test failed: Expected output:\n${expectedOutput}\nBut got:\n${capturedOutput}`
+        );
     } else {
         logTest('Test passed');
         logTest('--------------------------------------------');
@@ -65,6 +82,7 @@ var x int = 5;
 x;
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -75,6 +93,7 @@ var x float64 = 5.5;
 x;
 `,
     5.5,
+    '',
     defaultNumWords
 );
 
@@ -88,6 +107,7 @@ var z float64 = 5.5;
 x + y + z;
 `,
     20.5,
+    '',
     defaultNumWords
 );
 
@@ -98,6 +118,7 @@ x := 5;
 x;
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -107,6 +128,7 @@ var x int = 5;
 x + 2;
 `,
     7,
+    '',
     defaultNumWords
 );
 
@@ -116,6 +138,7 @@ var x int = 5;
 x - 2;
 `,
     3,
+    '',
     defaultNumWords
 );
 
@@ -125,6 +148,7 @@ var x int = 4;
 x / 2;
 `,
     2,
+    '',
     defaultNumWords
 );
 
@@ -134,6 +158,7 @@ var x int = 5;
 x * 3;
 `,
     15,
+    '',
     defaultNumWords
 );
 
@@ -147,6 +172,7 @@ var x int = 5;
 x;
 `,
     6,
+    '',
     defaultNumWords
 );
 
@@ -161,6 +187,7 @@ var y int = 10;
 x + y;
 `,
     15,
+    '',
     defaultNumWords
 );
 
@@ -173,6 +200,7 @@ func foo(n int) int {
 foo(5);
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -185,6 +213,7 @@ func foo(n int) (int) {
 foo(5);
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -197,6 +226,7 @@ foo := func(n int) int {
 foo(5);
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -209,6 +239,7 @@ foo := func(n int) int {
 foo;
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -221,6 +252,7 @@ func foo(n int) {
 foo(5);
 `,
     null,
+    '',
     defaultNumWords
 );
 
@@ -230,6 +262,7 @@ testProgram(
 5
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -244,6 +277,7 @@ if (x == 5) {
 }
 `,
     6,
+    '',
     defaultNumWords
 );
 
@@ -257,6 +291,7 @@ if (x == 5) {
 }
 `,
     7,
+    '',
     defaultNumWords
 );
 
@@ -273,6 +308,7 @@ func factorial(n int) int {
 factorial(5);
 `,
     120,
+    '',
     defaultNumWords
 );
 
@@ -292,6 +328,7 @@ go func() {
 a + b;
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -305,6 +342,7 @@ for var i int = 0; i < 10; i = i + 1 {
 sum;
 `,
     45,
+    '',
     defaultNumWords
 );
 
@@ -318,6 +356,7 @@ for i := 0; i < 10; i = i + 1 {
 sum;
 `,
     45,
+    '',
     defaultNumWords
 );
 
@@ -331,6 +370,7 @@ for var i int = 0; i < 10; i++ {
 sum;
 `,
     45,
+    '',
     defaultNumWords
 );
 
@@ -346,6 +386,7 @@ for i < 10 {
 sum;
 `,
     45,
+    '',
     defaultNumWords
 );
 
@@ -364,6 +405,7 @@ for {
 sum;
 `,
     45,
+    '',
     defaultNumWords
 );
 
@@ -379,6 +421,7 @@ for var i int = 0; i < 10; i = i + 1 {
 sum;
 `,
     900,
+    '',
     defaultNumWords
 );
 
@@ -395,6 +438,7 @@ for var i int = 0; i < 10; i = i + 1 {
 sum;
 `,
     40,
+    '',
     defaultNumWords
 );
 
@@ -406,6 +450,7 @@ var x int = 5; // This is another comment
 x;
 `,
     5,
+    '',
     defaultNumWords
 );
 
@@ -430,6 +475,7 @@ var y int = 10;
 x;
 `,
     5,
+    '',
     100
 );
 
@@ -449,6 +495,7 @@ var w int = 15;
 x;
 `,
     5,
+    '',
     220
 );
 
@@ -467,6 +514,7 @@ var p Point = Point{1, 2};
 p.x;
 `,
     1,
+    '',
     defaultNumWords
 );
 
@@ -481,6 +529,7 @@ p := Point{1, 2};
 p.x;
 `,
     1,
+    '',
     defaultNumWords
 );
 
@@ -495,6 +544,7 @@ const p Point = Point{1, 2};
 p.x;
 `,
     1,
+    '',
     defaultNumWords
 );
 
@@ -509,6 +559,7 @@ var p Point = Point{1, 2};
 p.x + p.y;
 `,
     3,
+    '',
     defaultNumWords
 );
 
@@ -524,6 +575,7 @@ p.x = 2;
 p.x;
 `,
     2,
+    '',
     defaultNumWords
 );
 
@@ -554,6 +606,7 @@ a.Y = 20
 a.X + a.Y + v.X + v.Y + w.X + w.Y + z
 `,
     6558,
+    '',
     defaultNumWords
 );
 
@@ -574,6 +627,7 @@ var p Point = Point{1, 2};
 p.getX();
 `,
     1,
+    '',
     defaultNumWords
 );
 
@@ -598,6 +652,7 @@ var p Point = Point{1, 2};
 p.addX(5);
 `,
     6,
+    '',
     defaultNumWords
 );
 
@@ -622,6 +677,7 @@ var p Point = Point{1, 2};
 p.addX(p.getX());
 `,
     2,
+    '',
     defaultNumWords
 );
 
@@ -642,6 +698,7 @@ var p Point = Point{1, 2};
 p.getX() + p.y;
 `,
     3,
+    '',
     defaultNumWords
 );
 
@@ -671,6 +728,10 @@ print(w.AddX(5));
 w.X;
 `,
     9,
+    `
+3
+14
+`,
     defaultNumWords
 );
 
@@ -690,6 +751,7 @@ var p Point = makePoint(1, 2);
 p.x;
 `,
     1,
+    '',
     defaultNumWords
 );
 
@@ -709,6 +771,7 @@ p := makePoint(1, 2);
 p.x;
 `,
     1,
+    '',
     defaultNumWords
 );
 
@@ -741,6 +804,7 @@ go func() {
 p.x;
 `,
     1,
+    '',
     defaultNumWords
 );
 
@@ -768,6 +832,7 @@ wg.Wait()
 v.X // 3
     `,
     3,
+    '',
     defaultNumWords
 );
 
@@ -794,6 +859,7 @@ main();
 v.X;
     `,
     4,
+    '',
     defaultNumWords
 );
 
@@ -820,6 +886,7 @@ r.x = 5;
 p.addX(r.getX());
 `,
     6,
+    '',
     defaultNumWords
 );
 
@@ -855,6 +922,7 @@ var z int = 26;
 a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w +x + y + z;
 `,
     351,
+    '',
     defaultNumWords
 );
 
@@ -865,26 +933,37 @@ var x int = 5;
 var x int = 5;
 `,
     'Variable x declared more than once in the same block!',
+    '',
     defaultNumWords
 );
 
 // Test String works locally
-testProgram(`
+testProgram(
+    `
 var x string = "Jotham";
 var y string = "Wong";
 x + " " + y;
-`, "Jotham Wong", defaultNumWords);
+`,
+    'Jotham Wong',
+    '',
+    defaultNumWords
+);
 
 // Test String with GC
 // 104 is just sufficient
-testProgram(`
+testProgram(
+    `
 var x string = "Jotham";
 var y string = "Wong";
 {
     var z int = 5;
 }
 print(x + " " + y);
-`, "Jotham Wong", 200);
+`,
+    'Jotham Wong',
+    '"Jotham Wong"',
+    200
+);
 
 // Test GC with NEW_THREAD instruction to make sure everything works
 testProgram(
@@ -900,5 +979,6 @@ func googa(x int, y int) int {
 go googa(x, y);
 `,
     true,
+    '15',
     206
 );

@@ -655,7 +655,7 @@ function initialize(numWords = 1000000) {
     running = true;
     State = ProgramState.NORMAL;
     initScheduler();
-    log("After initializing: ");
+    log('After initializing: ');
     printHeapUsage();
 }
 
@@ -710,9 +710,9 @@ export function run(numWords = 1000000) {
     }
     const returnValue = addressToTSValue(peekStack(OS[0]));
     log('Program value is ' + returnValue);
-    log("After STD initialization: ");
+    log('After STD initialization: ');
     printHeapUsage();
-    console.log("Return value: " + returnValue);
+    log('Return value: ' + returnValue);
     return returnValue;
 }
 
