@@ -31,6 +31,12 @@ export class HeapDeadError extends OogaError {
     }
 }
 
+export class RuntimeError extends OogaError {
+    constructor(msg: string) {
+        super(msg);
+    }
+}
+
 export class CompilerError extends OogaError {
     constructor(msg: string) {
         super(msg);
