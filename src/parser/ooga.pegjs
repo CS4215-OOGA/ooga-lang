@@ -602,22 +602,25 @@ SequenceStatement
         body: buildList(head, tail, 1)
       };
     }
+TypeOrInit
+    = type:(InitType / StructIdentifier)? init:(__ (Initialiser / StructInitializer))? {
+        return {
+            type: type || null,
+            init: init || null
+        };
+    }
 
 VariableStatement
-    = VarToken __ id:Identifier __ type:(InitType) init:(__ Initialiser)? EOS {
-        return {
-            tag: "VariableDeclaration",
-            id: id,
-            expression: extractOptional(init, 1),
-            type: type
+    = VarToken __ id:Identifier __ typeInit:(TypeOrInit)? EOS {
+        if (!typeInit || (typeInit.type === null && typeInit.init === null)) {
+            throw new Error("Either type or initializer must be provided.");
         }
-    }
-    / VarToken __ id:Identifier __ type:(StructIdentifier) init:(__ StructInitializer) EOS {
+
         return {
             tag: "VariableDeclaration",
             id: id,
-            expression: extractOptional(init, 1),
-            type: type
+            expression: typeInit.init ? extractOptional(typeInit.init, 1) : null,
+            type: typeInit.type || "Unknown"
         }
     }
     / id:Identifier init:(__ ShorthandInitialiser) EOS {
@@ -625,7 +628,8 @@ VariableStatement
             tag: "VariableDeclaration",
             id: id,
             expression: extractOptional(init, 1),
-            type: "Unknown"
+            type: "Unknown",
+            shorthand: true
         }
     }
     / id:Identifier init:(__ ShorthandStructInitializer) EOS {
@@ -633,7 +637,8 @@ VariableStatement
             tag: "VariableDeclaration",
             id: id,
             expression: extractOptional(init, 1),
-            type: "Unknown"
+            type: "Unknown",
+            shorthand: true
         }
     }
 
