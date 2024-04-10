@@ -31,6 +31,8 @@ const enum OpCodes {
     // These two OpCodes are added to support true "mutex"
     START_ATOMIC = 'START_ATOMIC',
     END_ATOMIC = 'END_ATOMIC',
+    CREATE_UNBUFFERED = 'CREATE_UNBUFFERED',
+    CREATE_BUFFERED = 'CREATE_BUFFERED',
 }
 
 export default OpCodes;
