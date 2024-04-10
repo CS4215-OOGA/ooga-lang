@@ -1086,7 +1086,7 @@ ChannelReadExpression
 
 
 ChannelWriteExpression
-    = channel:Expression __ "<-" __ value:Expression {
+    = channel:Expression __ "<-" __ value:Expression EOS {
         return {
             tag: "ChannelWriteExpression",
             channel: channel,

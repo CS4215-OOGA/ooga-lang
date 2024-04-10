@@ -8209,7 +8209,7 @@ function peg$parse(input, options) {
   }
 
   function peg$parseChannelWriteExpression() {
-    var s0, s1, s2, s3, s4, s5;
+    var s0, s1, s2, s3, s4, s5, s6;
 
     s0 = peg$currPos;
     s1 = peg$parseExpression();
@@ -8226,8 +8226,14 @@ function peg$parse(input, options) {
         s4 = peg$parse__();
         s5 = peg$parseExpression();
         if (s5 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s0 = peg$f114(s1, s5);
+          s6 = peg$parseEOS();
+          if (s6 !== peg$FAILED) {
+            peg$savedPos = s0;
+            s0 = peg$f114(s1, s5);
+          } else {
+            peg$currPos = s0;
+            s0 = peg$FAILED;
+          }
         } else {
           peg$currPos = s0;
           s0 = peg$FAILED;
