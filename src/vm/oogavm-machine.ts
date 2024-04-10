@@ -5,13 +5,13 @@ import { fileURLToPath } from 'url';
 import debug from 'debug';
 import {
     addressToTSValue, allocateArray,
-    allocateBlockFrame,
+    allocateBlockFrame, allocateBufferedChannel,
     allocateBuiltin,
     allocateCallFrame,
     allocateClosure,
     allocateEnvironment,
     allocateFrame, allocateMutex,
-    allocateStruct,
+    allocateStruct, allocateUnbufferedChannel,
     constructHeap,
     debugHeap,
     extendEnvironment, getArrayLength, getArrayValue, getArrayValueAtIndex,
@@ -686,6 +686,23 @@ const microcode = {
     },
     END_ATOMIC: instr => {
         isAtomicSection = false;
+    },
+    CREATE_UNBUFFERED: instr => {
+        let unbufferedChannel = [allocateUnbufferedChannel()];
+        tempRoots.push(unbufferedChannel);
+        pushAddressOS(unbufferedChannel);
+        tempRoots.pop();
+    },
+    CREATE_BUFFERED: instr => {
+        // expect an integer on OS
+        let value;
+        [OS[0], value] = popStack(OS[0]);
+        value = addressToTSValue(value);
+        let bufferedChannel = [];
+        bufferedChannel[0] = allocateBufferedChannel(value);
+        tempRoots.push(bufferedChannel);
+        pushAddressOS(bufferedChannel);
+        tempRoots.pop();
     },
 };
 

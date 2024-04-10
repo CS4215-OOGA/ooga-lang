@@ -3,7 +3,7 @@ import { builtinMappings, initializeBuiltinTable } from './oogavm-machine.js';
 import debug from 'debug';
 import { StructType, Type } from './oogavm-types.js';
 import assert from 'assert';
-import { CompilerError } from './oogavm-errors.js';
+import { CompilerError, OogaError } from './oogavm-errors.js';
 import { unparse } from '../utils/utils.js';
 
 const log = debug('ooga:compiler');
@@ -778,6 +778,24 @@ const compileComp = {
         compile(comp.index, ce);
         instrs[wc++] = {tag: Opcodes.LDARRI };
     },
+    MakeCallExpression: (comp, ce) => {
+        console.log("Compiling MakeCallExpression");
+        console.log(comp);
+        if (comp.type.tag === 'Channel' && comp.type.args.length === 0) {
+            // unbuffered channel
+            instrs[wc++] = { tag: Opcodes.CREATE_UNBUFFERED };
+        } else if (comp.type.tag === 'Channel') {
+            // buffered channel
+            // at the moment, its always length 1, may be subject to change
+            compile(comp.args[0], ce);
+            instrs[wc++] = { tag: Opcodes.CREATE_BUFFERED };
+        } else if (comp.type.tag === 'Array') {
+            // Slice (currently not supporting dynamically resizable array)
+            // so this is just a default initialized array at the moment, that means
+        } else {
+            throw new OogaError("Unsupported make type at the moment!");
+        }
+    }
 };
 
 // NOTE: We are a left precedence
