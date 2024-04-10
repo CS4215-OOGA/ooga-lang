@@ -81,6 +81,15 @@ const binary_add_type = [
     new FunctionType([new FloatType(), new IntegerType()], new FloatType()),
 ];
 
+const mutexType = new StructType(
+    'Mutex',
+    [],
+    [
+        new MethodType('Lock', [], new NullType(), true),
+        new MethodType('Unlock', [], new NullType(), true),
+    ]
+);
+
 const global_type_frame = {
     '+': binary_add_type,
     '-': binary_arith_type,
@@ -98,24 +107,15 @@ const global_type_frame = {
     '--': unary_arith_type,
     '==': binary_equal_type,
     print: new FunctionType([new AnyType()], new NullType()),
-    lockMutex: new FunctionType(
-        [
-            new StructType(
-                'Mutex',
-                [],
-                [
-                    new MethodType('Lock', [], new NullType(), true),
-                    new MethodType('Unlock', [], new NullType(), true),
-                ]
-            ),
-        ],
-        new NullType()
-    ),
+    lockMutex: new FunctionType([mutexType], new NullType()),
+    unlockMutex: new FunctionType([mutexType], new NullType()),
+    startAtomic: new FunctionType([], new NullType()),
+    endAtomic: new FunctionType([], new NullType()),
 };
 
 const empty_type_environment = null;
-const global_type_environment = pair(global_type_frame, empty_type_environment);
-const global_struct_environment = pair({}, empty_type_environment);
+let global_type_environment = pair(global_type_frame, empty_type_environment);
+let global_struct_environment = pair({}, empty_type_environment);
 
 const lookup_type = (x, e): Type => {
     if (e === null) {
@@ -127,12 +127,19 @@ const lookup_type = (x, e): Type => {
     return lookup_type(x, tail(e));
 };
 
+const lookup_type_current_frame = (x, e): Type | null => {
+    if (head(e).hasOwnProperty(x)) {
+        return head(e)[x];
+    }
+
+    return null;
+};
+
 const extend_type_environment = (xs, ts: Type[], e) => {
     if (ts.length > xs.length)
         throw new TypecheckError('too few parameters in function declaration');
     if (ts.length < xs.length)
         throw new TypecheckError('too many parameters in function declaration');
-    if (xs.length === 0) return e;
     const new_frame = {};
     for (let i = 0; i < xs.length; i++) new_frame[xs[i]] = ts[i];
     return pair(new_frame, e);
@@ -272,23 +279,10 @@ const type_comp = {
         log('ArraySliceLiteral');
         comp.type = getType(comp, struct_te);
         log(unparse(comp));
-        if (comp.elements.length != comp.type.length) {
+        if (comp.type.length != -1 && comp.elements.length != comp.type.length) {
             throw new TypecheckError(
                 'Array expected ' + comp.type.length + ' elements, got ' + comp.elements.length
             );
-        }
-
-        const expected_type = comp.type.elem_type;
-        for (let i = 0; i < comp.elements.length; i++) {
-            const elem_type = type(comp.elements[i], te, struct_te);
-            if (!equal_type(elem_type, expected_type)) {
-                throw new TypecheckError(
-                    'Expected element type: ' +
-                        unparse_types(comp.type.elem_type) +
-                        ', got ' +
-                        unparse_types(elem_type)
-                );
-            }
         }
 
         return comp.type;
@@ -315,13 +309,19 @@ const type_comp = {
 
         // NOTE: here we only set the "supposed" type of the declarations, as defined by the programmer
         const struct_decls = comp.body.body.filter(comp => comp.tag === 'StructDeclaration');
-        let extended_struct_te = struct_te;
+        let extended_struct_te = extend_type_environment([], [], struct_te);
         if (struct_decls.length > 0) {
             extended_struct_te = extend_type_environment([], [], struct_te);
             for (let i = 0; i < struct_decls.length; i++) {
                 const comp = struct_decls[i];
                 const structName = comp.id.name;
 
+                log('Struct TE:', extended_struct_te);
+                if (lookup_type_current_frame(structName, extended_struct_te)) {
+                    throw new TypecheckError(
+                        'Struct ' + structName + ' declared more than once in the same block!'
+                    );
+                }
                 const struct_t = new StructType(structName, []);
                 comp.type = struct_t;
                 // StructTable.set(structName, struct_t);
@@ -358,6 +358,13 @@ const type_comp = {
             const comp = decls_known_type[i];
             const name = comp.id.name;
 
+            log('Extended TE:', extended_te);
+            if (lookup_type_current_frame(name, extended_te)) {
+                throw new TypecheckError(
+                    'Variable ' + name + ' declared more than once in the same block!'
+                );
+            }
+
             const type = getType(comp, extended_struct_te);
             log('KNOWN VARIABLE', name);
             log(unparse(type));
@@ -375,6 +382,11 @@ const type_comp = {
             // log('Setting unknown type for', decls_unknown_type[i].id.name);
             const comp = decls_unknown_type[i];
             const name = comp.id.name;
+            if (lookup_type_current_frame(name, extended_te)) {
+                throw new TypecheckError(
+                    'Variable ' + name + ' declared more than once in the same block!'
+                );
+            }
             const t = type(comp.expression, extended_te, extended_struct_te);
 
             comp.type = t;
@@ -495,7 +507,7 @@ const type_comp = {
 
         assert(structType instanceof StructType, 'expected struct type');
 
-        structType.methods.push(methodType);
+        // structType.methods.push(methodType);
 
         return type(
             {
@@ -610,6 +622,7 @@ const type_comp = {
         log('VariableDeclaration');
         log(unparse(comp));
         const actual_type = comp.expression ? type(comp.expression, te, struct_te) : new AnyType();
+        log('Actual type:', actual_type);
         const expected_type = lookup_type(comp.id.name, te);
 
         if (!equal_type(expected_type, actual_type)) {
@@ -865,7 +878,8 @@ export function checkTypes(program: object) {
     // Make a deep copy of the program
     let program_copy = JSON.parse(unparse(program));
 
-    // We let the initial
+    global_type_environment = pair(global_type_frame, empty_type_environment);
+    global_struct_environment = pair({}, empty_type_environment);
     const t = type(program_copy, global_type_environment, global_struct_environment);
     log('Exiting checkTypes, returning', t);
     // This is a copy of the program where all unknown types have been resolved
