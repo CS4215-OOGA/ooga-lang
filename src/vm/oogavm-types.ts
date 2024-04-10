@@ -114,6 +114,15 @@ export class ArrayType extends Type {
     }
 }
 
+export class ChanType extends Type {
+    elem_type: Type;
+    is_buffered: boolean;
+    constructor(elem_type: Type) {
+        super('Chan');
+        this.elem_type = elem_type;
+    }
+}
+
 export function is_type(ts1: Type, ts2: Function) {
     return ts1 instanceof ts2;
 }
@@ -223,6 +232,13 @@ export function equal_type(ts1: Type, ts2: Type, cache = new Set<string>()): boo
 
     if (ts1 instanceof ReturnType && ts2 instanceof ReturnType) {
         const result = equal_type(ts1.type, ts2.type, cache);
+
+        return result;
+    }
+
+    if (ts1 instanceof ChanType && ts2 instanceof ChanType) {
+        const result =
+            equal_type(ts1.elem_type, ts2.elem_type, cache) && ts1.is_buffered === ts2.is_buffered;
 
         return result;
     }

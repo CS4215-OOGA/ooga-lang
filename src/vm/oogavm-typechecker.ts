@@ -16,6 +16,7 @@ import {
     ReturnType,
     ArrayType,
     FloatType,
+    ChanType,
 } from './oogavm-types.js';
 import assert from 'assert';
 import { TypecheckError } from './oogavm-errors.js';
@@ -225,6 +226,9 @@ function getType(t, struct_te): Type {
             t.type.length,
             t.type.is_bound
         );
+        return t.type;
+    } else if (t.type.tag === 'Channel') {
+        t.type = new ChanType(getType(t.type.elementType, struct_te));
         return t.type;
     }
 
@@ -605,6 +609,58 @@ const type_comp = {
         comp.type = fun_type.ret;
         log('Exiting CallExpression, returning', fun_type.ret);
         return fun_type.ret;
+    },
+    MakeCallExpression: (comp, te, struct_te) => {
+        log('MakeCallExpression');
+        log(unparse(comp));
+
+        let t = getType(comp, struct_te);
+        comp.type = t;
+
+        if (is_type(t, ChanType)) {
+            if (comp.args.length > 1) {
+                throw new TypecheckError('Expected 1 argument to make(chan)');
+            }
+
+            const is_buffered = comp.args.length === 1;
+
+            if (is_buffered) {
+                const arg_type = type(comp.args[0], te, struct_te);
+
+                if (!equal_type(arg_type, new IntegerType())) {
+                    throw new TypecheckError('Expected integer argument to make(chan)');
+                }
+            }
+        } else if (is_type(t, ArrayType)) {
+            // Ensure that type is not bound
+            if ((t as ArrayType).is_array) {
+                throw new TypecheckError('Expected slice type');
+            }
+
+            // First argument is the number of elements in the array, second argument is the capacity of the array
+            if (comp.args.length > 2 || comp.args.length < 1) {
+                throw new TypecheckError('Expected 1 or 2 arguments to make a slice');
+            }
+
+            const arg_type = type(comp.args[0], te, struct_te);
+
+            if (!equal_type(arg_type, new IntegerType())) {
+                throw new TypecheckError('Expected integer argument n to make([]T, n)');
+            }
+
+            if (comp.args.length === 2) {
+                const arg_type = type(comp.args[1], te, struct_te);
+
+                if (!equal_type(arg_type, new IntegerType())) {
+                    throw new TypecheckError('Expected integer argument m to make([]T, n, m)');
+                }
+            }
+        } else {
+            throw new TypecheckError('Make call expects channel or slice type');
+        }
+
+        log(unparse(comp));
+        return t;
     },
     ConstantDeclaration: (comp, te, struct_te) => {
         log('ConstantDeclaration');
