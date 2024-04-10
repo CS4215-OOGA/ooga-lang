@@ -4,17 +4,24 @@ import { RoundRobinScheduler, Scheduler, ThreadId } from './oogavm-scheduler.js'
 import { fileURLToPath } from 'url';
 import debug from 'debug';
 import {
-    addressToTSValue, allocateArray,
-    allocateBlockFrame, allocateBufferedChannel,
+    addressToTSValue,
+    allocateArray,
+    allocateBlockFrame,
+    allocateBufferedChannel,
     allocateBuiltin,
     allocateCallFrame,
     allocateClosure,
     allocateEnvironment,
-    allocateFrame, allocateMutex,
-    allocateStruct, allocateUnbufferedChannel,
+    allocateFrame,
+    allocateMutex,
+    allocateStruct,
+    allocateUnbufferedChannel,
     constructHeap,
     debugHeap,
-    extendEnvironment, getArrayLength, getArrayValue, getArrayValueAtIndex,
+    extendEnvironment,
+    getArrayLength,
+    getArrayValue,
+    getArrayValueAtIndex,
     getBlockFrameEnvironment,
     getBuiltinID,
     getCallFrameEnvironment,
@@ -23,8 +30,10 @@ import {
     getClosurePC,
     getEnvironmentValue,
     getField,
-    getPrevStackAddress, getTagStringFromAddress,
-    initializeStack, isArray,
+    getPrevStackAddress,
+    getTagStringFromAddress,
+    initializeStack,
+    isArray,
     isBuiltin,
     isCallFrame,
     isClosure,
@@ -34,10 +43,12 @@ import {
     popStack,
     printHeapUsage,
     printStringPoolMapping,
-    pushStack, setArrayValue,
+    pushStack,
+    setArrayValue,
     setEnvironmentValue,
     setField,
-    setFrameValue, True,
+    setFrameValue,
+    True,
     TSValueToAddress,
     Unassigned,
     Undefined,
@@ -190,7 +201,7 @@ export const builtinMappings = {
         // TODO: Expect an array only at the moment
         if (!isArray(value)) {
             const tag = getTagStringFromAddress(value);
-            throw new OogaError("Expected value to be of type Array but got " + tag);
+            throw new OogaError('Expected value to be of type Array but got ' + tag);
         }
         return TSValueToAddress(getArrayLength(value));
     },
@@ -201,11 +212,11 @@ export const builtinMappings = {
         tempRoots.pop();
     },
     lockMutex: (address: number) => {
-        log("Inside lockMutex for " + address);
+        log('Inside lockMutex for ' + address);
         return True;
     },
     unlockMutex: (address: number) => {
-        log("Inside unlockMutex for " + address);
+        log('Inside unlockMutex for ' + address);
         return True;
     },
     // These two built-in instructions support atomicity within Ooga-Std
@@ -315,7 +326,7 @@ function apply_unop(sym: string, value: any) {
 
 // Push the raw heap address onto the OS
 function pushAddressOS(addr: number[]) {
-    log("Pushing addr OS", addr);
+    log('Pushing addr OS', addr);
     OS[0] = pushStack(OS, addr);
 }
 // Convert TS Value to address and then push onto stack
@@ -382,10 +393,10 @@ const microcode = {
         tempRoots.push(arrayIndexAddress);
         let arrayIndex;
         arrayIndex = addressToTSValue(arrayIndexAddress[0]);
-        log("ArrayIndex: " + arrayIndex);
+        log('ArrayIndex: ' + arrayIndex);
         let arrayAddress = [];
         [OS[0], arrayAddress[0]] = popStack(OS[0]);
-        log("ArrayAddr: " + arrayAddress);
+        log('ArrayAddr: ' + arrayAddress);
         tempRoots.push(arrayAddress);
         let arrayValue = getArrayValueAtIndex(arrayAddress[0], arrayIndex); // the address
         pushAddressOS([arrayValue]);
@@ -675,7 +686,7 @@ const microcode = {
         [OS[0], value] = popStack(OS[0]);
         // array idx is a number so no need
         let arrayIdx;
-        [OS[0], arrayIdx] = popStack(OS[0])
+        [OS[0], arrayIdx] = popStack(OS[0]);
         arrayIdx = addressToTSValue(arrayIdx);
         let arrayAddress;
         [OS[0], arrayAddress] = popStack(OS[0]);
@@ -899,9 +910,11 @@ async function main() {
 
 // @ts-ignore
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    main().then(value => {
-        log(value);
-    }).catch(err => {
-        console.error(err);
-    });
+    main()
+        .then(value => {
+            log(value);
+        })
+        .catch(err => {
+            console.error(err);
+        });
 }

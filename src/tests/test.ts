@@ -984,7 +984,6 @@ go googa(x, y);
     206
 );
 
-
 // Test various array expressions
 
 // Simple arr indexing
@@ -1031,7 +1030,8 @@ x[-1];
 );
 
 // test for functions that return arrays
-testProgram(`
+testProgram(
+    `
 func googa() []int {
     return []int{1, 2, 3};
 }
@@ -1045,16 +1045,19 @@ x[0];
 );
 
 // test array length static
-testProgram(`
+testProgram(
+    `
 var x [5]int = [5]int{1, 2, 3, 4, 5};
 len(x);
 `,
     5,
     '',
-    defaultNumWords);
+    defaultNumWords
+);
 
 // test array length dynamic
-testProgram(`
+testProgram(
+    `
 func googa() []int {
     return []int{1, 2, 3, 4, 5, 6, 7, 8, 9};
 }
@@ -1062,12 +1065,12 @@ len(googa());
 `,
     9,
     '',
-    defaultNumWords);
-
-
+    defaultNumWords
+);
 
 // test for functions that return arrays and operate on array variables
-testProgram(`
+testProgram(
+    `
 func booga(x []int) int {
     var n int = len(x);
     var sum int = 0;
@@ -1090,15 +1093,20 @@ booga(googa());
 );
 
 // Test array assignment on static
-testProgram(`
+testProgram(
+    `
 var x [5]int = [5]int{1, 2, 3, -1, 5};
 x[3] = 4;
 x[3];
-`, 4, '', defaultNumWords);
-
+`,
+    4,
+    '',
+    defaultNumWords
+);
 
 // Test array assignment on dynamic
-testProgram(`
+testProgram(
+    `
 func googaDaBooga() []int {
     return []int{1, 2, 3, 4, 5, 6};
 }
@@ -1117,4 +1125,8 @@ for i := 0; i < len(x); i++ {
     print(x[i]);
 }
 x[0];
-`, 2, '2\n3\n4\n5\n6\n7\n', defaultNumWords);
+`,
+    2,
+    '2\n3\n4\n5\n6\n7\n',
+    defaultNumWords
+);

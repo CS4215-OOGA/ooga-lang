@@ -578,7 +578,7 @@ export function isArray(address: number): boolean {
 
 export function getArrayLength(address: number): number {
     if (getTag(address) !== Tag.ARRAY) {
-        throw new OogaError("Called getArrayLength on non array type");
+        throw new OogaError('Called getArrayLength on non array type');
     }
     return getSize(address) - headerSize;
 }
@@ -598,10 +598,10 @@ export function getArrayValue(address: number): any[] {
 export function getArrayValueAtIndex(arrayAddress: number, idx: number): any {
     const arrayLength: number = getSize(arrayAddress) - headerSize;
     if (idx < 0) {
-        throw new OogaError("Negative indexing not allowed!");
+        throw new OogaError('Negative indexing not allowed!');
     }
     if (idx >= arrayLength) {
-        throw new OogaError("Array out of bounds error!");
+        throw new OogaError('Array out of bounds error!');
     }
     return getWordOffset(arrayAddress, idx + headerSize);
 }
@@ -650,7 +650,7 @@ function pushToBufferedChannel(address: number, value: number) {
     const capacity = getSize(address) - headerSize;
     if (currentSize >= capacity) {
         // This indicates a bug with our code and not a user error
-        throw new OogaError("Attempting to push onto a full buffered channel");
+        throw new OogaError('Attempting to push onto a full buffered channel');
     }
     // +1 required because the 3rd word is the currentSize
     // the fourth word onwards is the payload
@@ -662,7 +662,7 @@ function pushToBufferedChannel(address: number, value: number) {
 function popBufferedChannel(address: number): number {
     let currentSize = getBufferChannelLength(address);
     if (currentSize <= 0) {
-        throw new OogaError("Attempting to pop from an empty buffered channel");
+        throw new OogaError('Attempting to pop from an empty buffered channel');
     }
     const returnValue = getWord(address + headerSize + 1);
     // copy the 2nd to nth value 1 element back
@@ -694,7 +694,7 @@ export function pushUnbufferedChannel(address: number, value: number) {
     // check that the unbuffered channel is empty!
     const size = getUnBufferChannelLength(address);
     if (size !== 0) {
-        throw new OogaError("Attempting to push onto full unbuffered channel in the heap. Bug!");
+        throw new OogaError('Attempting to push onto full unbuffered channel in the heap. Bug!');
     }
     setWord(address + headerSize + 1, value);
     heap.setUint32((address + headerSize) * wordSize, 1);
@@ -704,7 +704,7 @@ export function popUnbufferedChannel(address: number): number {
     // check that unbuffered channel is not empty!
     const size = getUnBufferChannelLength(address);
     if (size !== 1) {
-        throw new OogaError("Attempting to pop empty unbuffered channel in the heap. Bug!");
+        throw new OogaError('Attempting to pop empty unbuffered channel in the heap. Bug!');
     }
     heap.setUint32((address + headerSize) * wordSize, 0);
     return getWord(address + headerSize + 1);
@@ -798,7 +798,7 @@ export function debugHeap(): void {
 // **************************
 
 export function addressToTSValue(address: number) {
-    log("addressToTSVAlue" + address);
+    log('addressToTSVAlue' + address);
     if (address === -1) {
         return null;
     }

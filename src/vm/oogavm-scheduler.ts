@@ -68,7 +68,7 @@ export class RoundRobinScheduler implements Scheduler {
 
     runThread(): [ThreadId, number] | null {
         if (this._idleThreads.length === 0) {
-            throw new RuntimeError("Expected a thread but nothing.");
+            throw new RuntimeError('Expected a thread but nothing.');
         } else {
             // The ! is a non-null assertion operator
             const nextThread = this._idleThreads.shift()!;

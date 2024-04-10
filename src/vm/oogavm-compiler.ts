@@ -771,15 +771,15 @@ const compileComp = {
         for (let i = 0; i < arrayLength; i++) {
             compile(comp.elements[i], ce);
         }
-        instrs[wc++] = {tag: Opcodes.LDARR, arity: arrayLength };
+        instrs[wc++] = { tag: Opcodes.LDARR, arity: arrayLength };
     },
     ArraySliceIndex: (comp, ce) => {
         compile(comp.arrayExpression, ce);
         compile(comp.index, ce);
-        instrs[wc++] = {tag: Opcodes.LDARRI };
+        instrs[wc++] = { tag: Opcodes.LDARRI };
     },
     MakeCallExpression: (comp, ce) => {
-        console.log("Compiling MakeCallExpression");
+        console.log('Compiling MakeCallExpression');
         console.log(comp);
         if (comp.type.tag === 'Channel' && comp.type.args.length === 0) {
             // unbuffered channel
@@ -793,9 +793,9 @@ const compileComp = {
             // Slice (currently not supporting dynamically resizable array)
             // so this is just a default initialized array at the moment, that means
         } else {
-            throw new OogaError("Unsupported make type at the moment!");
+            throw new OogaError('Unsupported make type at the moment!');
         }
-    }
+    },
 };
 
 // NOTE: We are a left precedence
