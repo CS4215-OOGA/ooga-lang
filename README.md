@@ -10,6 +10,11 @@ Set up instructions here.
 
 ## Features 
 
+### Pass by reference
+
+All objects in Ooga are copied by reference. Ooga programmers don't like reasoning in a functional paradigm, so
+everything is MUTABLE!
+
 ### Sequential Programming Constructs
 
 - Expressions
