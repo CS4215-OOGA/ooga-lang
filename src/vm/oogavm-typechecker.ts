@@ -607,7 +607,6 @@ const type_comp = {
         return fun_type.ret;
     },
     ConstantDeclaration: (comp, te, struct_te) => {
-        // TODO: Check this properly and make sure constants can't be changed
         log('ConstantDeclaration');
         log(unparse(comp));
         const expected_type = lookup_type(comp.id.name, te);

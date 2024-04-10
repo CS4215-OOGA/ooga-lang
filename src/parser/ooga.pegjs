@@ -620,20 +620,17 @@ SequenceStatement
         body: buildList(head, tail, 1)
       };
     }
-TypeOrInit
-    = type:(InitType / StructIdentifier)? init:(__ (Initialiser / StructInitializer))? {
+
+TypeWithInit
+    = type:(StructIdentifier / InitType)? init:(__ (StructInitializer / Initialiser)) {
         return {
             type: type || null,
-            init: init || null
+            init: init
         };
     }
 
 VariableStatement
-    = VarToken __ id:Identifier __ typeInit:(TypeOrInit)? EOS {
-        if (!typeInit || (typeInit.type === null && typeInit.init === null)) {
-            throw new Error("Either type or initializer must be provided.");
-        }
-
+    = VarToken __ id:Identifier __ typeInit:(TypeWithInit)? EOS {
         return {
             tag: "VariableDeclaration",
             id: id,

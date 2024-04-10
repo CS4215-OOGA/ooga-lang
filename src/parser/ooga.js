@@ -635,14 +635,10 @@ function peg$parse(input, options) {
   var peg$f60 = function(type, init) {
         return {
             type: type || null,
-            init: init || null
+            init: init
         };
     };
   var peg$f61 = function(id, typeInit) {
-        if (!typeInit || (typeInit.type === null && typeInit.init === null)) {
-            throw new Error("Either type or initializer must be provided.");
-        }
-
         return {
             tag: "VariableDeclaration",
             id: id,
@@ -5556,22 +5552,22 @@ function peg$parse(input, options) {
     return s0;
   }
 
-  function peg$parseTypeOrInit() {
+  function peg$parseTypeWithInit() {
     var s0, s1, s2, s3, s4;
 
     s0 = peg$currPos;
-    s1 = peg$parseInitType();
+    s1 = peg$parseStructIdentifier();
     if (s1 === peg$FAILED) {
-      s1 = peg$parseStructIdentifier();
+      s1 = peg$parseInitType();
     }
     if (s1 === peg$FAILED) {
       s1 = null;
     }
     s2 = peg$currPos;
     s3 = peg$parse__();
-    s4 = peg$parseInitialiser();
+    s4 = peg$parseStructInitializer();
     if (s4 === peg$FAILED) {
-      s4 = peg$parseStructInitializer();
+      s4 = peg$parseInitialiser();
     }
     if (s4 !== peg$FAILED) {
       s3 = [s3, s4];
@@ -5580,11 +5576,13 @@ function peg$parse(input, options) {
       peg$currPos = s2;
       s2 = peg$FAILED;
     }
-    if (s2 === peg$FAILED) {
-      s2 = null;
+    if (s2 !== peg$FAILED) {
+      peg$savedPos = s0;
+      s0 = peg$f60(s1, s2);
+    } else {
+      peg$currPos = s0;
+      s0 = peg$FAILED;
     }
-    peg$savedPos = s0;
-    s0 = peg$f60(s1, s2);
 
     return s0;
   }
@@ -5599,7 +5597,10 @@ function peg$parse(input, options) {
       s3 = peg$parseIdentifier();
       if (s3 !== peg$FAILED) {
         s4 = peg$parse__();
-        s5 = peg$parseTypeOrInit();
+        s5 = peg$parseTypeWithInit();
+        if (s5 === peg$FAILED) {
+          s5 = null;
+        }
         s6 = peg$parseEOS();
         if (s6 !== peg$FAILED) {
           peg$savedPos = s0;
