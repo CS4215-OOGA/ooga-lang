@@ -104,6 +104,7 @@ const global_type_frame = {
     '&&': binary_bool_type,
     '||': binary_bool_type,
     '-unary': unary_arith_type,
+    '+unary': unary_arith_type,
     '!': unary_bool_type,
     '++': unary_arith_type,
     '--': unary_arith_type,
@@ -538,8 +539,10 @@ const type_comp = {
         log('CallExpression');
         log(unparse(comp));
         const fun_types: Type = type(comp.callee, te, struct_te);
-
-        const actual_arg_types = comp.arguments.map(e => type(e, te, struct_te));
+        const actual_arg_types = comp.arguments.map(e => {
+            log(e);
+            return type(e, te, struct_te);
+        });
         let fun_type: Type | undefined;
 
         if (Array.isArray(fun_types)) {
@@ -736,6 +739,20 @@ const type_comp = {
         const to_return = new ReturnType(ret_type);
         log('Exiting ReturnStatement, returning', to_return);
         return to_return;
+    },
+    UnaryExpression: (comp, te, struct_te) => {
+        const t = type(
+            {
+                tag: 'CallExpression',
+                callee: { tag: 'Name', name: comp.operator },
+                arguments: [comp.argument],
+            },
+            te,
+            struct_te
+        );
+
+        comp.type = t;
+        return t;
     },
     AssignmentExpression: (comp, te, struct_te) => {
         log('AssignmentExpression');
@@ -957,7 +974,20 @@ const type_comp = {
         const chanType = type(comp.channel, te, struct_te);
 
         if (!is_type(chanType, ChanType)) {
-            throw new TypecheckError('expected channel type, got ' + unparse_types(chanType));
+            // We consider the case where it is a logical expression x < -y instead
+            comp.tag = 'LogicalExpression';
+            comp.operator = '<';
+            comp.left = comp.channel;
+            comp.right = {
+                tag: 'UnaryExpression',
+                operator: '-unary',
+                argument: comp.value,
+                prefix: true,
+            };
+
+            log(comp);
+
+            return type(comp, te, struct_te);
         }
 
         assert(chanType instanceof ChanType, 'expected channel type');

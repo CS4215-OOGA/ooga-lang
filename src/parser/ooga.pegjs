@@ -476,8 +476,8 @@ UnaryOperator
   = "!"
   / "++"
   / "--"
-  / $("+" !"=")
-  / $("-" !"=")
+  / $("+" !"=") { return "+unary"; }
+  / $("-" !"=") { return "-unary"; }
   / "~"
 
 MultiplicativeExpression
@@ -517,7 +517,7 @@ RelationalExpression
 RelationalOperator
   = "<="
   / ">="
-  / $("<" !"<")
+  / $("<" !"<" !"-")
   / $(">" !">")
 
 EqualityExpression
