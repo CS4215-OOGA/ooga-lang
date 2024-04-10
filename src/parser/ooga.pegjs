@@ -324,32 +324,39 @@ NewExpression
 
 CallExpression
   = head:(
-      callee:(MemberExpression/LambdaDeclaration) __ args:Arguments { // Handle function calls on member expressions
+      callee:(MemberExpression / LambdaDeclaration) __ args:Arguments { // Handle function calls on member expressions
         return { tag: "CallExpression", callee: callee, arguments: args };
       }
     )
     tail:(
-        // The tail part remains the same, handling further call expressions and property accesses
-        __ args:Arguments {
-          return { tag: "CallExpression", arguments: args };
-        }
-      / __ "." __ property:Identifier { // Support for chaining dot syntax
+        __ "." __ property:Identifier { // Support for chaining dot syntax
           return {
-            tag: "MemberExpression",
-            object: head,
+            operation: "propertyAccess",
             property: property
+          };
+        }
+      / __ "[" __ index:Expression __ "]" { // Allow for immediate index access
+          return {
+            operation: "indexAccess",
+            index: index
           };
         }
     )*
     {
       return tail.reduce(function(result, element) {
-        // Depending on the type of element (call or member access), adjust the target of the call or property access
-        if (element.tag === "CallExpression") {
-          element.callee = result;
-        } else { // For member expressions
-          element.object = result;
+        if (element.operation === "propertyAccess") {
+          return {
+            tag: "MemberExpression",
+            object: result,
+            property: element.property
+          };
+        } else if (element.operation === "indexAccess") {
+          return {
+            tag: "ArraySliceIndex",
+            arrayExpression: result,
+            index: element.index
+          };
         }
-        return element;
       }, head);
     }
 
@@ -1032,7 +1039,7 @@ ArraySliceLiteral
         type: {
                 tag:'Array',
                 elementType: {type: type},
-                length: -1,
+                length: elements.length,
                 is_bound: false
             },
         elements: elements,

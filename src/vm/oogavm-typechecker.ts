@@ -213,6 +213,7 @@ function getType(t, struct_te): Type {
         return t.type;
     } else if (t.type.tag === 'Struct') {
         // Ensure that the struct is defined
+        log('GetType StructType:', t.type.name, struct_te);
         const structType = lookup_type(t.type.name, struct_te);
         t.type = structType;
         log('Exiting getType, returning StructType, ', structType);
@@ -333,7 +334,7 @@ const type_comp = {
 
                 // We now can set the fields of the struct. We do this now to allow for recursive struct definitions
                 const fields = comp.fields.map(
-                    f => new StructField(f.name.name, getType(f, struct_te))
+                    f => new StructField(f.name.name, getType(f, extended_struct_te))
                 );
                 // log('Fields for struct', structName);
                 // log(fields);
