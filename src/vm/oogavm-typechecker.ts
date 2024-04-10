@@ -81,6 +81,15 @@ const binary_add_type = [
     new FunctionType([new FloatType(), new IntegerType()], new FloatType()),
 ];
 
+const mutexType = new StructType(
+    'Mutex',
+    [],
+    [
+        new MethodType('Lock', [], new NullType(), true),
+        new MethodType('Unlock', [], new NullType(), true),
+    ]
+);
+
 const global_type_frame = {
     '+': binary_add_type,
     '-': binary_arith_type,
@@ -98,19 +107,10 @@ const global_type_frame = {
     '--': unary_arith_type,
     '==': binary_equal_type,
     print: new FunctionType([new AnyType()], new NullType()),
-    lockMutex: new FunctionType(
-        [
-            new StructType(
-                'Mutex',
-                [],
-                [
-                    new MethodType('Lock', [], new NullType(), true),
-                    new MethodType('Unlock', [], new NullType(), true),
-                ]
-            ),
-        ],
-        new NullType()
-    ),
+    lockMutex: new FunctionType([mutexType], new NullType()),
+    unlockMutex: new FunctionType([mutexType], new NullType()),
+    startAtomic: new FunctionType([], new NullType()),
+    endAtomic: new FunctionType([], new NullType()),
 };
 
 const empty_type_environment = null;
@@ -125,6 +125,14 @@ const lookup_type = (x, e): Type => {
         return head(e)[x];
     }
     return lookup_type(x, tail(e));
+};
+
+const lookup_type_current_frame = (x, e): Type | null => {
+    if (head(e).hasOwnProperty(x)) {
+        return head(e)[x];
+    }
+
+    return null;
 };
 
 const extend_type_environment = (xs, ts: Type[], e) => {
@@ -272,23 +280,10 @@ const type_comp = {
         log('ArraySliceLiteral');
         comp.type = getType(comp, struct_te);
         log(unparse(comp));
-        if (comp.elements.length != comp.type.length) {
+        if (comp.type.length != -1 && comp.elements.length != comp.type.length) {
             throw new TypecheckError(
                 'Array expected ' + comp.type.length + ' elements, got ' + comp.elements.length
             );
-        }
-
-        const expected_type = comp.type.elem_type;
-        for (let i = 0; i < comp.elements.length; i++) {
-            const elem_type = type(comp.elements[i], te, struct_te);
-            if (!equal_type(elem_type, expected_type)) {
-                throw new TypecheckError(
-                    'Expected element type: ' +
-                        unparse_types(comp.type.elem_type) +
-                        ', got ' +
-                        unparse_types(elem_type)
-                );
-            }
         }
 
         return comp.type;
@@ -322,6 +317,11 @@ const type_comp = {
                 const comp = struct_decls[i];
                 const structName = comp.id.name;
 
+                if (lookup_type_current_frame(structName, extended_struct_te)) {
+                    throw new TypecheckError(
+                        'Struct ' + structName + ' already defined in this block'
+                    );
+                }
                 const struct_t = new StructType(structName, []);
                 comp.type = struct_t;
                 // StructTable.set(structName, struct_t);
@@ -357,6 +357,9 @@ const type_comp = {
         for (let i = 0; i < decls_known_type.length; i++) {
             const comp = decls_known_type[i];
             const name = comp.id.name;
+            if (lookup_type_current_frame(name, extended_te)) {
+                throw new TypecheckError('Variable ' + name + ' already defined in this block');
+            }
 
             const type = getType(comp, extended_struct_te);
             log('KNOWN VARIABLE', name);
@@ -375,6 +378,9 @@ const type_comp = {
             // log('Setting unknown type for', decls_unknown_type[i].id.name);
             const comp = decls_unknown_type[i];
             const name = comp.id.name;
+            if (lookup_type_current_frame(name, extended_te)) {
+                throw new TypecheckError('Variable ' + name + ' already defined in this block');
+            }
             const t = type(comp.expression, extended_te, extended_struct_te);
 
             comp.type = t;
@@ -495,7 +501,7 @@ const type_comp = {
 
         assert(structType instanceof StructType, 'expected struct type');
 
-        structType.methods.push(methodType);
+        // structType.methods.push(methodType);
 
         return type(
             {
@@ -610,6 +616,7 @@ const type_comp = {
         log('VariableDeclaration');
         log(unparse(comp));
         const actual_type = comp.expression ? type(comp.expression, te, struct_te) : new AnyType();
+        log('Actual type:', actual_type);
         const expected_type = lookup_type(comp.id.name, te);
 
         if (!equal_type(expected_type, actual_type)) {
