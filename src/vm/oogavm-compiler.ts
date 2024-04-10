@@ -763,7 +763,12 @@ const compileComp = {
             compile(comp.elements[i], ce);
         }
         instrs[wc++] = {tag: Opcodes.LDARR, arity: arrayLength };
-    }
+    },
+    ArraySliceIndex: (comp, ce) => {
+        compile(comp.arrayExpression, ce);
+        compile(comp.index, ce);
+        instrs[wc++] = {tag: Opcodes.LDARRI };
+    },
 };
 
 // NOTE: We are a left precedence

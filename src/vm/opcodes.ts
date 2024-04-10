@@ -5,6 +5,7 @@ const enum OpCodes {
     LDCS = 'LDCS', // load string
     LDBI = 'LDBI',
     LDARR = 'LDARR', // load array
+    LDARRI = 'LDARR', // load array at index
     LDU = 'LDU', // load undefined
     LD = 'LD',
     LDN = 'LDN', // load null

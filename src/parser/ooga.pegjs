@@ -297,14 +297,25 @@ MemberExpression
         __ "." __ property:Identifier {
           return { property: property };
         }
+      / __ "[" __ index:Expression __ "]" {
+          return { index: index };
+        }
     )*
     {
       return tail.reduce(function(result, element) {
-        return {
-          tag: "MemberExpression",
-          object: result,
-          property: element.property
-        };
+        if (element.property) {
+          return {
+            tag: "MemberExpression",
+            object: result,
+            property: element.property
+          };
+        } else {
+          return {
+            tag: "ArraySliceIndex",
+            arrayExpression: result,
+            index: element.index
+          };
+        }
       }, head);
     }
 

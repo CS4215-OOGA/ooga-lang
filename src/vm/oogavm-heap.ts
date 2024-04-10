@@ -1,5 +1,5 @@
 import debug from 'debug';
-import { HeapError, HeapOutOfMemoryError } from './oogavm-errors.js';
+import { HeapError, HeapOutOfMemoryError, OogaError } from './oogavm-errors.js';
 import { getRoots, E, OS, RTS } from './oogavm-machine.js';
 import { head } from '../utils/utils';
 
@@ -564,15 +564,25 @@ export function isArray(address: number): boolean {
     return getTag(address) === Tag.ARRAY;
 }
 
+// Returns the addresses of the values in the array
 export function getArrayValue(address: number): any[] {
     const arrayLength = getSize(address) - headerSize;
     let result: any[] = [];
     for (let i = 0; i < arrayLength; i++) {
         const arrayElementAddress = getWordOffset(address, i + headerSize);
-        const value = addressToTSValue(arrayElementAddress);
-        result.push(value);
+        result.push(arrayElementAddress);
     }
     return result;
+}
+
+// returns the address of the element at said index
+export function getArrayValueAtIndex(arrayAddress: number, idx: number): any {
+    const arrayLength: number = getSize(arrayAddress) - headerSize;
+    if (idx > arrayLength) {
+        throw new OogaError("Array out of bounds error!");
+    }
+    const arrayElementAddress = getWordOffset(arrayAddress, idx + headerSize);
+    return arrayElementAddress;
 }
 
 

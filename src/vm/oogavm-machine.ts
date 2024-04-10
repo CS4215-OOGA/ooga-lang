@@ -14,7 +14,7 @@ import {
     allocateStruct,
     constructHeap,
     debugHeap,
-    extendEnvironment,
+    extendEnvironment, getArrayValue, getArrayValueAtIndex,
     getBlockFrameEnvironment,
     getBuiltinID,
     getCallFrameEnvironment,
@@ -347,6 +347,7 @@ const microcode = {
         pushTSValueOS(instr.val);
     },
     LDARR: instr => {
+        // This instruction loads an array literal
         const arity = instr.arity;
         const arr = [allocateArray(arity)];
         tempRoots.push(arr);
@@ -357,6 +358,22 @@ const microcode = {
         }
         pushAddressOS(arr);
         tempRoots.pop();
+    },
+    LDARRI: instr => {
+        // This instruction indexes an array
+        // It expects the index at the top of the OS (which was an expression) and therefore
+        // must be dereferenced
+        // Followed by the array expression
+        let arrayIndexAddress = [];
+        [OS[0], arrayIndexAddress[0]] = popStack(OS[0]);
+        tempRoots.push(arrayIndexAddress);
+        let arrayIndex;
+        arrayIndex = addressToTSValue(arrayIndexAddress[0]);
+        let arrayAddress = [];
+        [OS[0], arrayAddress[0]] = popStack(OS[0]);
+        tempRoots.push(arrayAddress);
+        let arrayValue = getArrayValueAtIndex(arrayAddress[0], arrayIndex); // the address
+        pushAddressOS(arrayValue);
     },
     POP: instr => {
         let _;
