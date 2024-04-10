@@ -1044,11 +1044,32 @@ x[0];
     defaultNumWords
 );
 
+// test array length static
+testProgram(`
+var x [5]int = [5]int{1, 2, 3, 4, 5};
+len(x);
+`,
+    5,
+    '',
+    defaultNumWords);
+
+// test array length dynamic
+testProgram(`
+func googa() []int {
+    return []int{1, 2, 3, 4, 5, 6, 7, 8, 9};
+}
+len(googa());
+`,
+    9,
+    '',
+    defaultNumWords);
+
+
+
 // test for functions that return arrays and operate on array variables
-// NOTE: at the moment length not supported
 testProgram(`
 func booga(x []int) int {
-    var n int = 3;
+    var n int = len(x);
     var sum int = 0;
     for var i int = 0; i < n; i++ {
         sum = sum + x[i];
@@ -1062,7 +1083,6 @@ func googa() []int {
 }
 
 booga(googa());
-
 `,
     6,
     '',

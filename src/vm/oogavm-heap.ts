@@ -30,6 +30,11 @@ export enum Tag {
     ARRAY,
 }
 
+export function getTagStringFromAddress(address: number): string {
+    const tag = getTag(address);
+    return getTagString(tag);
+}
+
 function getTagString(tag: Tag): string {
     switch (tag) {
         case Tag.FALSE:
@@ -562,6 +567,13 @@ export function setArrayValue(arrayAddress: number, idx: number, value: number) 
 
 export function isArray(address: number): boolean {
     return getTag(address) === Tag.ARRAY;
+}
+
+export function getArrayLength(address: number): number {
+    if (getTag(address) !== Tag.ARRAY) {
+        throw new OogaError("Called getArrayLength on non array type");
+    }
+    return getSize(address) - headerSize;
 }
 
 // Returns the addresses of the values in the array

@@ -14,7 +14,7 @@ import {
     allocateStruct,
     constructHeap,
     debugHeap,
-    extendEnvironment, getArrayValue, getArrayValueAtIndex,
+    extendEnvironment, getArrayLength, getArrayValue, getArrayValueAtIndex,
     getBlockFrameEnvironment,
     getBuiltinID,
     getCallFrameEnvironment,
@@ -23,8 +23,8 @@ import {
     getClosurePC,
     getEnvironmentValue,
     getField,
-    getPrevStackAddress,
-    initializeStack,
+    getPrevStackAddress, getTagStringFromAddress,
+    initializeStack, isArray,
     isBuiltin,
     isCallFrame,
     isClosure,
@@ -42,6 +42,7 @@ import {
     Unassigned,
     Undefined,
 } from './oogavm-heap.js';
+import { OogaError } from './oogavm-errors.js';
 
 const log = debug('ooga:vm');
 
@@ -181,6 +182,17 @@ export const builtinMappings = {
         [OS[0], value] = popStack(OS[0]);
         console.log(addressToTSValue(value));
         return value;
+    },
+    len: () => {
+        let value: any;
+        log('Len sys call');
+        [OS[0], value] = popStack(OS[0]);
+        // TODO: Expect an array only at the moment
+        if (!isArray(value)) {
+            const tag = getTagStringFromAddress(value);
+            throw new OogaError("Expected value to be of type Array but got " + tag);
+        }
+        return TSValueToAddress(getArrayLength(value));
     },
     createMutex: () => {
         let mutex = [allocateMutex()];

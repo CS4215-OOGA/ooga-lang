@@ -107,6 +107,7 @@ const global_type_frame = {
     '--': unary_arith_type,
     '==': binary_equal_type,
     print: new FunctionType([new AnyType()], new NullType()),
+    len: new FunctionType([new AnyType()], new IntegerType()),
     lockMutex: new FunctionType([mutexType], new NullType()),
     unlockMutex: new FunctionType([mutexType], new NullType()),
     startAtomic: new FunctionType([], new NullType()),
