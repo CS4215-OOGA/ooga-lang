@@ -1,6 +1,7 @@
 import debug from 'debug';
 import { HeapError, HeapOutOfMemoryError } from './oogavm-errors.js';
 import { getRoots, E, OS, RTS } from './oogavm-machine.js';
+import { head } from '../utils/utils';
 
 const log = debug('ooga:memory');
 
@@ -25,6 +26,8 @@ export enum Tag {
     STRUCT,
     STRUCT_FIELD,
     STRING,
+    MUTEX,
+    ARRAY,
 }
 
 function getTagString(tag: Tag): string {
@@ -41,6 +44,8 @@ function getTagString(tag: Tag): string {
             return 'UNASSIGNED';
         case Tag.UNDEFINED:
             return 'UNDEFINED';
+        case Tag.UNINITIALIZED:
+            return 'UNINITIALIZED';
         case Tag.BLOCKFRAME:
             return 'BLOCKFRAME';
         case Tag.CALLFRAME:
@@ -59,6 +64,10 @@ function getTagString(tag: Tag): string {
             return 'STRING';
         case Tag.STRUCT:
             return 'STRUCT';
+        case Tag.MUTEX:
+            return 'MUTEX';
+        case Tag.ARRAY:
+            return 'ARRAY';
         default:
             return 'UNKNOWN';
     }
@@ -525,6 +534,51 @@ function isString(address: number): boolean {
     return getTag(address) === Tag.STRING;
 }
 
+// ********************************
+// Mutex
+// ********************************
+// 1st word: tag and size
+// 2nd word: forwarding address
+export function allocateMutex() {
+    const mutexAddress = allocate(Tag.MUTEX, headerSize);
+    return mutexAddress;
+}
+
+export function isMutex(address: number): boolean {
+    return getTag(address) === Tag.MUTEX;
+}
+
+// ********************************
+// Array
+// ********************************
+
+export function allocateArray(numValues: number): number {
+    return allocate(Tag.ARRAY, numValues + headerSize);
+}
+
+export function setArrayValue(arrayAddress: number, idx: number, value: number) {
+    setWord(arrayAddress + idx + headerSize, value);
+}
+
+export function isArray(address: number): boolean {
+    return getTag(address) === Tag.ARRAY;
+}
+
+export function getArrayValue(address: number): any[] {
+    const arrayLength = getSize(address) - headerSize;
+    let result: any[] = [];
+    for (let i = 0; i < arrayLength; i++) {
+        const arrayElementAddress = getWordOffset(address, i + headerSize);
+        const value = addressToTSValue(arrayElementAddress);
+        result.push(value);
+    }
+    return result;
+}
+
+
+// ********************************
+// Debug
+// ********************************
 export function printHeapUsage() {
     log('Heap: ' + free + '/' + max + ' words.');
 }
@@ -631,6 +685,8 @@ export function addressToTSValue(address: number) {
         return '<callframe>';
     } else if (isString(address)) {
         return getStringValue(address);
+    } else if (isArray(address)) {
+        return getArrayValue(address);
     } else {
         throw new Error('bagoog');
     }

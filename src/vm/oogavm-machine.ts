@@ -4,13 +4,13 @@ import { RoundRobinScheduler, Scheduler, ThreadId } from './oogavm-scheduler.js'
 import { fileURLToPath } from 'url';
 import debug from 'debug';
 import {
-    addressToTSValue,
+    addressToTSValue, allocateArray,
     allocateBlockFrame,
     allocateBuiltin,
     allocateCallFrame,
     allocateClosure,
     allocateEnvironment,
-    allocateFrame,
+    allocateFrame, allocateMutex,
     allocateStruct,
     constructHeap,
     debugHeap,
@@ -34,10 +34,10 @@ import {
     popStack,
     printHeapUsage,
     printStringPoolMapping,
-    pushStack,
+    pushStack, setArrayValue,
     setEnvironmentValue,
     setField,
-    setFrameValue,
+    setFrameValue, True,
     TSValueToAddress,
     Unassigned,
     Undefined,
@@ -158,6 +158,11 @@ function timeoutThread() {
 }
 
 // *******************************
+// Shared memory constructs
+// *******************************
+// let mutexMapping: Map<>
+
+// *******************************
 // Built-ins: binops, unops
 // *******************************
 
@@ -166,6 +171,9 @@ function timeoutThread() {
 // frame call.
 // oogavm differs from the javascript hw impl in that we do a "hacky" compile time env
 // in that its not actually compiled.
+// Handbook for developing new built-in functions
+// Builtins need to return heap addresses, if they dont return any
+// useful value, return either heap.True or heap.Undefined
 export const builtinMappings = {
     print: () => {
         let value: any;
@@ -173,6 +181,29 @@ export const builtinMappings = {
         [OS[0], value] = popStack(OS[0]);
         console.log(addressToTSValue(value));
         return value;
+    },
+    createMutex: () => {
+        let mutex = [allocateMutex()];
+        tempRoots.push(mutex);
+        pushAddressOS(mutex);
+        tempRoots.pop();
+    },
+    lockMutex: (address: number) => {
+        log("Inside lockMutex for " + address);
+        return True;
+    },
+    unlockMutex: (address: number) => {
+        log("Inside unlockMutex for " + address);
+        return True;
+    },
+    // These two built-in instructions support atomicity within Ooga-Std
+    startAtomic: () => {
+        isAtomicSection = true;
+        return True;
+    },
+    endAtomic: () => {
+        isAtomicSection = false;
+        return True;
     },
     // "make": () => {
     //   // TODO: Support channels as priority number 1
@@ -314,6 +345,18 @@ const microcode = {
     },
     LDCS: instr => {
         pushTSValueOS(instr.val);
+    },
+    LDARR: instr => {
+        const arity = instr.arity;
+        const arr = [allocateArray(arity)];
+        tempRoots.push(arr);
+        for (let i = arity - 1; i >= 0; i--) {
+            let value;
+            [OS[0], value] = popStack(OS[0]);
+            setArrayValue(arr[0], i, value);
+        }
+        pushAddressOS(arr);
+        tempRoots.pop();
     },
     POP: instr => {
         let _;
@@ -713,6 +756,7 @@ export function run(numWords = 1000000) {
     log('After STD initialization: ');
     printHeapUsage();
     log('Return value: ' + returnValue);
+    console.log('Return value: ' + returnValue);
     return returnValue;
 }
 

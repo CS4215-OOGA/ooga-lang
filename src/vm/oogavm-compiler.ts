@@ -755,6 +755,15 @@ const compileComp = {
             ),
         };
     },
+    ArraySliceLiteral: (comp, ce) => {
+        // Length already checked by typechecker
+        // Mostly the same as call, push the values in order
+        const arrayLength = comp.elements.length;
+        for (let i = 0; i < arrayLength; i++) {
+            compile(comp.elements[i], ce);
+        }
+        instrs[wc++] = {tag: Opcodes.LDARR, arity: arrayLength };
+    }
 };
 
 // NOTE: We are a left precedence
