@@ -114,8 +114,8 @@ const global_type_frame = {
 };
 
 const empty_type_environment = null;
-const global_type_environment = pair(global_type_frame, empty_type_environment);
-const global_struct_environment = pair({}, empty_type_environment);
+let global_type_environment = pair(global_type_frame, empty_type_environment);
+let global_struct_environment = pair({}, empty_type_environment);
 
 const lookup_type = (x, e): Type => {
     if (e === null) {
@@ -140,7 +140,6 @@ const extend_type_environment = (xs, ts: Type[], e) => {
         throw new TypecheckError('too few parameters in function declaration');
     if (ts.length < xs.length)
         throw new TypecheckError('too many parameters in function declaration');
-    if (xs.length === 0) return e;
     const new_frame = {};
     for (let i = 0; i < xs.length; i++) new_frame[xs[i]] = ts[i];
     return pair(new_frame, e);
@@ -310,16 +309,17 @@ const type_comp = {
 
         // NOTE: here we only set the "supposed" type of the declarations, as defined by the programmer
         const struct_decls = comp.body.body.filter(comp => comp.tag === 'StructDeclaration');
-        let extended_struct_te = struct_te;
+        let extended_struct_te = extend_type_environment([], [], struct_te);
         if (struct_decls.length > 0) {
             extended_struct_te = extend_type_environment([], [], struct_te);
             for (let i = 0; i < struct_decls.length; i++) {
                 const comp = struct_decls[i];
                 const structName = comp.id.name;
 
+                log('Struct TE:', extended_struct_te);
                 if (lookup_type_current_frame(structName, extended_struct_te)) {
                     throw new TypecheckError(
-                        'Struct ' + structName + ' already defined in this block'
+                        'Struct ' + structName + ' declared more than once in the same block!'
                     );
                 }
                 const struct_t = new StructType(structName, []);
@@ -357,8 +357,12 @@ const type_comp = {
         for (let i = 0; i < decls_known_type.length; i++) {
             const comp = decls_known_type[i];
             const name = comp.id.name;
+
+            log('Extended TE:', extended_te);
             if (lookup_type_current_frame(name, extended_te)) {
-                throw new TypecheckError('Variable ' + name + ' already defined in this block');
+                throw new TypecheckError(
+                    'Variable ' + name + ' declared more than once in the same block!'
+                );
             }
 
             const type = getType(comp, extended_struct_te);
@@ -379,7 +383,9 @@ const type_comp = {
             const comp = decls_unknown_type[i];
             const name = comp.id.name;
             if (lookup_type_current_frame(name, extended_te)) {
-                throw new TypecheckError('Variable ' + name + ' already defined in this block');
+                throw new TypecheckError(
+                    'Variable ' + name + ' declared more than once in the same block!'
+                );
             }
             const t = type(comp.expression, extended_te, extended_struct_te);
 
@@ -872,7 +878,8 @@ export function checkTypes(program: object) {
     // Make a deep copy of the program
     let program_copy = JSON.parse(unparse(program));
 
-    // We let the initial
+    global_type_environment = pair(global_type_frame, empty_type_environment);
+    global_struct_environment = pair({}, empty_type_environment);
     const t = type(program_copy, global_type_environment, global_struct_environment);
     log('Exiting checkTypes, returning', t);
     // This is a copy of the program where all unknown types have been resolved
