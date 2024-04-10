@@ -983,3 +983,88 @@ go googa(x, y);
     '15',
     206
 );
+
+
+// Test various array expressions
+
+// Simple arr indexing
+testProgram(
+    `
+var x [5]int = [5]int{1, 2, 3, 4, 5};
+x[0];
+`,
+    1,
+    '',
+    defaultNumWords
+);
+
+testProgram(
+    `
+var x [5]int = [5]int{1, 2, 3, 4, 5};
+x[3];
+`,
+    4,
+    '',
+    defaultNumWords
+);
+
+// out of bounds
+testProgram(
+    `
+var x [5]int = [5]int{1, 2, 3, 4, 5};
+x[99];
+`,
+    'Array out of bounds error!',
+    '',
+    defaultNumWords
+);
+
+// negative indexing
+testProgram(
+    `
+var x [5]int = [5]int{1, 2, 3, 4, 5};
+x[-1];
+`,
+    'Negative indexing not allowed!',
+    '',
+    defaultNumWords
+);
+
+// test for functions that return arrays
+testProgram(`
+func googa() []int {
+    return []int{1, 2, 3};
+}
+
+x := googa();
+x[0];
+`,
+    1,
+    '',
+    defaultNumWords
+);
+
+// test for functions that return arrays and operate on array variables
+// NOTE: at the moment length not supported
+testProgram(`
+func booga(x []int) int {
+    var n int = 3;
+    var sum int = 0;
+    for var i int = 0; i < n; i++ {
+        sum = sum + x[i];
+    }    
+    return sum;
+}
+
+
+func googa() []int {
+    return []int{1, 2, 3};
+}
+
+booga(googa());
+
+`,
+    6,
+    '',
+    defaultNumWords
+);

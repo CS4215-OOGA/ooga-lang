@@ -578,11 +578,13 @@ export function getArrayValue(address: number): any[] {
 // returns the address of the element at said index
 export function getArrayValueAtIndex(arrayAddress: number, idx: number): any {
     const arrayLength: number = getSize(arrayAddress) - headerSize;
-    if (idx > arrayLength) {
+    if (idx < 0) {
+        throw new OogaError("Negative indexing not allowed!");
+    }
+    if (idx >= arrayLength) {
         throw new OogaError("Array out of bounds error!");
     }
-    const arrayElementAddress = getWordOffset(arrayAddress, idx + headerSize);
-    return arrayElementAddress;
+    return getWordOffset(arrayAddress, idx + headerSize);
 }
 
 
@@ -670,6 +672,7 @@ export function debugHeap(): void {
 // **************************
 
 export function addressToTSValue(address: number) {
+    log("addressToTSVAlue" + address);
     if (address === -1) {
         return null;
     }

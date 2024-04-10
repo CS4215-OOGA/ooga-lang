@@ -303,6 +303,7 @@ function apply_unop(sym: string, value: any) {
 
 // Push the raw heap address onto the OS
 function pushAddressOS(addr: number[]) {
+    log("Pushing addr OS", addr);
     OS[0] = pushStack(OS, addr);
 }
 // Convert TS Value to address and then push onto stack
@@ -369,11 +370,15 @@ const microcode = {
         tempRoots.push(arrayIndexAddress);
         let arrayIndex;
         arrayIndex = addressToTSValue(arrayIndexAddress[0]);
+        log("ArrayIndex: " + arrayIndex);
         let arrayAddress = [];
         [OS[0], arrayAddress[0]] = popStack(OS[0]);
+        log("ArrayAddr: " + arrayAddress);
         tempRoots.push(arrayAddress);
         let arrayValue = getArrayValueAtIndex(arrayAddress[0], arrayIndex); // the address
-        pushAddressOS(arrayValue);
+        pushAddressOS([arrayValue]);
+        tempRoots.pop();
+        tempRoots.pop();
     },
     POP: instr => {
         let _;
@@ -853,7 +858,9 @@ async function main() {
 
 // @ts-ignore
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    main().catch(err => {
+    main().then(value => {
+        log(value);
+    }).catch(err => {
         console.error(err);
     });
 }
