@@ -588,6 +588,7 @@ const type_comp = {
             }
         }
 
+        comp.type = fun_type.ret;
         log('Exiting CallExpression, returning', fun_type.ret);
         return fun_type.ret;
     },
