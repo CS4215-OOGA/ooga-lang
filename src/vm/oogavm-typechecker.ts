@@ -852,6 +852,29 @@ const type_comp = {
             return method;
         }
     },
+    ArraySliceIndex: (comp, te, struct_te) => {
+        log('ArraySliceIndex');
+        log(unparse(comp));
+
+        const arrayType = type(comp.arrayExpression, te, struct_te);
+
+        if (!is_type(arrayType, ArrayType)) {
+            throw new TypecheckError('expected array type, got ' + unparse_types(arrayType));
+        }
+
+        assert(arrayType instanceof ArrayType, 'expected array type');
+
+        const indexType = type(comp.index, te, struct_te);
+
+        if (!is_type(indexType, IntegerType)) {
+            throw new TypecheckError('expected integer index, got ' + unparse_types(indexType));
+        }
+
+        comp.type = arrayType.elem_type;
+
+        log('Exiting ArraySliceIndex, returning', arrayType.elem_type);
+        return arrayType.elem_type;
+    },
 };
 
 /**
