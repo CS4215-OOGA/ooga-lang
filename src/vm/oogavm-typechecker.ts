@@ -20,6 +20,7 @@ import {
 } from './oogavm-types.js';
 import assert from 'assert';
 import { TypecheckError } from './oogavm-errors.js';
+import { Channel } from 'diagnostics_channel';
 
 const log = debug('ooga:typechecker');
 
@@ -931,6 +932,53 @@ const type_comp = {
 
         log('Exiting ArraySliceIndex, returning', arrayType.elem_type);
         return arrayType.elem_type;
+    },
+    ChannelReadExpression: (comp, te, struct_te) => {
+        log('ChannelReadExpression');
+        log(unparse(comp));
+
+        const chanType = type(comp.channel, te, struct_te);
+
+        if (!is_type(chanType, ChanType)) {
+            throw new TypecheckError('expected channel type, got ' + unparse_types(chanType));
+        }
+
+        assert(chanType instanceof ChanType, 'expected channel type');
+
+        comp.type = chanType.elem_type;
+
+        log('Exiting ChannelReadExpression, returning', chanType.elem_type);
+        return chanType.elem_type;
+    },
+    ChannelWriteExpression: (comp, te, struct_te) => {
+        log('ChannelWriteExpression');
+        log(unparse(comp));
+
+        const chanType = type(comp.channel, te, struct_te);
+
+        if (!is_type(chanType, ChanType)) {
+            throw new TypecheckError('expected channel type, got ' + unparse_types(chanType));
+        }
+
+        assert(chanType instanceof ChanType, 'expected channel type');
+
+        const elemType = type(comp.value, te, struct_te);
+
+        if (!equal_type(elemType, chanType.elem_type)) {
+            throw new TypecheckError(
+                'type error in channel write; ' +
+                    'expected type: ' +
+                    unparse_types(chanType.elem_type) +
+                    ', ' +
+                    'actual type: ' +
+                    unparse_types(elemType)
+            );
+        }
+
+        comp.type = new NullType();
+
+        log('Exiting ChannelWriteExpression, returning', new NullType());
+        return new NullType();
     },
 };
 
