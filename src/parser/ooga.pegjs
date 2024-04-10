@@ -295,6 +295,7 @@ PrimaryExpression
   / Identifier
   / Literal
   / ArraySliceLiteral
+  / ChannelReadExpression
   / "(" __ expression:Expression __ ")" { return expression; }
 
 
@@ -459,7 +460,7 @@ UpdateOperator
 
 UnaryExpression
   = PostfixExpression
-  / operator:UnaryOperator __ argument:UnaryExpression {
+  / operator:UnaryOperator argument:UnaryExpression {
       var type = (operator === "++" || operator === "--")
         ? "UpdateExpression"
         : "UnaryExpression";
@@ -628,6 +629,7 @@ Statement
   / StructDeclaration
   / MethodDeclaration
   / CallExpression
+  / ChannelWriteExpression
 
 BlockStatement
   = "{" __ body:(StatementList __)? "}" {
@@ -1070,3 +1072,24 @@ ArraySliceLiteral
 
       };
     }
+
+
+// Channels
+
+ChannelReadExpression
+  = "<-" __ channel:Expression {
+      return {
+        tag: "ChannelReadExpression",
+        channel: channel
+      };
+    }
+
+
+ChannelWriteExpression
+    = channel:Expression __ "<-" __ value:Expression {
+        return {
+            tag: "ChannelWriteExpression",
+            channel: channel,
+            value: value
+        };
+        }
