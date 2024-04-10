@@ -477,7 +477,7 @@ x;
 `,
     5,
     '',
-    100
+    300
 );
 
 // Testing mark and sweep, with exactly one variable that should be freed

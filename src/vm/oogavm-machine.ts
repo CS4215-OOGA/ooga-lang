@@ -756,7 +756,7 @@ export function run(numWords = 1000000) {
     log('After STD initialization: ');
     printHeapUsage();
     log('Return value: ' + returnValue);
-    console.log('Return value: ' + returnValue);
+    // console.log('Return value: ' + returnValue);
     return returnValue;
 }
 
