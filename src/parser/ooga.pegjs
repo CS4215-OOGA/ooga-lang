@@ -91,12 +91,16 @@ InitType
           return "Null";
       }
     }
+    // Array types
     / sliceType:"[]" _ type:InitType {
         return { tag: "Array", elementType: {type: type}, length: -1, is_bound: false};
     }
     / arrayType:"[" length:DecimalDigit+ "]" _ type:InitType {
         return { tag: "Array", elementType: {type: type}, length: parseInt(length.join("")), is_bound: true};
     }
+    // Channel types
+    / ChanType
+    / StructIdentifier
 
 StructIdentifier
   = Identifier {
@@ -105,6 +109,11 @@ StructIdentifier
         name: text()
         };
     }
+
+ChanType
+  = "chan" _ type:InitType {
+    return { tag: "Channel", elementType: {type: type}};
+  }
 
 IdentifierStart
     = [a-zA-Z]
@@ -137,6 +146,8 @@ Keyword
   / StructToken
   / TypeToken
   / AnyToken
+  / ChanToken
+  / MakeToken
 
 
 Type
@@ -254,6 +265,8 @@ GoroutineToken  = "go"         !IdentifierPart
 StructToken     = "struct"     !IdentifierPart
 TypeToken       = "type"       !IdentifierPart
 AnyToken        = "any"        !IdentifierPart
+ChanToken       = "chan"       !IdentifierPart
+MakeToken       = "make"       !IdentifierPart
 
 SingleLineComment
   = "//" (!LineTerminatorSequence .)* (LineTerminatorSequence / !.)
@@ -358,6 +371,20 @@ CallExpression
           };
         }
       }, head);
+    }
+    // This is supporting make calls - this is mainly for channels and slices
+    // It should be able to take in a type as the first argument, then two optional arguments
+    / MakeToken __ "(" __ type:InitType __ args:MakeArguments? __ ")" {
+        return {
+            tag: "MakeCallExpression",
+            type: type,
+            args: args || []
+        };
+    }
+
+MakeArguments
+  = "," __ args:ArgumentList {
+      return args
     }
 
 GoroutineCallExpression
