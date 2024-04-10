@@ -1088,3 +1088,33 @@ booga(googa());
     '',
     defaultNumWords
 );
+
+// Test array assignment on static
+testProgram(`
+var x [5]int = [5]int{1, 2, 3, -1, 5};
+x[3] = 4;
+x[3];
+`, 4, '', defaultNumWords);
+
+
+// Test array assignment on dynamic
+testProgram(`
+func googaDaBooga() []int {
+    return []int{1, 2, 3, 4, 5, 6};
+}
+// Adds one to all elements
+func addOne(x []int) []int {
+    for i := 0; i < len(x); i++ {
+        x[i] = x[i] + 1;
+    }    
+    return x;
+} 
+
+
+var x = googaDaBooga();
+x = addOne(x);
+for i := 0; i < len(x); i++ {
+    print(x[i]);
+}
+x[0];
+`, 2, '2\n3\n4\n5\n6\n7\n', defaultNumWords);

@@ -326,6 +326,15 @@ const compileComp = {
             instrs[wc++] = { tag: Opcodes.LDCI, val: fieldIndex };
             // Generate instruction to set the field's value
             instrs[wc++] = { tag: Opcodes.SET_FIELD };
+        } else if (comp.left.tag === 'ArraySliceIndex') {
+            // If ArraySliceIndex, handle array assignment
+            log('ArraySliceIndex: ' + unparse(comp.left));
+            // So we push the array, then index, and finally value
+            compile(comp.left.arrayExpression, ce);
+            compile(comp.left.index, ce);
+            compile(comp.right, ce);
+            instrs[wc++] = { tag: Opcodes.SET_ARRAY_FIELD };
+            // Load
         } else {
             // Handle normal variable assignment
             // Check if left hand side is a const

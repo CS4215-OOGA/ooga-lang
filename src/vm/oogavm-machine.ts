@@ -669,6 +669,18 @@ const microcode = {
         pushAddressOS(structAddress);
         tempRoots.pop();
     },
+    SET_ARR_FIELD: instr => {
+        // expect value to assign, idx to assign to and array struct
+        let value;
+        [OS[0], value] = popStack(OS[0]);
+        // array idx is a number so no need
+        let arrayIdx;
+        [OS[0], arrayIdx] = popStack(OS[0])
+        arrayIdx = addressToTSValue(arrayIdx);
+        let arrayAddress;
+        [OS[0], arrayAddress] = popStack(OS[0]);
+        setArrayValue(arrayAddress, arrayIdx, value);
+    },
     START_ATOMIC: instr => {
         isAtomicSection = true;
     },
