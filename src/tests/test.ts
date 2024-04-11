@@ -1289,3 +1289,10 @@ var x chan int = make(chan int); // unbuffered channel
 go foo(x);
 x <- 6; // will deadlock here
 `, 'Deadlock detected!', '', defaultNumWords);
+
+
+// Simple test for doomed forever
+testProgram(`
+var x chan int = make(chan int); // unbuffered channel
+<-x; // will block forever
+`, 'Stuck forever!', '', defaultNumWords);
