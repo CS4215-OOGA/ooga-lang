@@ -22,7 +22,7 @@ import {
     getArrayLength,
     getArrayValue,
     getArrayValueAtIndex,
-    getBlockFrameEnvironment,
+    getBlockFrameEnvironment, getBufferChannelLength,
     getBuiltinID,
     getCallFrameEnvironment,
     getCallFramePC,
@@ -31,19 +31,19 @@ import {
     getEnvironmentValue,
     getField,
     getPrevStackAddress,
-    getTagStringFromAddress,
+    getTagStringFromAddress, getUnBufferChannelLength,
     initializeStack,
-    isArray,
+    isArray, isBufferChannelFull, isBufferedChannel,
     isBuiltin,
-    isCallFrame,
+    isCallFrame, isChannel,
     isClosure,
     isUnassigned,
     peekStack,
-    peekStackN,
-    popStack,
+    peekStackN, popBufferedChannel,
+    popStack, popUnbufferedChannel,
     printHeapUsage,
     printStringPoolMapping,
-    pushStack,
+    pushStack, pushToBufferedChannel, pushUnbufferedChannel,
     setArrayValue,
     setEnvironmentValue,
     setField,
@@ -54,6 +54,7 @@ import {
     Undefined,
 } from './oogavm-heap.js';
 import { OogaError } from './oogavm-errors.js';
+import { stringify } from 'querystring';
 
 const log = debug('ooga:vm');
 
@@ -83,7 +84,6 @@ let State: ProgramState;
 // Built-in-frame environment
 let builtinsFrame: number;
 // Temporary value stored as a root to prevent freeing!
-// Using a list doesn't work for some reason...
 let tempRoots: number[][] = [];
 // Flag to indicate "true concurrency"
 let isAtomicSection: boolean = false;
@@ -125,6 +125,7 @@ function initScheduler() {
     scheduler = new RoundRobinScheduler();
     threads.clear();
     mainThreadId = scheduler.newThread(); // main thread
+    log("Main Thread ID is " + mainThreadId);
     const [newMainThreadId, newTimeQuanta] = scheduler.runThread(); // main thread
     mainThreadId = newMainThreadId;
     TimeQuanta = newTimeQuanta;
@@ -144,6 +145,7 @@ function pauseThread() {
 }
 
 function deleteThread() {
+    log("Deleting current thread id " + currentThreadId);
     threads.delete(currentThreadId);
     scheduler.deleteCurrentThread(currentThreadId);
     currentThreadId = -1;
@@ -151,8 +153,15 @@ function deleteThread() {
 
 function runThread() {
     [currentThreadId, TimeQuanta] = scheduler.runThread();
+    log("Current Thread ID is " + currentThreadId);
     // TODO: Load thread state
+    log("Enumerating threads");
+    // @ts-ignore
+    for (let [key, value] of threads) {
+        log("ThreadID: " + key + ", value= " + value);
+    }
     let thread = threads.get(currentThreadId)!;
+    log("Thread is " + thread);
     OS = thread._OS;
     PC = thread._PC;
     RTS = thread._RTS;
@@ -488,6 +497,7 @@ const microcode = {
     DONE: instr => {
         // Stop the program if the main thread reaches the DONE. Else terminate the thread
         // and switch over to the next available one.
+        log("Current Thread ID is " + currentThreadId);
         if (currentThreadId === mainThreadId) {
             running = false;
         } else {
@@ -715,6 +725,151 @@ const microcode = {
         pushAddressOS(bufferedChannel);
         tempRoots.pop();
     },
+    READ_CHANNEL: instr => {
+        // expect a channel on top
+        let chan = [];
+        [OS[0], chan[0]] = popStack(OS[0]);
+        // push onto temp root cos we are allocating stuff here possibly
+        tempRoots.push(chan);
+        if (!isChannel(chan[0])) {
+            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+        }
+        // behavior now depends on whether buffered or unbuffered
+        if (isBufferedChannel(chan[0])) {
+            // The read blocks when the channel is empty
+            if (getBufferChannelLength(chan[0]) === 0) {
+                // a read channel is only meaningful within a goroutine, so if it blocks, we wud run this instr
+                // again so we need to PC--
+                PC--;
+                // we need to push the chan onto the goroutine's OS again
+                pushAddressOS(chan);
+                // now 'block'
+                timeoutThread();
+                // realise that if nothing ever pushes onto the channel, this goes on forever
+            } else { // unblocking read from buffered channel is simply a pop
+                let value = [];
+                value[0] = popBufferedChannel(chan[0]);
+                tempRoots.push(value);
+                // now push value onto stack
+                pushAddressOS(value);
+                tempRoots.pop();
+            }
+        } else { //unbuffered
+            // an unbuffered channel is functionally equivalent to a buffered channel
+            if (getUnBufferChannelLength(chan[0]) === 0) { // blocking read
+                PC--;
+                tempRoots.push(chan);
+                pushAddressOS(chan);
+                tempRoots.pop();
+                timeoutThread();
+            } else {
+                let value = [];
+                value[0] = popUnbufferedChannel(chan[0]);
+                tempRoots.push(value);
+                pushAddressOS(value);
+                tempRoots.pop();
+            }
+        }
+        tempRoots.pop(); // pop chan
+    },
+    WRITE_CHANNEL: instr => {
+        // expect a channel on top
+        let chan = [];
+        [OS[0], chan[0]] = popStack(OS[0]);
+        if (!isChannel(chan[0])) {
+            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+        }
+        // followed by value to write
+        let value = [];
+        [OS[0], value[0]] = popStack(OS[0]);
+
+        // behaviour now depends on type of channel
+        if (isBufferedChannel(chan[0])) {
+            // case 1: write onto a full buffered channel
+            //         block until we can write
+            // case 2: write onto a non full buffered channel
+            //         write and move on
+            if (isBufferChannelFull(chan[0])) {
+                tempRoots.push(chan);
+                tempRoots.push(value);
+
+                PC--; //redo the instruction
+                pushAddressOS(value);
+                pushAddressOS(chan);
+
+                tempRoots.pop();
+                tempRoots.pop();
+
+                timeoutThread();
+            } else {
+                // write and move on
+                // push the chan onto OS so that CHECK_CHANNEL works
+                tempRoots.push(chan);
+                tempRoots.push(value);
+
+                pushToBufferedChannel(chan[0], value[0]); // not an actual allocate
+                pushAddressOS(chan);
+
+                tempRoots.pop();
+                tempRoots.pop();
+            }
+        } else { // unbuffered
+            // it is possible that 2 channels attempt to write onto an unbuffered channel, the unbuffered channel
+            // may be non-empty so 2 cases here
+            // case 1: write onto an empty unbuffered channel
+            //         In this case, we are done, we simply write and then move onto the CHECK_CHANNEL opcode
+            // case 2: write onto a non-empty unbuffered channel
+            //         In this case, we have to block until we can write
+            if (getUnBufferChannelLength(chan[0]) === 0) { // case 1
+                tempRoots.push(chan);
+                tempRoots.push(value);
+
+                pushUnbufferedChannel(chan[0], value[0]); // this isn't a real push cos no actual allocation done
+                // we have to push the channel value onto the OS so that we can do the CHECK_CHANNEL
+                pushAddressOS(chan);
+
+                tempRoots.pop();
+                tempRoots.pop();
+            } else { // case 2
+                tempRoots.push(chan);
+                tempRoots.push(value);
+
+                PC--; // will redo this instruction
+                // need to push value on top, then push channel
+                pushAddressOS(value);
+                pushAddressOS(chan);
+
+                tempRoots.pop();
+                tempRoots.pop();
+                // now give up thread
+                timeoutThread();
+            }
+        }
+    },
+    CHECK_CHANNEL: instr => {
+        // expects a chan on OS
+        let chan = [];
+        [OS[0], chan[0]] = popStack(OS[0]);
+        if (!isChannel(chan[0])) {
+            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+        }
+        // behavior differs based on type of channel
+        // if buffered channel, simply move on
+        // if unbuffered channel, we block until it is empty
+        if (isBufferedChannel(chan[0])) {
+            // done
+            return;
+        } else if (getUnBufferChannelLength(chan[0]) === 0) { // unbuffered channel is empty, we can move on
+            // done
+        } else { // unbuffered channel not empty, we block
+            // push chan onto goroutine OS then block
+            PC--;
+            tempRoots.push(chan);
+            pushAddressOS(chan);
+            tempRoots.pop();
+            timeoutThread();
+        }
+    }
 };
 
 // ********************************
@@ -727,7 +882,7 @@ export function getRoots(): number[][] {
     for (let tempRoot of tempRoots) {
         roots.push(tempRoot);
     }
-    // we have to ignore the current thread because it's not updated!
+    // we have to ignore the current because it's not updated!
     // make sure to use updated values here
     roots.push([builtinsFrame]);
     roots.push(E);
@@ -801,7 +956,7 @@ function runInstruction() {
     log('OS: ' + OS[0]);
     log('E: ' + E[0]);
     log('PC: ' + PC);
-    debugHeap();
+    // debugHeap();
     // printOSStack();
     // printHeapUsage();
     // printStringPoolMapping();

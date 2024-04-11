@@ -638,16 +638,26 @@ export function allocateBufferedChannel(capacity: number): number {
     return address;
 }
 
-function getBufferChannelLength(address: number): number {
-    return getWord(address + headerSize);
+export function getBufferChannelLength(address: number): number {
+    return heap.getUint32((address + headerSize) * wordSize);
+}
+
+function getBufferChannelCapacity(address: number): number {
+    return getSize(address) - headerSize - 1;
+}
+
+export function isBufferChannelFull(address: number): boolean {
+    const capacity = getBufferChannelCapacity(address);
+    const currentSize = getBufferChannelLength(address);
+    return currentSize === capacity;
 }
 
 // The checking of whether buffered channel is full is done at oogavm-machine
 // so here I would still want to throw an error if it exceeds capacity
 // cos then that means that no blocking had happened
-function pushToBufferedChannel(address: number, value: number) {
+export function pushToBufferedChannel(address: number, value: number) {
     let currentSize = getBufferChannelLength(address);
-    const capacity = getSize(address) - headerSize;
+    const capacity = getBufferChannelCapacity(address);
     if (currentSize >= capacity) {
         // This indicates a bug with our code and not a user error
         throw new OogaError('Attempting to push onto a full buffered channel');
@@ -659,7 +669,7 @@ function pushToBufferedChannel(address: number, value: number) {
 }
 
 // Pop the first value then copy all values -1 index
-function popBufferedChannel(address: number): number {
+export function popBufferedChannel(address: number): number {
     let currentSize = getBufferChannelLength(address);
     if (currentSize <= 0) {
         throw new OogaError('Attempting to pop from an empty buffered channel');
@@ -682,11 +692,14 @@ export function isBufferedChannel(address: number): boolean {
 const unbufferedCapacity = 1;
 
 export function allocateUnbufferedChannel(): number {
-    return allocate(Tag.UNBUFFERED, unbufferedCapacity + headerSize + 1);
+    const address = allocate(Tag.UNBUFFERED, unbufferedCapacity + headerSize + 1);
+    // starts with 0 size
+    heap.setUint32((address + headerSize) * wordSize, 0);
+    return address;
 }
 
-function getUnBufferChannelLength(address: number): number {
-    return getWord(address + headerSize);
+export function getUnBufferChannelLength(address: number): number {
+    return heap.getUint32((address + headerSize) * wordSize);
 }
 
 // As usual, we expect the blocking to be done at oogavm-machine and not here
@@ -703,6 +716,7 @@ export function pushUnbufferedChannel(address: number, value: number) {
 export function popUnbufferedChannel(address: number): number {
     // check that unbuffered channel is not empty!
     const size = getUnBufferChannelLength(address);
+    log("Size of unbuffered channel at addr " + address + " is " + size);
     if (size !== 1) {
         throw new OogaError('Attempting to pop empty unbuffered channel in the heap. Bug!');
     }
@@ -712,6 +726,10 @@ export function popUnbufferedChannel(address: number): number {
 
 export function isUnbufferedChannel(address: number): boolean {
     return getTag(address) === Tag.UNBUFFERED;
+}
+
+export function isChannel(address: number): boolean {
+    return isBufferedChannel(address) || isUnbufferedChannel(address);
 }
 
 // ********************************
@@ -786,6 +804,19 @@ export function debugHeap(): void {
             case Tag.STRING:
                 log('String value: ' + getStringValue(curr));
                 break;
+            case Tag.UNBUFFERED:
+                if (getUnBufferChannelLength(curr) === 0) {
+                    log("Empty unbuffered channel");
+                } else {
+                    log('Unbuffered value: ' + getWord(curr + headerSize + 1));
+                }
+                break;
+            case Tag.BUFFERED:
+                log('Capacity: ' + (getSize(curr) - headerSize));
+                for (let i = 0; i < getBufferChannelLength(curr); i++) {
+                    log('Child ' + i + ': ' + getWord(curr + headerSize + 1 + i));
+                }
+                break;
             default:
                 break;
         }
@@ -826,6 +857,10 @@ export function addressToTSValue(address: number) {
         return getStringValue(address);
     } else if (isArray(address)) {
         return getArrayValue(address);
+    } else if (isBufferedChannel(address)) {
+        return '<bufferedChannel>';
+    } else if (isUnbufferedChannel(address)) {
+        return '<unbufferedChannel>';
     } else {
         throw new Error('bagoog');
     }

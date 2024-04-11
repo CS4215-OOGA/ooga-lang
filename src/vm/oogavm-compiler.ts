@@ -1,7 +1,7 @@
 import Opcodes from './opcodes.js';
 import { builtinMappings, initializeBuiltinTable } from './oogavm-machine.js';
 import debug from 'debug';
-import { StructType, Type } from './oogavm-types.js';
+import { ArrayType, ChanType, is_type, StructType, Type } from './oogavm-types.js';
 import assert from 'assert';
 import { CompilerError, OogaError } from './oogavm-errors.js';
 import { unparse } from '../utils/utils.js';
@@ -781,20 +781,32 @@ const compileComp = {
     MakeCallExpression: (comp, ce) => {
         console.log('Compiling MakeCallExpression');
         console.log(comp);
-        if (comp.type.tag === 'Channel' && comp.type.args.length === 0) {
+        if (is_type(comp.type, ChanType) && comp.args.length === 0) {
             // unbuffered channel
             instrs[wc++] = { tag: Opcodes.CREATE_UNBUFFERED };
-        } else if (comp.type.tag === 'Channel') {
+        } else if (is_type(comp.type, ChanType)) {
             // buffered channel
             // at the moment, its always length 1, may be subject to change
             compile(comp.args[0], ce);
             instrs[wc++] = { tag: Opcodes.CREATE_BUFFERED };
-        } else if (comp.type.tag === 'Array') {
+        } else if (is_type(comp.type, ArrayType)) {
             // Slice (currently not supporting dynamically resizable array)
             // so this is just a default initialized array at the moment, that means
         } else {
-            throw new OogaError('Unsupported make type at the moment!');
+            throw new OogaError(        'Unsupported make type at the moment!');
         }
+    },
+    ChannelReadExpression: (comp, ce) => {
+        compile(comp.channel, ce);
+        instrs[wc++] = { tag: Opcodes.READ_CHANNEL };
+    },
+    ChannelWriteExpression: (comp, ce) => {
+        compile(comp.value, ce);
+        compile(comp.channel, ce);
+        // because we don't know the type of the channel here
+        // we will push a new Opcode called CHECK_CHANNEL
+        instrs[wc++] = { tag: Opcodes.WRITE_CHANNEL };
+        instrs[wc++] = { tag: Opcodes.CHECK_CHANNEL };
     },
 };
 

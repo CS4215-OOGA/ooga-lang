@@ -1130,3 +1130,130 @@ x[0];
     '2\n3\n4\n5\n6\n7\n',
     defaultNumWords
 );
+
+
+// Test unbuffered goroutines
+testProgram(`
+func fooga(x chan int) {
+    // writes to x, should block
+    print(0);
+    x <- 1;
+    print("fooga"); // this should print after booga
+}
+
+func booga(x chan int) {
+    var y int = <-x; // reads from x
+    print("booga"); // this should print before fooga
+    print(y); // check that 1 was received
+}
+
+var x chan int = make(chan int); // unbuffered channel
+go fooga(x);
+go booga(x);
+
+for i := 0; i < 10; i++ {
+    // do nothing to stall to see 'fooga' being printed
+}
+10;
+`, 10,
+    '0\n"booga"\n1\n"fooga"',
+    defaultNumWords);
+
+// Test unblocking buffered goroutine
+testProgram(`
+func fooga(x chan int) {
+    // writes to x, should be unblocking
+    print(0);
+    x <- 1;
+    print("fooga"); // this should print after 0
+}
+
+func booga(x chan int) {
+    var y int = <-x; // reads from x
+    print("booga"); // this should print after fooga
+    print(y); // check that 1 was received
+}
+
+var x chan int = make(chan int, 1); // buffered channel of size 1, will be unblocking
+go fooga(x);
+go booga(x);
+
+for i := 0; i < 10; i++ {
+    // do nothing to stall to see 'fooga' being printed
+}
+10;
+`, 10,
+    '0\n"fooga"\n"booga"\n1',
+    defaultNumWords);
+
+
+// Test blocking buffered goroutine
+testProgram(`
+func foo(x chan int) {
+    print(0); 
+    x <- 1; // unblocking write
+    print("foo"); // should print immediately after 0
+}
+
+func goo(x chan int) {
+    print(2);
+    x <- 2; // blocking write
+    print("goo"); // should not print after 2
+}
+
+func hoo(x chan int) {
+    print(3);
+    var y int = <-x; // shud be an unblocking read
+    print(y); // verify that y is equal to 1 
+}
+
+var x chan int = make(chan int, 1); // buffered channel of size 1
+go foo(x);
+go goo(x);
+go hoo(x);
+
+for i := 0; i < 10; i++ {
+    // do nothing to stall to see everything being printed
+}
+10;
+`, 10,
+    '0\n"foo"\n2\n3\n1\n"goo"',
+    defaultNumWords);
+
+// test pushing strings onto channels
+testProgram(`
+func foo(x chan string) {
+    print("before foo"); 
+    x<- "Jotham";         // non blocking write
+    print("after foo"); 
+}
+
+func goo(x chan string) {
+    print("before goo"); 
+    x<- "Wong";         // non blocking write
+    print("after goo"); 
+}
+
+func hoo(x chan string) {
+    print("before hoo");
+    x<- "Yi"; // blocking write
+    print("after hoo");
+}
+
+var x chan string = make(chan string, 2); // buffered channel of size 2
+
+go foo(x);
+go goo(x);
+go hoo(x);
+
+var y string = <-x; // Jotham
+var z string = <-x; // Wong
+print(y + " " + z); // Jotham Wong
+
+for i := 0; i < 100; i++ {
+    // do nothing to stall to see everything being printed
+}
+10;
+`, 10,
+    '"before foo"\n"after foo"\n"before goo"\n"after goo"\n"before hoo"\n"Jotham Wong"\n"after hoo"'
+    , defaultNumWords);
