@@ -30,9 +30,18 @@ everything is MUTABLE!
 
 - Goroutines
 - WaitGroups
+- Channels
 
 Behind the scenes, Ooga uses a Round Robin scheduler to provide "concurrency" and allows for users
 to construct race conditions.
+
+#### Channels
+
+Ooga supports buffered and unbuffered channels.
+
+Writing to unbuffered channels block until a corresponding read from the same unbuffered channel.
+Writing to a buffered channel blocks if the buffered channel is full while reading from a buffered channel blocks
+if the buffered channel is empty.
 
 ### Garbage Collection
 
