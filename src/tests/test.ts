@@ -1278,3 +1278,14 @@ print("This is the end");
 10; // do not give time for foo to read
 `, 10,
     '"This will show"\n"This is the end"', defaultNumWords);
+
+// Simple test for deadlock detection
+testProgram(`
+func foo(x chan int) {
+    x <- 5;
+}
+
+var x chan int = make(chan int); // unbuffered channel
+go foo(x);
+x <- 6; // will deadlock here
+`, 'Deadlock detected!', '', defaultNumWords);

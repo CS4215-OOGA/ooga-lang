@@ -88,6 +88,12 @@ let tempRoots: number[][] = [];
 // Flag to indicate "true concurrency"
 let isAtomicSection: boolean = false;
 
+enum ThreadState {
+    BLOCKING, // whether thread was blocked
+    RUNNING,  // if thread is currently running
+    YIELDED,         // if thread naturally gave up control
+}
+
 enum ProgramState {
     NORMAL,
     // TODO: Would this actually be useful? We should make the assumption that this was done at compile time
@@ -103,12 +109,14 @@ export class Thread {
     _E: number[];
     _PC: number;
     _RTS: number[];
+    state: ThreadState;
     // TODO: Do this properly
-    constructor(OS: number[], E: number[], PC: number, RTS: number[]) {
+    constructor(OS: number[], E: number[], PC: number, RTS: number[], state: ThreadState) {
         this._OS = OS;
         this._E = E;
         this._PC = PC;
         this._RTS = RTS;
+        this.state = state;
     }
 }
 
@@ -129,18 +137,18 @@ function initScheduler() {
     const [newMainThreadId, newTimeQuanta] = scheduler.runThread(); // main thread
     mainThreadId = newMainThreadId;
     TimeQuanta = newTimeQuanta;
-    threads.set(mainThreadId, new Thread(OS, E, PC, RTS));
+    threads.set(mainThreadId, new Thread(OS, E, PC, RTS, ThreadState.RUNNING));
     currentThreadId = mainThreadId;
 }
 
 function newThread(newOS: number[], newRTS: number[], newPC: number, newE: number[]) {
     const newThreadId = scheduler.newThread();
-    threads.set(newThreadId, new Thread(newOS, newE, newPC, newRTS));
+    threads.set(newThreadId, new Thread(newOS, newE, newPC, newRTS, ThreadState.RUNNING));
 }
 
-function pauseThread() {
+function pauseThread(state: ThreadState) {
     // save current state
-    threads.set(currentThreadId, new Thread(OS, E, PC, RTS));
+    threads.set(currentThreadId, new Thread(OS, E, PC, RTS, state));
     scheduler.pauseThread(currentThreadId);
 }
 
@@ -166,6 +174,27 @@ function runThread() {
     PC = thread._PC;
     RTS = thread._RTS;
     E = thread._E;
+    // there is definitely a deadlock if we are back to mainThreadId and every other thread is blocking
+    if (currentThreadId === mainThreadId) {
+        let deadlocked = true;
+        // @ts-ignore
+        for (let [threadId, thread] of threads) {
+            if (thread.state !== ThreadState.BLOCKING) {
+                deadlocked = false;
+            }
+        }
+        if (deadlocked) {
+            throw new OogaError("Deadlock detected!");
+        }
+    }
+}
+
+function blockThread() {
+    if (threads.size === 1) {
+        throw new OogaError("Stuck forever!");
+    }
+    pauseThread(ThreadState.BLOCKING);
+    runThread();
 }
 
 function timeoutThread() {
@@ -174,7 +203,7 @@ function timeoutThread() {
         TimeQuanta = scheduler.getMaxTimeQuanta();
         return;
     }
-    pauseThread();
+    pauseThread(ThreadState.YIELDED);
     runThread();
 }
 
@@ -744,7 +773,7 @@ const microcode = {
                 // we need to push the chan onto the goroutine's OS again
                 pushAddressOS(chan);
                 // now 'block'
-                timeoutThread();
+                blockThread();
                 // realise that if nothing ever pushes onto the channel, this goes on forever
             } else { // unblocking read from buffered channel is simply a pop
                 let value = [];
@@ -761,7 +790,7 @@ const microcode = {
                 tempRoots.push(chan);
                 pushAddressOS(chan);
                 tempRoots.pop();
-                timeoutThread();
+                blockThread();
             } else {
                 let value = [];
                 value[0] = popUnbufferedChannel(chan[0]);
@@ -800,7 +829,7 @@ const microcode = {
                 tempRoots.pop();
                 tempRoots.pop();
 
-                timeoutThread();
+                blockThread();
             } else {
                 // write and move on
                 // push the chan onto OS so that CHECK_CHANNEL works
@@ -842,7 +871,7 @@ const microcode = {
                 tempRoots.pop();
                 tempRoots.pop();
                 // now give up thread
-                timeoutThread();
+                blockThread();
             }
         }
     },
@@ -867,7 +896,7 @@ const microcode = {
             tempRoots.push(chan);
             pushAddressOS(chan);
             tempRoots.pop();
-            timeoutThread();
+            blockThread();
         }
     }
 };
