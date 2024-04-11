@@ -1257,3 +1257,24 @@ for i := 0; i < 100; i++ {
 `, 10,
     '"before foo"\n"after foo"\n"before goo"\n"after goo"\n"before hoo"\n"Jotham Wong"\n"after hoo"'
     , defaultNumWords);
+
+
+// test that main will expire before blocking progresses
+testProgram(`
+func foo(x chan int) {
+    var y = <-x; // blocking since no actual value in x yet
+    print("This will not show");
+}
+
+func goo(x chan int) {
+    x <- 5; // unblocking write to channel
+    print("This will show");
+}
+
+var x chan int = make(chan int, 1); // buffered channel
+go foo(x);
+go goo(x);
+print("This is the end");
+10; // do not give time for foo to read
+`, 10,
+    '"This will show"\n"This is the end"', defaultNumWords);
