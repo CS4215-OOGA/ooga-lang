@@ -716,7 +716,7 @@ export function pushUnbufferedChannel(address: number, value: number) {
 export function popUnbufferedChannel(address: number): number {
     // check that unbuffered channel is not empty!
     const size = getUnBufferChannelLength(address);
-    log("Size of unbuffered channel at addr " + address + " is " + size);
+    log('Size of unbuffered channel at addr ' + address + ' is ' + size);
     if (size !== 1) {
         throw new OogaError('Attempting to pop empty unbuffered channel in the heap. Bug!');
     }
@@ -806,7 +806,7 @@ export function debugHeap(): void {
                 break;
             case Tag.UNBUFFERED:
                 if (getUnBufferChannelLength(curr) === 0) {
-                    log("Empty unbuffered channel");
+                    log('Empty unbuffered channel');
                 } else {
                     log('Unbuffered value: ' + getWord(curr + headerSize + 1));
                 }

@@ -1131,9 +1131,9 @@ x[0];
     defaultNumWords
 );
 
-
 // Test unbuffered goroutines
-testProgram(`
+testProgram(
+    `
 func fooga(x chan int) {
     // writes to x, should block
     print(0);
@@ -1155,12 +1155,15 @@ for i := 0; i < 10; i++ {
     // do nothing to stall to see 'fooga' being printed
 }
 10;
-`, 10,
+`,
+    10,
     '0\n"booga"\n1\n"fooga"',
-    defaultNumWords);
+    defaultNumWords
+);
 
 // Test unblocking buffered goroutine
-testProgram(`
+testProgram(
+    `
 func fooga(x chan int) {
     // writes to x, should be unblocking
     print(0);
@@ -1182,13 +1185,15 @@ for i := 0; i < 10; i++ {
     // do nothing to stall to see 'fooga' being printed
 }
 10;
-`, 10,
+`,
+    10,
     '0\n"fooga"\n"booga"\n1',
-    defaultNumWords);
-
+    defaultNumWords
+);
 
 // Test blocking buffered goroutine
-testProgram(`
+testProgram(
+    `
 func foo(x chan int) {
     print(0); 
     x <- 1; // unblocking write
@@ -1216,12 +1221,15 @@ for i := 0; i < 10; i++ {
     // do nothing to stall to see everything being printed
 }
 10;
-`, 10,
+`,
+    10,
     '0\n"foo"\n2\n3\n1\n"goo"',
-    defaultNumWords);
+    defaultNumWords
+);
 
 // test pushing strings onto channels
-testProgram(`
+testProgram(
+    `
 func foo(x chan string) {
     print("before foo"); 
     x<- "Jotham";         // non blocking write
@@ -1254,6 +1262,8 @@ for i := 0; i < 100; i++ {
     // do nothing to stall to see everything being printed
 }
 10;
-`, 10,
-    '"before foo"\n"after foo"\n"before goo"\n"after goo"\n"before hoo"\n"Jotham Wong"\n"after hoo"'
-    , defaultNumWords);
+`,
+    10,
+    '"before foo"\n"after foo"\n"before goo"\n"after goo"\n"before hoo"\n"Jotham Wong"\n"after hoo"',
+    defaultNumWords
+);
