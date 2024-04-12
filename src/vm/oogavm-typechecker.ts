@@ -20,7 +20,6 @@ import {
 } from './oogavm-types.js';
 import assert from 'assert';
 import { TypecheckError } from './oogavm-errors.js';
-import { Channel } from 'diagnostics_channel';
 
 const log = debug('ooga:typechecker');
 
@@ -81,6 +80,8 @@ const binary_add_type = [
     new FunctionType([new FloatType(), new FloatType()], new FloatType()),
     new FunctionType([new IntegerType(), new FloatType()], new FloatType()),
     new FunctionType([new FloatType(), new IntegerType()], new FloatType()),
+    new FunctionType([new AnyType(), new StringType()], new StringType()),
+    new FunctionType([new StringType(), new AnyType()], new StringType()),
 ];
 
 const mutexType = new StructType(
@@ -93,7 +94,7 @@ const mutexType = new StructType(
 );
 
 const global_type_frame = {
-    '+': binary_add_type,
+    '+': binary_add_type, // This allows for other types to be added to strings
     '-': binary_arith_type,
     '*': binary_arith_type,
     '/': binary_arith_type,
@@ -293,6 +294,20 @@ const type_comp = {
             );
         }
 
+        // log('ArraySliceLiteral: ', comp.type.elem_type);
+        for (let i = 0; i < comp.elements.length; i++) {
+            const t = type(comp.elements[i], te, struct_te);
+            // log('ArraySliceLiteral: ', t);
+            if (!equal_type(t, comp.type.elem_type)) {
+                throw new TypecheckError(
+                    'Array expected element type ' +
+                        unparse_types(comp.type.elem_type) +
+                        ', got ' +
+                        unparse_types(t)
+                );
+            }
+        }
+
         return comp.type;
     },
     Name: (comp, te, struct_te) => {
@@ -316,6 +331,9 @@ const type_comp = {
         // 5. Assign each of these and their constituent expressions to their respective types - these types should be set dynamically
 
         // NOTE: here we only set the "supposed" type of the declarations, as defined by the programmer
+        if (!comp.body) {
+            return new NullType();
+        }
         const struct_decls = comp.body.body.filter(comp => comp.tag === 'StructDeclaration');
         let extended_struct_te = extend_type_environment([], [], struct_te);
         if (struct_decls.length > 0) {
@@ -366,7 +384,6 @@ const type_comp = {
             const comp = decls_known_type[i];
             const name = comp.id.name;
 
-            log('Extended TE:', extended_te);
             if (lookup_type_current_frame(name, extended_te)) {
                 throw new TypecheckError(
                     'Variable ' + name + ' declared more than once in the same block!'
@@ -374,7 +391,7 @@ const type_comp = {
             }
 
             const type = getType(comp, extended_struct_te);
-            log('KNOWN VARIABLE', name);
+            log('Known type declaration:', name, type);
             log(unparse(type));
             extended_te = extend_current_type_environment(name, type, extended_te);
         }
@@ -396,7 +413,7 @@ const type_comp = {
                 );
             }
             const t = type(comp.expression, extended_te, extended_struct_te);
-
+            log('Unknown type declaration:', name, t);
             comp.type = t;
             extended_te = extend_current_type_environment(name, t, extended_te);
         }
@@ -543,12 +560,19 @@ const type_comp = {
             log(e);
             return type(e, te, struct_te);
         });
-        let fun_type: Type | undefined;
 
+        let fun_type: Type | undefined;
+        log(comp.callee);
+        log('fun_types:', fun_types);
         if (Array.isArray(fun_types)) {
             // The function can take in/return multiple types, we need to check which one is the correct one and use that
             assert(
-                Array.isArray(fun_types) && fun_types.every(f => is_type(f, FunctionType)),
+                Array.isArray(fun_types) &&
+                    fun_types.every(f => {
+                        log('------------------------');
+                        log(f, is_type(f, FunctionType));
+                        return is_type(f, FunctionType);
+                    }),
                 'expected array of FunctionTypes'
             );
 
@@ -974,20 +998,7 @@ const type_comp = {
         const chanType = type(comp.channel, te, struct_te);
 
         if (!is_type(chanType, ChanType)) {
-            // We consider the case where it is a logical expression x < -y instead
-            comp.tag = 'LogicalExpression';
-            comp.operator = '<';
-            comp.left = comp.channel;
-            comp.right = {
-                tag: 'UnaryExpression',
-                operator: '-unary',
-                argument: comp.value,
-                prefix: true,
-            };
-
-            log(comp);
-
-            return type(comp, te, struct_te);
+            throw new TypecheckError('Expected channel type, got ' + unparse_types(chanType));
         }
 
         assert(chanType instanceof ChanType, 'expected channel type');

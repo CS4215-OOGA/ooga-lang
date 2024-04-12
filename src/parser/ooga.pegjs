@@ -753,7 +753,7 @@ ForWithInitTestUpdate
     init:ForInitStatement ";" __
     test:ForTest ";" __
     update:Expression __
-    "{" __ body: StatementList? __ "}" __
+    body:BlockStatement __
     {
       return {
         tag: "ForStatement",
@@ -769,7 +769,7 @@ ForWithInitTestUpdate
 ForWithTest
   = ForToken __
     test:ForTest __
-    "{" __ body: StatementList? __ "}" __
+    body:BlockStatement __
     {
       return {
         tag: "ForStatement",
@@ -784,7 +784,7 @@ ForWithTest
 
 ForInfinite
   = ForToken __
-    "{" __ body: StatementList? __ "}" __
+    body:BlockStatement __
     {
       return {
         tag: "ForStatement",

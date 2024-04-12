@@ -227,6 +227,9 @@ const compileComp = {
         goto_instr.addr = wc;
     },
     BlockStatement: (comp, ce) => {
+        if (!comp.body) {
+            return;
+        }
         const declarations: CompileTimeVariable[] = scanForLocalsBlock(comp.body);
         // Only enter and exit scope if there are actually declarations.
         if (declarations.length == 0) {
@@ -779,8 +782,8 @@ const compileComp = {
         instrs[wc++] = { tag: Opcodes.LDARRI };
     },
     MakeCallExpression: (comp, ce) => {
-        console.log('Compiling MakeCallExpression');
-        console.log(comp);
+        log('Compiling MakeCallExpression');
+        log(comp);
         if (is_type(comp.type, ChanType) && comp.args.length === 0) {
             // unbuffered channel
             instrs[wc++] = { tag: Opcodes.CREATE_UNBUFFERED };
@@ -793,7 +796,7 @@ const compileComp = {
             // Slice (currently not supporting dynamically resizable array)
             // so this is just a default initialized array at the moment, that means
         } else {
-            throw new OogaError(        'Unsupported make type at the moment!');
+            throw new OogaError('Unsupported make type at the moment!');
         }
     },
     ChannelReadExpression: (comp, ce) => {

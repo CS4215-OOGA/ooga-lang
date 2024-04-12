@@ -22,7 +22,8 @@ import {
     getArrayLength,
     getArrayValue,
     getArrayValueAtIndex,
-    getBlockFrameEnvironment, getBufferChannelLength,
+    getBlockFrameEnvironment,
+    getBufferChannelLength,
     getBuiltinID,
     getCallFrameEnvironment,
     getCallFramePC,
@@ -31,19 +32,27 @@ import {
     getEnvironmentValue,
     getField,
     getPrevStackAddress,
-    getTagStringFromAddress, getUnBufferChannelLength,
+    getTagStringFromAddress,
+    getUnBufferChannelLength,
     initializeStack,
-    isArray, isBufferChannelFull, isBufferedChannel,
+    isArray,
+    isBufferChannelFull,
+    isBufferedChannel,
     isBuiltin,
-    isCallFrame, isChannel,
+    isCallFrame,
+    isChannel,
     isClosure,
     isUnassigned,
     peekStack,
-    peekStackN, popBufferedChannel,
-    popStack, popUnbufferedChannel,
+    peekStackN,
+    popBufferedChannel,
+    popStack,
+    popUnbufferedChannel,
     printHeapUsage,
     printStringPoolMapping,
-    pushStack, pushToBufferedChannel, pushUnbufferedChannel,
+    pushStack,
+    pushToBufferedChannel,
+    pushUnbufferedChannel,
     setArrayValue,
     setEnvironmentValue,
     setField,
@@ -90,8 +99,8 @@ let isAtomicSection: boolean = false;
 
 enum ThreadState {
     BLOCKING, // whether thread was blocked
-    RUNNING,  // if thread is currently running
-    YIELDED,         // if thread naturally gave up control
+    RUNNING, // if thread is currently running
+    YIELDED, // if thread naturally gave up control
 }
 
 enum ProgramState {
@@ -133,7 +142,7 @@ function initScheduler() {
     scheduler = new RoundRobinScheduler();
     threads.clear();
     mainThreadId = scheduler.newThread(); // main thread
-    log("Main Thread ID is " + mainThreadId);
+    log('Main Thread ID is ' + mainThreadId);
     const [newMainThreadId, newTimeQuanta] = scheduler.runThread(); // main thread
     mainThreadId = newMainThreadId;
     TimeQuanta = newTimeQuanta;
@@ -153,7 +162,7 @@ function pauseThread(state: ThreadState) {
 }
 
 function deleteThread() {
-    log("Deleting current thread id " + currentThreadId);
+    log('Deleting current thread id ' + currentThreadId);
     threads.delete(currentThreadId);
     scheduler.deleteCurrentThread(currentThreadId);
     currentThreadId = -1;
@@ -161,15 +170,15 @@ function deleteThread() {
 
 function runThread() {
     [currentThreadId, TimeQuanta] = scheduler.runThread();
-    log("Current Thread ID is " + currentThreadId);
+    log('Current Thread ID is ' + currentThreadId);
     // TODO: Load thread state
-    log("Enumerating threads");
+    log('Enumerating threads');
     // @ts-ignore
     for (let [key, value] of threads) {
-        log("ThreadID: " + key + ", value= " + value);
+        log('ThreadID: ' + key + ', value= ' + value);
     }
     let thread = threads.get(currentThreadId)!;
-    log("Thread is " + thread);
+    log('Thread is ' + thread);
     OS = thread._OS;
     PC = thread._PC;
     RTS = thread._RTS;
@@ -184,14 +193,14 @@ function runThread() {
             }
         }
         if (deadlocked) {
-            throw new OogaError("Deadlock detected!");
+            throw new OogaError('Deadlock detected!');
         }
     }
 }
 
 function blockThread() {
     if (threads.size === 1) {
-        throw new OogaError("Stuck forever!");
+        throw new OogaError('Stuck forever!');
     }
     pauseThread(ThreadState.BLOCKING);
     runThread();
@@ -526,7 +535,7 @@ const microcode = {
     DONE: instr => {
         // Stop the program if the main thread reaches the DONE. Else terminate the thread
         // and switch over to the next available one.
-        log("Current Thread ID is " + currentThreadId);
+        log('Current Thread ID is ' + currentThreadId);
         if (currentThreadId === mainThreadId) {
             running = false;
         } else {
@@ -761,7 +770,9 @@ const microcode = {
         // push onto temp root cos we are allocating stuff here possibly
         tempRoots.push(chan);
         if (!isChannel(chan[0])) {
-            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+            throw new OogaError(
+                'Expected channel but got ' + getTagStringFromAddress(chan[0]) + ' instead.'
+            );
         }
         // behavior now depends on whether buffered or unbuffered
         if (isBufferedChannel(chan[0])) {
@@ -775,7 +786,8 @@ const microcode = {
                 // now 'block'
                 blockThread();
                 // realise that if nothing ever pushes onto the channel, this goes on forever
-            } else { // unblocking read from buffered channel is simply a pop
+            } else {
+                // unblocking read from buffered channel is simply a pop
                 let value = [];
                 value[0] = popBufferedChannel(chan[0]);
                 tempRoots.push(value);
@@ -783,9 +795,11 @@ const microcode = {
                 pushAddressOS(value);
                 tempRoots.pop();
             }
-        } else { //unbuffered
+        } else {
+            //unbuffered
             // an unbuffered channel is functionally equivalent to a buffered channel
-            if (getUnBufferChannelLength(chan[0]) === 0) { // blocking read
+            if (getUnBufferChannelLength(chan[0]) === 0) {
+                // blocking read
                 PC--;
                 tempRoots.push(chan);
                 pushAddressOS(chan);
@@ -806,7 +820,9 @@ const microcode = {
         let chan = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
-            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+            throw new OogaError(
+                'Expected channel but got ' + getTagStringFromAddress(chan[0]) + ' instead.'
+            );
         }
         // followed by value to write
         let value = [];
@@ -842,14 +858,16 @@ const microcode = {
                 tempRoots.pop();
                 tempRoots.pop();
             }
-        } else { // unbuffered
+        } else {
+            // unbuffered
             // it is possible that 2 channels attempt to write onto an unbuffered channel, the unbuffered channel
             // may be non-empty so 2 cases here
             // case 1: write onto an empty unbuffered channel
             //         In this case, we are done, we simply write and then move onto the CHECK_CHANNEL opcode
             // case 2: write onto a non-empty unbuffered channel
             //         In this case, we have to block until we can write
-            if (getUnBufferChannelLength(chan[0]) === 0) { // case 1
+            if (getUnBufferChannelLength(chan[0]) === 0) {
+                // case 1
                 tempRoots.push(chan);
                 tempRoots.push(value);
 
@@ -859,7 +877,8 @@ const microcode = {
 
                 tempRoots.pop();
                 tempRoots.pop();
-            } else { // case 2
+            } else {
+                // case 2
                 tempRoots.push(chan);
                 tempRoots.push(value);
 
@@ -880,7 +899,9 @@ const microcode = {
         let chan = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
-            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+            throw new OogaError(
+                'Expected channel but got ' + getTagStringFromAddress(chan[0]) + ' instead.'
+            );
         }
         // behavior differs based on type of channel
         // if buffered channel, simply move on
@@ -888,9 +909,11 @@ const microcode = {
         if (isBufferedChannel(chan[0])) {
             // done
             return;
-        } else if (getUnBufferChannelLength(chan[0]) === 0) { // unbuffered channel is empty, we can move on
+        } else if (getUnBufferChannelLength(chan[0]) === 0) {
+            // unbuffered channel is empty, we can move on
             // done
-        } else { // unbuffered channel not empty, we block
+        } else {
+            // unbuffered channel not empty, we block
             // push chan onto goroutine OS then block
             PC--;
             tempRoots.push(chan);
@@ -898,7 +921,7 @@ const microcode = {
             tempRoots.pop();
             blockThread();
         }
-    }
+    },
 };
 
 // ********************************

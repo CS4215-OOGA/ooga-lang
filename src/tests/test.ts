@@ -1076,7 +1076,7 @@ func booga(x []int) int {
     var sum int = 0;
     for var i int = 0; i < n; i++ {
         sum = sum + x[i];
-    }    
+    }
     return sum;
 }
 
@@ -1114,9 +1114,9 @@ func googaDaBooga() []int {
 func addOne(x []int) []int {
     for i := 0; i < len(x); i++ {
         x[i] = x[i] + 1;
-    }    
+    }
     return x;
-} 
+}
 
 
 var x = googaDaBooga();
@@ -1131,9 +1131,9 @@ x[0];
     defaultNumWords
 );
 
-
 // Test unbuffered goroutines
-testProgram(`
+testProgram(
+    `
 func fooga(x chan int) {
     // writes to x, should block
     print(0);
@@ -1155,12 +1155,15 @@ for i := 0; i < 10; i++ {
     // do nothing to stall to see 'fooga' being printed
 }
 10;
-`, 10,
+`,
+    10,
     '0\n"booga"\n1\n"fooga"',
-    defaultNumWords);
+    defaultNumWords
+);
 
 // Test unblocking buffered goroutine
-testProgram(`
+testProgram(
+    `
 func fooga(x chan int) {
     // writes to x, should be unblocking
     print(0);
@@ -1182,15 +1185,17 @@ for i := 0; i < 10; i++ {
     // do nothing to stall to see 'fooga' being printed
 }
 10;
-`, 10,
+`,
+    10,
     '0\n"fooga"\n"booga"\n1',
-    defaultNumWords);
-
+    defaultNumWords
+);
 
 // Test blocking buffered goroutine
-testProgram(`
+testProgram(
+    `
 func foo(x chan int) {
-    print(0); 
+    print(0);
     x <- 1; // unblocking write
     print("foo"); // should print immediately after 0
 }
@@ -1204,7 +1209,7 @@ func goo(x chan int) {
 func hoo(x chan int) {
     print(3);
     var y int = <-x; // shud be an unblocking read
-    print(y); // verify that y is equal to 1 
+    print(y); // verify that y is equal to 1
 }
 
 var x chan int = make(chan int, 1); // buffered channel of size 1
@@ -1216,22 +1221,25 @@ for i := 0; i < 10; i++ {
     // do nothing to stall to see everything being printed
 }
 10;
-`, 10,
+`,
+    10,
     '0\n"foo"\n2\n3\n1\n"goo"',
-    defaultNumWords);
+    defaultNumWords
+);
 
 // test pushing strings onto channels
-testProgram(`
+testProgram(
+    `
 func foo(x chan string) {
-    print("before foo"); 
+    print("before foo");
     x<- "Jotham";         // non blocking write
-    print("after foo"); 
+    print("after foo");
 }
 
 func goo(x chan string) {
-    print("before goo"); 
+    print("before goo");
     x<- "Wong";         // non blocking write
-    print("after goo"); 
+    print("after goo");
 }
 
 func hoo(x chan string) {
@@ -1254,13 +1262,15 @@ for i := 0; i < 100; i++ {
     // do nothing to stall to see everything being printed
 }
 10;
-`, 10,
-    '"before foo"\n"after foo"\n"before goo"\n"after goo"\n"before hoo"\n"Jotham Wong"\n"after hoo"'
-    , defaultNumWords);
-
+`,
+    10,
+    '"before foo"\n"after foo"\n"before goo"\n"after goo"\n"before hoo"\n"Jotham Wong"\n"after hoo"',
+    defaultNumWords
+);
 
 // test that main will expire before blocking progresses
-testProgram(`
+testProgram(
+    `
 func foo(x chan int) {
     var y = <-x; // blocking since no actual value in x yet
     print("This will not show");
@@ -1276,11 +1286,15 @@ go foo(x);
 go goo(x);
 print("This is the end");
 10; // do not give time for foo to read
-`, 10,
-    '"This will show"\n"This is the end"', defaultNumWords);
+`,
+    10,
+    '"This will show"\n"This is the end"',
+    defaultNumWords
+);
 
 // Simple test for deadlock detection
-testProgram(`
+testProgram(
+    `
 func foo(x chan int) {
     x <- 5;
 }
@@ -1288,11 +1302,19 @@ func foo(x chan int) {
 var x chan int = make(chan int); // unbuffered channel
 go foo(x);
 x <- 6; // will deadlock here
-`, 'Deadlock detected!', '', defaultNumWords);
-
+`,
+    'Deadlock detected!',
+    '',
+    defaultNumWords
+);
 
 // Simple test for doomed forever
-testProgram(`
+testProgram(
+    `
 var x chan int = make(chan int); // unbuffered channel
 <-x; // will block forever
-`, 'Stuck forever!', '', defaultNumWords);
+`,
+    'Stuck forever!',
+    '',
+    defaultNumWords
+);
