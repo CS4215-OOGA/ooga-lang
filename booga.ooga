@@ -1,7 +1,47 @@
-func foo(x any) {
-	print(x);
+// Task struct that represents a task with a unique ID and some payload
+type Task struct {
+	ID      int
+	Payload string
 }
 
-foo(1);
-foo(2);
-foo("hello")
+// Worker struct that processes tasks
+type Worker struct {
+	ID int
+}
+
+// processTask simulates task processing
+func (w Worker) processTask(task Task, wg WaitGroup) {
+	fmt.Println("Worker " + w.ID + " processing task " + task.ID)
+	for i := 0; i < 100000000; i++ {
+	}
+	wg.Done()
+}
+
+func main() {
+	ch := make(chan Task, 10) // buffered channel
+	var wg WaitGroup = WaitGroup{0}
+	workers := [3]Worker{Worker{ID: 1}, Worker{ID: 2}, Worker{ID: 3}} // array of workers
+
+	// Creating goroutines for each worker
+	for i := 0; i < 3; i++ {
+		go func(w Worker) {
+			for {
+				task := <-ch
+				wg.Add(1)
+				w.processTask(task, wg)
+			}
+		}(workers[i])
+	}
+
+	// Generating tasks and sending them to the channel
+	tasks := [5]Task{Task{1, "Data1"}, Task{2, "Data2"}, Task{3, "Data3"}, Task{4, "Data4"}, Task{5, "Data5"}}
+	for i := 0; i < 5; i++ {
+		ch <- tasks[i]
+	}
+
+	wg.Wait() // Wait for all tasks to be processed
+
+	fmt.Println("All tasks processed.")
+}
+
+main()

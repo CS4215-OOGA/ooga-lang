@@ -20,7 +20,6 @@ import {
 } from './oogavm-types.js';
 import assert from 'assert';
 import { TypecheckError } from './oogavm-errors.js';
-import { Channel } from 'diagnostics_channel';
 
 const log = debug('ooga:typechecker');
 
