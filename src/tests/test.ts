@@ -1369,3 +1369,118 @@ var x chan int = make(chan int); // unbuffered channel
     '',
     defaultNumWords
 );
+
+// Simple switch test
+testProgram(`
+var x int = 1;
+
+// the switch statement also returns 1
+switch (x) {
+    case 1:
+        print(1);
+    case 2:
+        print(2);
+    default:
+        print(5);
+}
+`, 1, '1', defaultNumWords);
+
+// Testing that no other values print
+testProgram(`
+var x int = 2;
+
+// the switch statement also returns 1
+switch (x) {
+    case 1:
+        print(1);
+    case 2:
+        print(2);
+    default:
+        print(5);
+}
+`, 2, '2', defaultNumWords);
+
+// Testing that default works
+
+testProgram(`
+var x int = 3;
+
+// the switch statement also returns 1
+switch (x) {
+    case 1:
+        print(1);
+    case 2:
+        print(2);
+    default:
+        print(5);
+}
+`, 5, '5', defaultNumWords);
+
+// Test that switch with no match and no default shud match nothing
+testProgram(`
+var x int = 5;
+
+switch (x) {
+    case 1:
+        print(1);
+}
+`, null, '', defaultNumWords);
+
+
+// Testing return values of switch statements
+testProgram(`
+func foo(x int) int {
+    switch (x) {
+        case 1:
+            print("booga"); // wont print
+            return 1;
+        case 2:
+            print("booga"); // wont print
+            return 2;
+        case 3:
+            print("booga"); // wont print
+            return 3;
+        default:
+            print("googa"); // will print
+            return 5;
+    }
+}
+
+foo(5);
+`, 5, '"googa"', defaultNumWords);
+
+// test that non-return value of switch in typechecker is handled
+testProgram(`
+func foo(x int) int {
+    switch (x) {
+        case 1:
+            return true; // will return type checker error
+        default:
+            return 1;
+    }
+}
+
+foo(5);
+`, 'type error in return statement; expected return type: {\n' +
+    '  "name": "Integer"\n' +
+    '}, actual return type: {\n' +
+    '  "name": "Boolean"\n' +
+    '}', '', defaultNumWords);
+
+
+
+// test that non-return value of switch without default in typechecker is handled
+// testProgram(`
+// func foo(x int) int {
+//     switch (x) {
+//         case 1:
+//             return 1;
+//     }
+// }
+//
+// foo(5);
+// `, 'type error in return statement; expected return type: {\n' +
+//     '  "name": "Integer"\n' +
+//     '}, actual return type: {\n' +
+//     '  "name": "Boolean"\n' +
+//     '}', '', defaultNumWords);

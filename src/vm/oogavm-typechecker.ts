@@ -461,6 +461,35 @@ const type_comp = {
 
         return new NullType();
     },
+    SwitchStatement: (comp, te, struct_te) => {
+        const td = type(comp.discriminant, te, struct_te);
+        let tr;  // return type of switch case body if in function
+        for (let i = 0; i < comp.cases.length; i++) {
+            if (comp.cases[i].test !== null) { // non default case
+                const ti = type(comp.cases[i].test, te, struct_te);
+                // check that all case tests are the same type
+                if (!equal_type(td, ti)) {
+                    throw new TypecheckError('expected case expression type: ' + td + ', got ' + ti);
+                }
+            }
+            // we only care about return type if in func
+            if (!in_func) {
+                continue;
+            }
+            const tcr = type(comp.cases[i].consequent, te, struct_te);
+            if (is_type(tcr, ReturnType) && tr === undefined) {
+                tr = tcr;
+                continue;
+            }
+            if (is_type(tcr, ReturnType) && !equal_type(tr, tcr)) {
+                throw new TypecheckError('expected case return expression type: ' + tr + ', got ' + tcr);
+            }
+        }
+        if (in_func && tr !== undefined) {
+            return tr;
+        }
+        return new NullType();
+    },
     FunctionDeclaration: (comp, te, struct_te) => {
         log('FunctionDeclaration');
         let prev_in_func = in_func;

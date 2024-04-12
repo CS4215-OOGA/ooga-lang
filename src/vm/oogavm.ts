@@ -19,7 +19,7 @@ function parseOptions(): CliOptions | null {
         compileTo: 'json',
         inputFilename: '',
         outputFilename: '',
-        logAst: false,
+        logAst: true,
     };
 
     let endOfOptions = false;
