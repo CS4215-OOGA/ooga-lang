@@ -30,7 +30,6 @@ export enum Tag {
     ARRAY,
     BUFFERED,
     UNBUFFERED,
-    BUFFERED_NODE,
 }
 
 export function getTagStringFromAddress(address: number): string {
@@ -942,6 +941,16 @@ function mark(addr) {
                 mark(getWord(addr + i + 1));
             }
             break;
+        case Tag.UNBUFFERED:
+            for (let i = 0; i < getUnBufferChannelLength(addr); i++) { // will only loop once
+                mark(getWord(addr + headerSize + 1 + i));
+            }
+            break
+        case Tag.BUFFERED:
+            for (let i = 0; i < getBufferChannelLength(addr); i++) {
+                mark(getWord(addr + headerSize + 1 + i));
+            }
+            break
         default:
             // no special case for builtins, struct fields
             return;
@@ -1048,6 +1057,20 @@ function updateReferences() {
                     const stringValue = getStringValue(curr);
                     const forwardedAddr = getForwardingAddress(curr);
                     StringPool.set(stringValue, forwardedAddr);
+                    break;
+                case Tag.UNBUFFERED:
+                    for (let i = 0; i < getUnBufferChannelLength(curr); i++) {
+                        const originalChildAddr = getWord(curr + i + headerSize + 1);
+                        const forwardedAddr = getForwardingAddress(originalChildAddr);
+                        setWord(curr + i + headerSize + 1, forwardedAddr);
+                    }
+                    break;
+                case Tag.BUFFERED:
+                    for (let i = 0; i < getBufferChannelLength(curr); i++) {
+                        const originalChildAddr = getWord(curr + i + headerSize + 1);
+                        const forwardedAddr = getForwardingAddress(originalChildAddr);
+                        setWord(curr + i + headerSize + 1, forwardedAddr);
+                    }
                     break;
                 default:
                     // no special case for builtins, struct fields
