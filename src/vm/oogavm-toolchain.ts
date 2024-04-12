@@ -27,7 +27,7 @@ export function prepare_and_compile(standardSource: string, programString: strin
     let program = { tag: 'BlockStatement', body: standardProgram };
     log('--------------------------------------------');
     log('Parsed program:');
-    writeFileSync("booga.ast.json", JSON.stringify(userProgram, null, 2));
+    writeFileSync('booga.ast.json', JSON.stringify(userProgram, null, 2));
     program = checkTypes(program);
     log('--------------------------------------------');
     const instrs = compile_program(program);

@@ -331,7 +331,7 @@ const type_comp = {
         // 5. Assign each of these and their constituent expressions to their respective types - these types should be set dynamically
 
         // NOTE: here we only set the "supposed" type of the declarations, as defined by the programmer
-        if (!comp.body) {
+        if (!comp.body || !comp.body.body || comp.body.body.length === 0) {
             return new NullType();
         }
         const struct_decls = comp.body.body.filter(comp => comp.tag === 'StructDeclaration');
@@ -462,33 +462,40 @@ const type_comp = {
         return new NullType();
     },
     SwitchStatement: (comp, te, struct_te) => {
-        const td = type(comp.discriminant, te, struct_te);
-        let tr;  // return type of switch case body if in function
+        log('SwitchStatement');
+        log(unparse(comp));
+
+        // t0 can be any type
+        const t0 = type(comp.discriminant, te, struct_te);
+
+        // the case tests can be of any type - this can be checked in the runtime
+        // the type of this switch statement is the return type of every case including the default case return the same type
+        // else, the type of the switch statement is null
+
+        let ret_type = new NullType();
         for (let i = 0; i < comp.cases.length; i++) {
-            if (comp.cases[i].test !== null) { // non default case
-                const ti = type(comp.cases[i].test, te, struct_te);
-                // check that all case tests are the same type
-                if (!equal_type(td, ti)) {
-                    throw new TypecheckError('expected case expression type: ' + td + ', got ' + ti);
-                }
-            }
-            // we only care about return type if in func
-            if (!in_func) {
-                continue;
-            }
-            const tcr = type(comp.cases[i].consequent, te, struct_te);
-            if (is_type(tcr, ReturnType) && tr === undefined) {
-                tr = tcr;
-                continue;
-            }
-            if (is_type(tcr, ReturnType) && !equal_type(tr, tcr)) {
-                throw new TypecheckError('expected case return expression type: ' + tr + ', got ' + tcr);
+            const t1 = type(comp.cases[i], te, struct_te);
+            // log('SwitchStatement: t1', t1);
+            if (i === 0) {
+                ret_type = t1;
+            } else if (!equal_type(t1, ret_type)) {
+                // log('SwitchStatement: Expected return type', ret_type, 'Actual return type', t1);
+                ret_type = new NullType();
             }
         }
-        if (in_func && tr !== undefined) {
-            return tr;
-        }
-        return new NullType();
+
+        log('Exiting SwitchStatement, returning', ret_type);
+        comp.type = ret_type;
+        return ret_type;
+    },
+    SwitchCase: (comp, te, struct_te) => {
+        log('SwitchCase');
+        log(unparse(comp));
+        const t0 = comp.test ? type(comp.test, te, struct_te) : new NullType();
+        const t1 = type(comp.consequent, te, struct_te);
+
+        log('Exiting SwitchCase, returning', t1);
+        return t1;
     },
     FunctionDeclaration: (comp, te, struct_te) => {
         log('FunctionDeclaration');

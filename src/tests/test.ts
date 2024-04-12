@@ -839,7 +839,8 @@ v.X // 3
 
 // Test WaitGroups
 
-testProgram(`
+testProgram(
+    `
 
 type Vertex struct {
     X int
@@ -859,9 +860,14 @@ go func() {
 }()
 
 v.X; //1
-`, 1, '', defaultNumWords);
+`,
+    1,
+    '',
+    defaultNumWords
+);
 
-testProgram(`
+testProgram(
+    `
 
 type Vertex struct {
     X int
@@ -886,7 +892,11 @@ go func() {
 wg.Wait();
 
 v.X; //3
-`, 3, '', defaultNumWords);
+`,
+    3,
+    '',
+    defaultNumWords
+);
 
 // Testing struct methods with goroutines (goroutines cannot return anything)
 testProgram(
@@ -1371,7 +1381,8 @@ var x chan int = make(chan int); // unbuffered channel
 );
 
 // Simple switch test
-testProgram(`
+testProgram(
+    `
 var x int = 1;
 
 // the switch statement also returns 1
@@ -1383,10 +1394,15 @@ switch (x) {
     default:
         print(5);
 }
-`, 1, '1', defaultNumWords);
+`,
+    1,
+    '1',
+    defaultNumWords
+);
 
 // Testing that no other values print
-testProgram(`
+testProgram(
+    `
 var x int = 2;
 
 // the switch statement also returns 1
@@ -1398,11 +1414,16 @@ switch (x) {
     default:
         print(5);
 }
-`, 2, '2', defaultNumWords);
+`,
+    2,
+    '2',
+    defaultNumWords
+);
 
 // Testing that default works
 
-testProgram(`
+testProgram(
+    `
 var x int = 3;
 
 // the switch statement also returns 1
@@ -1414,21 +1435,30 @@ switch (x) {
     default:
         print(5);
 }
-`, 5, '5', defaultNumWords);
+`,
+    5,
+    '5',
+    defaultNumWords
+);
 
 // Test that switch with no match and no default shud match nothing
-testProgram(`
+testProgram(
+    `
 var x int = 5;
 
 switch (x) {
     case 1:
         print(1);
 }
-`, null, '', defaultNumWords);
-
+`,
+    null,
+    '',
+    defaultNumWords
+);
 
 // Testing return values of switch statements
-testProgram(`
+testProgram(
+    `
 func foo(x int) int {
     switch (x) {
         case 1:
@@ -1447,10 +1477,15 @@ func foo(x int) int {
 }
 
 foo(5);
-`, 5, '"googa"', defaultNumWords);
+`,
+    5,
+    '"googa"',
+    defaultNumWords
+);
 
 // test that non-return value of switch in typechecker is handled
-testProgram(`
+testProgram(
+    `
 func foo(x int) int {
     switch (x) {
         case 1:
@@ -1461,26 +1496,33 @@ func foo(x int) int {
 }
 
 foo(5);
-`, 'type error in return statement; expected return type: {\n' +
-    '  "name": "Integer"\n' +
-    '}, actual return type: {\n' +
-    '  "name": "Boolean"\n' +
-    '}', '', defaultNumWords);
-
-
+`,
+    'type error in return statement; expected return type: {\n' +
+        '  "name": "Integer"\n' +
+        '}, actual return type: {\n' +
+        '  "name": "Boolean"\n' +
+        '}',
+    '',
+    defaultNumWords
+);
 
 // test that non-return value of switch without default in typechecker is handled
-// testProgram(`
-// func foo(x int) int {
-//     switch (x) {
-//         case 1:
-//             return 1;
-//     }
-// }
-//
-// foo(5);
-// `, 'type error in return statement; expected return type: {\n' +
-//     '  "name": "Integer"\n' +
-//     '}, actual return type: {\n' +
-//     '  "name": "Boolean"\n' +
-//     '}', '', defaultNumWords);
+testProgram(
+    `
+func foo(x int) int {
+    switch (x) {
+        case 1:
+            return 1;
+    }
+}
+
+foo(5);
+`,
+    'type error in function declaration; declared return type: {\n' +
+        '  "name": "Integer"\n' +
+        '}, actual return type: {\n' +
+        '  "name": "Null"\n' +
+        '}',
+    '',
+    defaultNumWords
+);

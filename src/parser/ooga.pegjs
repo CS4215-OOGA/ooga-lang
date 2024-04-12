@@ -821,7 +821,7 @@ ForInitStatement
     }
 
 SwitchStatement
-  = SwitchToken __ "(" __ discriminant:Expression __ ")" __
+  = SwitchToken __ "("? __ discriminant:Expression __ ")"? __
     cases:CaseBlock
     {
       return {
@@ -833,11 +833,19 @@ SwitchStatement
 
 CaseBlock
   = "{" __ clauses:(CaseClauses __)? "}" {
-    return optionalList(extractOptional(clauses, 0));
+    // Add a default case if none is present
+    return optionalList(extractOptional(clauses, 0))
+        .concat(
+            {
+                tag: "SwitchCase",
+                test: null,
+                consequent: {tag: "BlockStatement", body: []}
+            }
+        );
   }
   / "{" __
     before:(CaseClauses __)?
-    default_:DefaultClause __ "}"
+    default_:DefaultClause? __ "}"
     {
       return optionalList(extractOptional(before, 0))
         .concat(default_);
@@ -851,7 +859,7 @@ CaseClause
     return {
       tag: "SwitchCase",
       test: test,
-      consequent: optionalList(extractOptional(consequent, 1))
+      consequent: {tag:'BlockStatement', body: optionalList(extractOptional(consequent, 1))}
     };
   }
 
@@ -860,7 +868,7 @@ DefaultClause
     return {
       tag: "SwitchCase",
       test: null,
-      consequent: optionalList(extractOptional(consequent, 1))
+      consequent: {tag:'BlockStatement', body: optionalList(extractOptional(consequent, 1))}
     };
   }
 

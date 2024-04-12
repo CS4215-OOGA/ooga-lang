@@ -942,15 +942,16 @@ function mark(addr) {
             }
             break;
         case Tag.UNBUFFERED:
-            for (let i = 0; i < getUnBufferChannelLength(addr); i++) { // will only loop once
+            for (let i = 0; i < getUnBufferChannelLength(addr); i++) {
+                // will only loop once
                 mark(getWord(addr + headerSize + 1 + i));
             }
-            break
+            break;
         case Tag.BUFFERED:
             for (let i = 0; i < getBufferChannelLength(addr); i++) {
                 mark(getWord(addr + headerSize + 1 + i));
             }
-            break
+            break;
         default:
             // no special case for builtins, struct fields
             return;
