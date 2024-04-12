@@ -226,6 +226,32 @@ const compileComp = {
         }
         goto_instr.addr = wc;
     },
+    SwitchStatement: (comp, ce) => {
+        // in ooga, breaks are implicit
+        const jumps = [];  // stores all implicit breakpoint instrs
+        const goto_instr = { tag: Opcodes.GOTO, addr: undefined };
+        for (let i = 0; i < comp.cases.length; i++) {
+            const compCase = comp.cases[i];
+            let jofInstr;
+            if (compCase.test !== null) {
+                compile(comp.discriminant, ce);
+                compile(compCase.test, ce);
+                instrs[wc++] = { tag: Opcodes.LOG, operator: "==" };
+                jofInstr = { tag: Opcodes.JOF, addr: undefined};
+                instrs[wc++] = jofInstr;
+            }
+            compile(compCase.consequent, ce);
+            // the implicit break to the end
+            jumps.push(wc);
+            instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined};
+            if (compCase.test !== null) {
+                jofInstr.addr = wc;
+            }
+        }
+        for (let jumpInstr of jumps) {
+            instrs[jumpInstr].addr = wc;
+        }
+    },
     BlockStatement: (comp, ce) => {
         if (!comp.body) {
             return;

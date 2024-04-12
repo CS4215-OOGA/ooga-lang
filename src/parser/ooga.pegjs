@@ -267,6 +267,11 @@ TypeToken       = "type"       !IdentifierPart
 AnyToken        = "any"        !IdentifierPart
 ChanToken       = "chan"       !IdentifierPart
 MakeToken       = "make"       !IdentifierPart
+SwitchToken     = "switch"     !IdentifierPart
+CaseToken       = "case"       !IdentifierPart
+DefaultToken    = "default"    !IdentifierPart
+SelectToken     = "select"     !IdentifierPart
+
 
 SingleLineComment
   = "//" (!LineTerminatorSequence .)* (LineTerminatorSequence / !.)
@@ -626,6 +631,7 @@ Statement
   / FunctionDeclaration
   / ForStatement
   / ForInitStatement
+  / SwitchStatement
   / StructDeclaration
   / MethodDeclaration
   / CallExpression
@@ -813,6 +819,50 @@ ForInitStatement
             type: "Unknown"
         }
     }
+
+SwitchStatement
+  = SwitchToken __ "(" __ discriminant:Expression __ ")" __
+    cases:CaseBlock
+    {
+      return {
+        tag: "SwitchStatement",
+        discriminant: discriminant,
+        cases: cases
+      };
+    }
+
+CaseBlock
+  = "{" __ clauses:(CaseClauses __)? "}" {
+    return optionalList(extractOptional(clauses, 0));
+  }
+  / "{" __
+    before:(CaseClauses __)?
+    default_:DefaultClause __ "}"
+    {
+      return optionalList(extractOptional(before, 0))
+        .concat(default_);
+    }
+
+CaseClauses
+  = head:CaseClause tail:(__ CaseClause)* { return buildList(head, tail, 1); }
+
+CaseClause
+  = CaseToken __ test:Expression __ ":" consequent:(__ StatementList)? {
+    return {
+      tag: "SwitchCase",
+      test: test,
+      consequent: optionalList(extractOptional(consequent, 1))
+    };
+  }
+
+DefaultClause
+  = DefaultToken __ ":" consequent:(__ StatementList)? {
+    return {
+      tag: "SwitchCase",
+      test: null,
+      consequent: optionalList(extractOptional(consequent, 1))
+    };
+  }
 
 ForTest
   = LogicalORExpression
