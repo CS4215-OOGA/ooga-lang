@@ -1711,3 +1711,14 @@ for i := 0; i < len(x); i++ {
 }
 0;
 `, 0, '""\n""\n""\n""\n""\n"Jotham"\n', defaultNumWords);
+
+// Test out of bounds error
+testProgram(`
+var x []int = make([]int, 5, 5);
+x[6];
+`, 'Array out of bounds error!', '', defaultNumWords);
+
+testProgram(`
+var x []int = make([]int, 5, 10);
+x[6]; // still garbage data
+`, 'Array out of bounds error!', '', defaultNumWords);
