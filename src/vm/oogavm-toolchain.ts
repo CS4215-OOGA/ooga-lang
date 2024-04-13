@@ -5,6 +5,7 @@ import { assemble } from './oogavm-assembler.js';
 
 import debug from 'debug';
 import { writeFileSync } from 'fs';
+import { unparse } from '../utils/utils.js';
 
 const log = debug('ooga:vm');
 
@@ -27,6 +28,7 @@ export function prepare_and_compile(standardSource: string, programString: strin
     let program = { tag: 'BlockStatement', body: standardProgram };
     log('--------------------------------------------');
     log('Parsed program:');
+    log(unparse(program));
     writeFileSync('booga.ast.json', JSON.stringify(userProgram, null, 2));
     program = checkTypes(program);
     log('--------------------------------------------');

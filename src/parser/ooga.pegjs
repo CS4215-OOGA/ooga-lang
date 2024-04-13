@@ -1183,8 +1183,15 @@ ChannelOperation
 
 
 SelectCaseBlock
-  = "{" __ clauses:(SelectClause+) __ "}" {
-    return clauses;
+  = "{" __ clauses:(SelectClause)* __ def:SelectDefaultClause? __ "}" {
+    // Add a default case if none is present
+    return optionalList(clauses)
+        .concat(
+            def || {
+                tag: "SelectDefaultCase",
+                body: {tag: "BlockStatement", body: []}
+            }
+        );
   }
 
 // This should be either
@@ -1210,29 +1217,31 @@ ChannelVariableStatement
   }
 
 SelectClause
-  = CaseToken __ chanop:ChannelOperation __ ":" __ body:(__ StatementList)? {
-    return {
-      tag: "SelectCase",
-      operation: chanop,
-      body: optionalList(extractOptional(body, 1))
-    };
-  }
-  / CaseToken __ varDecl:ChannelVariableStatement __ ":" __ body:(__ StatementList)? {
+  = CaseToken __ varDecl:ChannelVariableStatement __ ":" __ body:(__ StatementList)? __ {
     return {
       tag: "SelectCase",
       operation: varDecl,
-      body: optionalList(extractOptional(body, 1))
+      body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
     };
   }
-  / DefaultToken __ ":" __ body:(__ StatementList)? {
+  / CaseToken __ chanop:ChannelOperation __ ":" __ body:(__ StatementList)? __ {
+    return {
+      tag: "SelectCase",
+      operation: chanop,
+      body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
+    };
+  }
+
+SelectDefaultClause
+  = DefaultToken __ ":" __ body:(__ StatementList)? __ {
     return {
       tag: "SelectDefaultCase",
-      body: optionalList(extractOptional(body, 1))
+      body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
     };
   }
 
 SelectStatement
-  = SelectToken __ cases:SelectCaseBlock {
+  = SelectToken __ cases:SelectCaseBlock EOS {
     return {
       tag: "SelectStatement",
       cases: cases

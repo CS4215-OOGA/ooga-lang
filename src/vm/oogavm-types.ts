@@ -237,8 +237,7 @@ export function equal_type(ts1: Type, ts2: Type, cache = new Set<string>()): boo
     }
 
     if (ts1 instanceof ChanType && ts2 instanceof ChanType) {
-        const result =
-            equal_type(ts1.elem_type, ts2.elem_type, cache) && ts1.is_buffered === ts2.is_buffered;
+        const result = equal_type(ts1.elem_type, ts2.elem_type, cache);
 
         return result;
     }

@@ -687,6 +687,7 @@ const type_comp = {
             }
 
             const is_buffered = comp.args.length === 1;
+            t.is_buffered = is_buffered;
 
             if (is_buffered) {
                 const arg_type = type(comp.args[0], te, struct_te);
@@ -1056,6 +1057,64 @@ const type_comp = {
 
         log('Exiting ChannelWriteExpression, returning', new NullType());
         return new NullType();
+    },
+    SelectStatement: (comp, te, struct_te) => {
+        log('SelectStatement');
+        log(unparse(comp));
+
+        let t0 = new NullType();
+        for (let i = 0; i < comp.cases.length; i++) {
+            const t = type(comp.cases[i], te, struct_te);
+            // log('SelectStatement: t', t);
+            if (i === 0) {
+                t0 = t;
+            } else if (!equal_type(t0, t)) {
+                t0 = new NullType();
+            }
+        }
+
+        comp.type = t0;
+        return comp.type;
+    },
+    SelectCase: (comp, te, struct_te) => {
+        log('SelectCase');
+        log(unparse(comp));
+        // There are three types of cases in a select statement
+        // 1. Channel read
+        // 2. Channel write
+        // 3. Variable declaration (with channel read)
+        let t0: Type;
+        let extended_te = te;
+        if (comp.operation.tag === 'ChannelReadExpression') {
+            t0 = type(comp.operation, te, struct_te);
+        } else if (comp.operation.tag === 'ChannelWriteExpression') {
+            t0 = type(comp.operation, te, struct_te);
+        } else if (comp.operation.tag === 'VariableDeclaration') {
+            // The expression is a channel read
+            if (comp.operation.expression.tag !== 'ChannelReadExpression') {
+                throw new TypecheckError('Expected channel read expression');
+            }
+            // Extend the type environment with the type of the variable - this is similar to the for loop init expression
+            // Note that this variable declaration is considered to be in the same block as the body of the case - there can be a variable with the same name in the outer block
+            const name = comp.operation.id.name;
+            const id_type = type(comp.operation.expression, te, struct_te);
+            comp.operation.type = id_type;
+            extended_te = extend_type_environment([name], [id_type], te);
+            log('SelectCase: extended_te', extended_te);
+            t0 = type(comp.operation, extended_te, struct_te);
+        }
+
+        // Now we need to check the body of the case, using the extended type environment
+        const t1 = type(comp.body, extended_te, struct_te);
+        log('Exiting SelectCase, returning', t1);
+        return t1;
+    },
+    SelectDefaultCase: (comp, te, struct_te) => {
+        log('SelectDefaultCase');
+        log(unparse(comp));
+        const t = type(comp.body, te, struct_te);
+        log('Exiting SelectDefaultCase, returning', t);
+        return t;
     },
 };
 
