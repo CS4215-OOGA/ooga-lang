@@ -1712,6 +1712,20 @@ for i := 0; i < len(x); i++ {
 0;
 `, 0, '""\n""\n""\n""\n""\n"Jotham"\n', defaultNumWords);
 
+testProgram(`
+type Vector struct {
+    x int
+    y int
+}
+
+var vs []Vector = make([]Vector, 5, 10);
+for i := 0; i < len(vs); i++ {
+    print(vs[i]); // null 5 times
+}
+10;
+`, 10, 'null\nnull\nnull\nnull\nnull\n', defaultNumWords);
+
+
 // Test out of bounds error
 testProgram(`
 var x []int = make([]int, 5, 5);
