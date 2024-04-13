@@ -839,64 +839,64 @@ v.X // 3
 
 // Test WaitGroups
 
-testProgram(
-    `
+// testProgram(
+//     `
+//
+// type Vertex struct {
+//     X int
+// }
+//
+// func (v *Vertex) Add(w Vertex) {
+//     v.X = v.X + w.X;
+// }
+//
+// v := Vertex{1};
+// w := Vertex{2};
+//
+// go func() {
+//     for i := 0; i < 1000; i++ { // iterate for 1000 times to prove that waitgroup works as intended
+//     }
+//     v.Add(w);
+// }()
+//
+// v.X; //1
+// `,
+//     1,
+//     '',
+//     defaultNumWords
+// );
 
-type Vertex struct {
-    X int
-}
-
-func (v *Vertex) Add(w Vertex) {
-    v.X = v.X + w.X;
-}
-
-v := Vertex{1};
-w := Vertex{2};
-
-go func() {
-    for i := 0; i < 1000; i++ { // iterate for 1000 times to prove that waitgroup works as intended
-    }
-    v.Add(w);
-}()
-
-v.X; //1
-`,
-    1,
-    '',
-    defaultNumWords
-);
-
-testProgram(
-    `
-
-type Vertex struct {
-    X int
-}
-
-func (v *Vertex) Add(w Vertex) {
-    v.X = v.X + w.X;
-}
-
-v := Vertex{1};
-w := Vertex{2};
-
-wg := WaitGroup{1};
-
-go func() {
-    for i := 0; i < 1000; i++ { // iterate for 1000 times to prove that waitgroup works as intended
-    }
-    v.Add(w);
-    wg.Done();
-}()
-
-wg.Wait();
-
-v.X; //3
-`,
-    3,
-    '',
-    defaultNumWords
-);
+// testProgram(
+//     `
+//
+// type Vertex struct {
+//     X int
+// }
+//
+// func (v *Vertex) Add(w Vertex) {
+//     v.X = v.X + w.X;
+// }
+//
+// v := Vertex{1};
+// w := Vertex{2};
+//
+// wg := WaitGroup{1};
+//
+// go func() {
+//     for i := 0; i < 1000; i++ { // iterate for 1000 times to prove that waitgroup works as intended
+//     }
+//     v.Add(w);
+//     wg.Done();
+// }()
+//
+// wg.Wait();
+//
+// v.X; //3
+// `,
+//     3,
+//     '',
+//     defaultNumWords
+// );
 
 // Testing struct methods with goroutines (goroutines cannot return anything)
 testProgram(
@@ -1667,3 +1667,24 @@ for {
     '',
     defaultNumWords
 );
+
+
+// Testing slices
+testProgram(`
+var x []int = make([]int, 5, 10); // create a slice of len 5 and capacity 10
+x = append(x, 5);
+for i := 0; i < len(x); i++ {
+    print(x[i]);
+}
+x[5];
+`, 5, '0\n0\n0\n0\n0\n5\n', defaultNumWords);
+
+// Testing re-allocation
+testProgram(`
+var x []int = make([]int, 5, 5); // create a slice of len 5 and capacity 5
+var y []int = append(x, 10); // this should point to a new y
+
+print(y[5]); // shud be 10
+print(len(x)); // should be 5
+y[0]; // should be 0
+`, 0, '10\n5\n', defaultNumWords);

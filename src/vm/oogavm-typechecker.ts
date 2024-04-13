@@ -19,7 +19,7 @@ import {
     ChanType,
 } from './oogavm-types.js';
 import assert from 'assert';
-import { TypecheckError } from './oogavm-errors.js';
+import { CompilerError, TypecheckError } from './oogavm-errors.js';
 
 const log = debug('ooga:typechecker');
 
@@ -722,12 +722,34 @@ const type_comp = {
                     throw new TypecheckError('Expected integer argument m to make([]T, n, m)');
                 }
             }
+
+
         } else {
             throw new TypecheckError('Make call expects channel or slice type');
         }
 
         log(unparse(comp));
         return t;
+    },
+    AppendExpression: (comp, te, struct_te) => {
+        log('Append Expression');
+        log(unparse(comp));
+        let ts = type(comp.name, te, struct_te);
+        log("ts is " + ts);
+        if (is_type(ts, ArrayType) && !(ts as ArrayType).is_array) {
+            if (comp.args.length !== 1) {
+                throw new CompilerError('Expected 1 argument to append but got ' + comp.args.length + ' args.');
+            }
+            const elem_type = (ts as ArrayType).elem_type;
+            const arg_type = type(comp.args[0], te, struct_te);
+            if (!equal_type(elem_type, arg_type)) {
+                throw new TypecheckError('Expected to append ' + elem_type + ' but got ' + arg_type + ' instead.');
+            }
+
+        } else {
+            throw new TypecheckError('Expected slice type but got ' + ts);
+        }
+        return ts;
     },
     ConstantDeclaration: (comp, te, struct_te) => {
         log('ConstantDeclaration');
