@@ -839,64 +839,66 @@ v.X // 3
 
 // Test WaitGroups
 
-// testProgram(
-//     `
-//
-// type Vertex struct {
-//     X int
-// }
-//
-// func (v *Vertex) Add(w Vertex) {
-//     v.X = v.X + w.X;
-// }
-//
-// v := Vertex{1};
-// w := Vertex{2};
-//
-// go func() {
-//     for i := 0; i < 1000; i++ { // iterate for 1000 times to prove that waitgroup works as intended
-//     }
-//     v.Add(w);
-// }()
-//
-// v.X; //1
-// `,
-//     1,
-//     '',
-//     defaultNumWords
-// );
+testProgram(
+    `
 
-// testProgram(
-//     `
-//
-// type Vertex struct {
-//     X int
-// }
-//
-// func (v *Vertex) Add(w Vertex) {
-//     v.X = v.X + w.X;
-// }
-//
-// v := Vertex{1};
-// w := Vertex{2};
-//
-// wg := WaitGroup{1};
-//
-// go func() {
-//     for i := 0; i < 1000; i++ { // iterate for 1000 times to prove that waitgroup works as intended
-//     }
-//     v.Add(w);
-//     wg.Done();
-// }()
-//
-// wg.Wait();
-//
-// v.X; //3
-// `,
-//     3,
-//     '',
-//     defaultNumWords
-// );
+type Vertex struct {
+    X int
+}
+
+func (v *Vertex) Add(w Vertex) {
+    v.X = v.X + w.X;
+}
+
+v := Vertex{1};
+w := Vertex{2};
+
+go func() {
+    for i := 0; i < 100; i++ { // iterate for 100 times to prove that waitgroup works as intended
+    }
+    v.Add(w);
+}()
+
+v.X; //1
+`,
+    1,
+    '',
+    defaultNumWords
+);
+
+testProgram(
+    `
+
+type Vertex struct {
+    X int
+}
+
+func (v *Vertex) Add(w Vertex) {
+    v.X = v.X + w.X;
+}
+
+v := Vertex{1};
+w := Vertex{2};
+
+wg := WaitGroup{1};
+
+go func() {
+
+    for i := 0; i < 100; i++ { // iterate for 100 times to prove that waitgroup works as intended
+    }
+    v.Add(w);
+    wg.Done();
+}()
+
+wg.Wait();
+
+v.X; //3
+
+`,
+    3,
+    '',
+    defaultNumWords
+);
 
 // Testing struct methods with goroutines (goroutines cannot return anything)
 testProgram(
