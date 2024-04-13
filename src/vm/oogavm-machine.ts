@@ -173,7 +173,6 @@ function runThread() {
     log('Current Thread ID is ' + currentThreadId);
     // TODO: Load thread state
     log('Enumerating threads');
-    // @ts-ignore
     for (let [key, value] of threads) {
         log('ThreadID: ' + key + ', value= ' + value);
     }
@@ -186,7 +185,6 @@ function runThread() {
     // there is definitely a deadlock if we are back to mainThreadId and every other thread is blocking
     if (currentThreadId === mainThreadId) {
         let deadlocked = true;
-        // @ts-ignore
         for (let [threadId, thread] of threads) {
             if (thread.state !== ThreadState.BLOCKING) {
                 deadlocked = false;
@@ -280,9 +278,15 @@ export const builtinMappings = {
     // }
 };
 
-let builtins = {};
+class Builtin {
+    tag: 'BUILTIN';
+    id: number;
+    arity: number;
+}
+
+let builtins: { [key: string]: Builtin } = {};
 // The array is required cos we are using CTE which is indexed by integers
-let builtinArray: object[] = [];
+let builtinArray: Function[] = [];
 
 // This method is called by both Compilation and Machine at runtime
 export function initializeBuiltinTable() {
@@ -298,7 +302,6 @@ export function initializeBuiltinTable() {
 }
 
 function applyBuiltin(builtinId: number) {
-    // @ts-ignore
     const result = [builtinArray[builtinId]()];
     let _;
     [OS[0], _] = popStack(OS[0]); // pop fun
@@ -929,7 +932,6 @@ const microcode = {
 // ********************************
 
 export function getRoots(): number[][] {
-    // @ts-ignore
     let roots: number[][] = [];
     for (let tempRoot of tempRoots) {
         roots.push(tempRoot);
@@ -941,7 +943,6 @@ export function getRoots(): number[][] {
     roots.push(OS);
     roots.push(RTS);
     roots.push([originalE]);
-    // @ts-ignore
     for (let [threadId, thread] of threads.entries()) {
         if (threadId == currentThreadId) {
             continue;
@@ -989,7 +990,7 @@ function initializeBuiltins() {
     const frameAddress = allocateFrame(builtinValues.length);
     for (let i = 0; i < builtinValues.length; i++) {
         const builtin = builtinValues[i];
-        // @ts-ignore
+
         setFrameValue(frameAddress, i, allocateBuiltin(builtin.id));
     }
     return frameAddress;
@@ -1115,7 +1116,6 @@ async function main() {
     return run();
 }
 
-// @ts-ignore
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     main()
         .then(value => {

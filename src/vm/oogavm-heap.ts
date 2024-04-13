@@ -740,7 +740,6 @@ export function printHeapUsage() {
 
 export function printStringPoolMapping() {
     log('************************StringPool************************');
-    // @ts-ignore
     for (let key of StringPool.keys()) {
         log(key + ' -> ' + StringPool.get(key));
     }
@@ -1126,7 +1125,6 @@ function collectGarbage() {
     // To avoid freeing strings, just mark them from the StringPool
     // This is safe to do because we haven't moved anything yet
     // The Strings will then be compacted appropriately
-    // @ts-ignore
     for (let sKey of StringPool.keys()) {
         log(sKey + ' -> ' + StringPool.get(sKey));
         mark(StringPool.get(sKey));

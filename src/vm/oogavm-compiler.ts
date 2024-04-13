@@ -8,11 +8,11 @@ import { unparse } from '../utils/utils.js';
 
 const log = debug('ooga:compiler');
 
-let wc;
+let wc: number = 0;
 let instrs;
 let loopMarkers: any[] = []; // For loop markers
 
-const push = (array, ...items) => {
+const push = (array: any[], ...items: CompileTimeVariable[][]) => {
     for (let item of items) {
         array.push(item);
     }
@@ -215,10 +215,10 @@ const compileComp = {
     },
     IfStatement: (comp, ce) => {
         compile(comp.test, ce);
-        const jof = { tag: Opcodes.JOF, addr: undefined };
+        const jof = { tag: Opcodes.JOF, addr: 0 };
         instrs[wc++] = jof;
         compile(comp.consequent, ce);
-        const goto_instr = { tag: Opcodes.GOTO, addr: undefined };
+        const goto_instr = { tag: Opcodes.GOTO, addr: 0 };
         instrs[wc++] = goto_instr;
         jof.addr = wc;
         if (comp.alternate != null) {
@@ -453,7 +453,7 @@ const compileComp = {
     },
     LambdaDeclaration: (comp, ce) => {
         instrs[wc++] = { tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1 };
-        const gotoInstruction = { tag: Opcodes.GOTO, addr: undefined };
+        const gotoInstruction = { tag: Opcodes.GOTO, addr: 0 };
         instrs[wc++] = gotoInstruction;
 
         // TODO: probably want to incorporate type information here in the short future
@@ -620,7 +620,7 @@ const compileComp = {
         if (comp.test !== null) {
             compile(comp.test, ce);
         }
-        const jof = { tag: Opcodes.JOF, addr: undefined };
+        const jof = { tag: Opcodes.JOF, addr: 0 };
         instrs[wc++] = jof;
 
         if (comp.body !== null) {
@@ -762,7 +762,7 @@ const compileComp = {
 
         // Generate the method's code
         instrs[wc++] = { tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1 };
-        const gotoInstruction = { tag: Opcodes.GOTO, addr: undefined };
+        const gotoInstruction = { tag: Opcodes.GOTO, addr: 0 };
         instrs[wc++] = gotoInstruction;
 
         let paramNames: CompileTimeVariable[] = [];

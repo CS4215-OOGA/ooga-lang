@@ -1,8 +1,8 @@
-export function pair(x, xs) {
+export function pair(x: any, xs: any): any[] {
     return [x, xs];
 }
 
-export function array_test(x) {
+export function array_test(x: any) {
     if (typeof Array.isArray !== 'undefined') {
         return Array.isArray(x);
     } else {
@@ -10,11 +10,11 @@ export function array_test(x) {
     }
 }
 
-export function is_pair(x) {
+export function is_pair(x: any) {
     return array_test(x) && x.length === 2;
 }
 
-export function head(xs) {
+export function head(xs: any) {
     if (is_pair(xs)) {
         return xs[0];
     } else {
@@ -22,7 +22,7 @@ export function head(xs) {
     }
 }
 
-export function tail(xs) {
+export function tail(xs: any) {
     if (is_pair(xs)) {
         return xs[1];
     } else {
@@ -30,7 +30,7 @@ export function tail(xs) {
     }
 }
 
-export function error(value, ...strs) {
+export function error(value: any, ...strs: any[]) {
     const output = strs.length === 0 ? value : value + ' ' + strs.join(' ');
     throw new Error(output);
 }

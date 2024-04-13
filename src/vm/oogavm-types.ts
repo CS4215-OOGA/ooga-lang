@@ -116,7 +116,7 @@ export class ArrayType extends Type {
 
 export class ChanType extends Type {
     elem_type: Type;
-    is_buffered: boolean;
+    is_buffered: boolean = false;
     constructor(elem_type: Type) {
         super('Chan');
         this.elem_type = elem_type;
