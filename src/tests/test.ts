@@ -1526,3 +1526,144 @@ foo(5);
     '',
     defaultNumWords
 );
+
+// Test for select programs
+testProgram(
+    `
+var x chan int = make(chan int, 5);
+
+func foo() {
+    x<- 1;
+}
+
+go foo();
+go foo();
+
+for i := 0; i < 4; i++ {
+    select {
+        case i := <-x:  // this will happen twice first, so print 1 twice, then finally print 5
+            print(i);
+        case x<- 5:     // finally this will happen and we will push 5 inside
+            print(3);
+        default:
+            break;
+    }
+}
+
+// in the end, print 1 1 3 5
+10;
+`,
+    10,
+    '1\n1\n3\n5\n',
+    defaultNumWords
+);
+
+testProgram(
+    `
+var x chan int = make(chan int, 5);
+
+func foo() {
+    x<- 1;
+}
+
+go foo();
+go foo();
+
+for i := 0; i < 4; i++ {
+    select {
+        case i := <-x: // print 1 1 then break
+            print(i);
+        default:
+            break;
+    }
+}
+
+10;
+`,
+    10,
+    '1\n1\n',
+    defaultNumWords
+);
+
+testProgram(
+    `
+var x chan int = make(chan int, 5);
+
+func foo() {
+    x<- 1;
+}
+
+for i := 0; i < 4; i++ {
+    select {
+        case i := <-x:
+            print(i);
+        default:
+            print(100); // print 100 4 times cos no valid
+    }
+}
+10;
+`,
+    10,
+    '100\n100\n100\n100\n',
+    defaultNumWords
+);
+
+// test without valid select at first
+testProgram(
+    `
+var x chan int = make(chan int, 5);
+
+func foo() {
+    x<- 1;
+}
+
+for i := 0; i < 4; i++ {
+    select {
+        case i := <-x:
+            print(i); // print 5
+        default:
+            print(100); // print 100 and push 5 to channel
+            x <- 5;
+    }
+}
+
+// expected outcome, print: 100, 5, 100, 5 then break for loop
+10;
+`,
+    10,
+    '100\n5\n100\n5\n',
+    defaultNumWords
+);
+
+// Test with no valid select at all until Done context times out
+testProgram(
+    `
+// Test using "Context"
+
+func timeout(done chan int) {
+    // do "busy" work for 100 iterations then push done value
+    for i := 0; i < 100; i++ {}
+    done<- 1;
+}
+
+var done chan int = make(chan int);
+
+go timeout(done);
+
+for {
+    select {
+    case <-done:
+        break;
+    default:
+        1 + 1;
+    }
+}
+
+// I can't really print expected number of 1s because the timequanta is random
+// so i test for correctness by checking that eventually program ends
+10;
+`,
+    10,
+    '',
+    defaultNumWords
+);

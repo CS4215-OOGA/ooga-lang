@@ -36,6 +36,8 @@ const enum OpCodes {
     READ_CHANNEL = 'READ_CHANNEL',
     WRITE_CHANNEL = 'WRITE_CHANNEL',
     CHECK_CHANNEL = 'CHECK_CHANNEL',
+    CHECK_WRITE = 'CHECK_WRITE',
+    CHECK_READ = 'CHECK_READ',
 }
 
 export default OpCodes;

@@ -36,6 +36,7 @@ import {
     getUnBufferChannelLength,
     initializeStack,
     isArray,
+    isBufferChannelEmpty,
     isBufferChannelFull,
     isBufferedChannel,
     isBuiltin,
@@ -43,6 +44,9 @@ import {
     isChannel,
     isClosure,
     isUnassigned,
+    isUnbufferedChannel,
+    isUnbufferedChannelEmpty,
+    isUnbufferedChannelFull,
     peekStack,
     peekStackN,
     popBufferedChannel,
@@ -173,7 +177,6 @@ function runThread() {
     log('Current Thread ID is ' + currentThreadId);
     // TODO: Load thread state
     log('Enumerating threads');
-    // @ts-ignore
     for (let [key, value] of threads) {
         log('ThreadID: ' + key + ', value= ' + value);
     }
@@ -186,7 +189,6 @@ function runThread() {
     // there is definitely a deadlock if we are back to mainThreadId and every other thread is blocking
     if (currentThreadId === mainThreadId) {
         let deadlocked = true;
-        // @ts-ignore
         for (let [threadId, thread] of threads) {
             if (thread.state !== ThreadState.BLOCKING) {
                 deadlocked = false;
@@ -280,9 +282,15 @@ export const builtinMappings = {
     // }
 };
 
-let builtins = {};
+class Builtin {
+    tag: 'BUILTIN';
+    id: number;
+    arity: number;
+}
+
+let builtins: { [key: string]: Builtin } = {};
 // The array is required cos we are using CTE which is indexed by integers
-let builtinArray: object[] = [];
+let builtinArray: Function[] = [];
 
 // This method is called by both Compilation and Machine at runtime
 export function initializeBuiltinTable() {
@@ -298,7 +306,6 @@ export function initializeBuiltinTable() {
 }
 
 function applyBuiltin(builtinId: number) {
-    // @ts-ignore
     const result = [builtinArray[builtinId]()];
     let _;
     [OS[0], _] = popStack(OS[0]); // pop fun
@@ -435,13 +442,13 @@ const microcode = {
         // It expects the index at the top of the OS (which was an expression) and therefore
         // must be dereferenced
         // Followed by the array expression
-        let arrayIndexAddress = [];
+        let arrayIndexAddress: number[] = [];
         [OS[0], arrayIndexAddress[0]] = popStack(OS[0]);
         tempRoots.push(arrayIndexAddress);
         let arrayIndex;
         arrayIndex = addressToTSValue(arrayIndexAddress[0]);
         log('ArrayIndex: ' + arrayIndex);
-        let arrayAddress = [];
+        let arrayAddress: number[] = [];
         [OS[0], arrayAddress[0]] = popStack(OS[0]);
         log('ArrayAddr: ' + arrayAddress);
         tempRoots.push(arrayAddress);
@@ -757,7 +764,7 @@ const microcode = {
         let value;
         [OS[0], value] = popStack(OS[0]);
         value = addressToTSValue(value);
-        let bufferedChannel = [];
+        let bufferedChannel: number[] = [];
         bufferedChannel[0] = allocateBufferedChannel(value);
         tempRoots.push(bufferedChannel);
         pushAddressOS(bufferedChannel);
@@ -765,7 +772,7 @@ const microcode = {
     },
     READ_CHANNEL: instr => {
         // expect a channel on top
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         // push onto temp root cos we are allocating stuff here possibly
         tempRoots.push(chan);
@@ -788,7 +795,7 @@ const microcode = {
                 // realise that if nothing ever pushes onto the channel, this goes on forever
             } else {
                 // unblocking read from buffered channel is simply a pop
-                let value = [];
+                let value: number[] = [];
                 value[0] = popBufferedChannel(chan[0]);
                 tempRoots.push(value);
                 // now push value onto stack
@@ -806,7 +813,7 @@ const microcode = {
                 tempRoots.pop();
                 blockThread();
             } else {
-                let value = [];
+                let value: number[] = [];
                 value[0] = popUnbufferedChannel(chan[0]);
                 tempRoots.push(value);
                 pushAddressOS(value);
@@ -817,7 +824,7 @@ const microcode = {
     },
     WRITE_CHANNEL: instr => {
         // expect a channel on top
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
             throw new OogaError(
@@ -825,7 +832,7 @@ const microcode = {
             );
         }
         // followed by value to write
-        let value = [];
+        let value: number[] = [];
         [OS[0], value[0]] = popStack(OS[0]);
 
         // behaviour now depends on type of channel
@@ -895,8 +902,10 @@ const microcode = {
         }
     },
     CHECK_CHANNEL: instr => {
+        // This instruction is used after the WRITE_CHANNEL
+        // see the ChannelWriteExpression compilation for justification
         // expects a chan on OS
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
             throw new OogaError(
@@ -922,6 +931,51 @@ const microcode = {
             blockThread();
         }
     },
+    // The CHECK_WRITE and CHECK_READ instructions
+    // check if the write or read is blocking and push true if non-blocking
+    // These differ from CHECK_CHANNEL in that they do not block the
+    // current thread since they are meant to be used within the context
+    // of the SELECT statement
+    CHECK_WRITE: instr => {
+        // Expects a channel on top
+        let chan = [];
+        [OS[0], chan[0]] = popStack(OS[0]);
+        if (!isChannel(chan[0])) {
+            throw new OogaError(
+                'Expected channel but got ' + getTagStringFromAddress(chan[0]) + ' instead.'
+            );
+        }
+        // need to push onto temp roots because pushing T/F onto OS
+        tempRoots.push(chan);
+        if (isBufferedChannel(chan[0]) && isBufferChannelFull(chan[0])) {
+            pushTSValueOS(false);
+        } else if (isUnbufferedChannel(chan[0]) && isUnbufferedChannelFull(chan[0])) {
+            pushTSValueOS(false);
+        } else {
+            pushTSValueOS(true);
+        }
+        tempRoots.pop();
+    },
+    CHECK_READ: instr => {
+        // Expects a channel on top
+        let chan = [];
+        [OS[0], chan[0]] = popStack(OS[0]);
+        if (!isChannel(chan[0])) {
+            throw new OogaError(
+                'Expected channel but got ' + getTagStringFromAddress(chan[0]) + ' instead.'
+            );
+        }
+        // need to push onto temp roots because pushing T/F onto OS
+        tempRoots.push(chan);
+        if (isBufferedChannel(chan[0]) && isBufferChannelEmpty(chan[0])) {
+            pushTSValueOS(false);
+        } else if (isUnbufferedChannel(chan[0]) && isUnbufferedChannelEmpty(chan[0])) {
+            pushTSValueOS(false);
+        } else {
+            pushTSValueOS(true);
+        }
+        tempRoots.pop();
+    },
 };
 
 // ********************************
@@ -929,7 +983,6 @@ const microcode = {
 // ********************************
 
 export function getRoots(): number[][] {
-    // @ts-ignore
     let roots: number[][] = [];
     for (let tempRoot of tempRoots) {
         roots.push(tempRoot);
@@ -941,7 +994,6 @@ export function getRoots(): number[][] {
     roots.push(OS);
     roots.push(RTS);
     roots.push([originalE]);
-    // @ts-ignore
     for (let [threadId, thread] of threads.entries()) {
         if (threadId == currentThreadId) {
             continue;
@@ -989,7 +1041,7 @@ function initializeBuiltins() {
     const frameAddress = allocateFrame(builtinValues.length);
     for (let i = 0; i < builtinValues.length; i++) {
         const builtin = builtinValues[i];
-        // @ts-ignore
+
         setFrameValue(frameAddress, i, allocateBuiltin(builtin.id));
     }
     return frameAddress;
@@ -1115,7 +1167,6 @@ async function main() {
     return run();
 }
 
-// @ts-ignore
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     main()
         .then(value => {

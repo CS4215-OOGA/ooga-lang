@@ -645,6 +645,11 @@ function getBufferChannelCapacity(address: number): number {
     return getSize(address) - headerSize - 1;
 }
 
+export function isBufferChannelEmpty(address: number): boolean {
+    const currentSize = getBufferChannelLength(address);
+    return currentSize === 0;
+}
+
 export function isBufferChannelFull(address: number): boolean {
     const capacity = getBufferChannelCapacity(address);
     const currentSize = getBufferChannelLength(address);
@@ -697,6 +702,14 @@ export function allocateUnbufferedChannel(): number {
     return address;
 }
 
+export function isUnbufferedChannelEmpty(address: number): boolean {
+    return getUnBufferChannelLength(address) === 0;
+}
+
+export function isUnbufferedChannelFull(address: number): boolean {
+    return getUnBufferChannelLength(address) === 1;
+}
+
 export function getUnBufferChannelLength(address: number): number {
     return heap.getUint32((address + headerSize) * wordSize);
 }
@@ -740,7 +753,6 @@ export function printHeapUsage() {
 
 export function printStringPoolMapping() {
     log('************************StringPool************************');
-    // @ts-ignore
     for (let key of StringPool.keys()) {
         log(key + ' -> ' + StringPool.get(key));
     }
@@ -1126,7 +1138,6 @@ function collectGarbage() {
     // To avoid freeing strings, just mark them from the StringPool
     // This is safe to do because we haven't moved anything yet
     // The Strings will then be compacted appropriately
-    // @ts-ignore
     for (let sKey of StringPool.keys()) {
         log(sKey + ' -> ' + StringPool.get(sKey));
         mark(StringPool.get(sKey));

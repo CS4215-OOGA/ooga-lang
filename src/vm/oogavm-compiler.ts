@@ -8,11 +8,11 @@ import { unparse } from '../utils/utils.js';
 
 const log = debug('ooga:compiler');
 
-let wc;
+let wc: number = 0;
 let instrs;
 let loopMarkers: any[] = []; // For loop markers
 
-const push = (array, ...items) => {
+const push = (array: any[], ...items: CompileTimeVariable[][]) => {
     for (let item of items) {
         array.push(item);
     }
@@ -215,10 +215,10 @@ const compileComp = {
     },
     IfStatement: (comp, ce) => {
         compile(comp.test, ce);
-        const jof = { tag: Opcodes.JOF, addr: undefined };
+        const jof = { tag: Opcodes.JOF, addr: 0 };
         instrs[wc++] = jof;
         compile(comp.consequent, ce);
-        const goto_instr = { tag: Opcodes.GOTO, addr: undefined };
+        const goto_instr = { tag: Opcodes.GOTO, addr: 0 };
         instrs[wc++] = goto_instr;
         jof.addr = wc;
         if (comp.alternate != null) {
@@ -228,7 +228,7 @@ const compileComp = {
     },
     SwitchStatement: (comp, ce) => {
         // in ooga, breaks are implicit
-        const jumps = []; // stores all implicit breakpoint instrs
+        const jumps: number[] = []; // stores all implicit breakpoint instrs
         const goto_instr = { tag: Opcodes.GOTO, addr: undefined };
         for (let i = 0; i < comp.cases.length; i++) {
             const compCase = comp.cases[i];
@@ -246,6 +246,82 @@ const compileComp = {
             instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
             if (compCase.test !== null) {
                 jofInstr.addr = wc;
+            }
+        }
+        for (let jumpInstr of jumps) {
+            instrs[jumpInstr].addr = wc;
+        }
+    },
+    SelectStatement: (comp, ce) => {
+        // iterate through the cases one by one
+        // there is no real "randomness"
+        // we complete the select case on a single successful case so we need to jump to the end
+        let jumps = [];
+        for (let i = 0; i < comp.cases.length; i++) {
+            const compCase = comp.cases[i];
+            log('Compiling: ' + unparse(compCase));
+
+            if (compCase.tag === 'SelectReadVariableCase') {
+                // This is a ChannelReadExpression that has a variable declaration
+                let declarations = scanForLocalsSingle(compCase.operation);
+                instrs[wc++] = { tag: Opcodes.ENTER_SCOPE, num: declarations.length };
+                ce = compileTimeEnvironmentExtend(declarations, ce);
+                compile(compCase.operation.expression.channel, ce);
+                instrs[wc++] = { tag: Opcodes.CHECK_READ };
+                // this pushes either true or false depending on if channel is ready to be read from
+                // if channel is not ready to be read from, should jump to the next case
+                let jof = { tag: Opcodes.JOF, addr: undefined };
+                instrs[wc++] = jof;
+                // now if we reach this instruction, channel could be read, so read from channel and assign to
+                // variable declaration if there was one, or pop
+                compile(compCase.operation, ce); // this handles assignment
+                compile(compCase.body, ce);
+                instrs[wc++] = { tag: Opcodes.EXIT_SCOPE };
+                // same strategy as switch, all these GOTOs will go to the end
+                jumps.push(wc);
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                // jump to the next select case if possible
+                jof.addr = wc;
+            } else if (compCase.tag === 'SelectReadCase') {
+                // This is a ChannelReadExpression that does not have a variable declaration
+                compile(compCase.operation.channel, ce);
+                instrs[wc++] = { tag: Opcodes.CHECK_READ };
+                // this pushes either true or false depending on if channel is ready to be read from
+                // if channel is not ready to be read from, should jump to the next case
+                let jof = { tag: Opcodes.JOF, addr: undefined };
+                instrs[wc++] = jof;
+                // now if we reach this instruction, channel could be read, so read from channel and assign to
+                // variable declaration if there was one, or pop
+                compile(compCase.operation, ce); // this will read value and then pop
+                instrs[wc++] = { tag: Opcodes.POP };
+                compile(compCase.body, ce);
+                // same strategy as switch, all these GOTOs will go to the end
+                jumps.push(wc);
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                // jump to the next select case if possible
+                jof.addr = wc;
+            } else if (compCase.tag === 'SelectWriteCase') {
+                // a write expression differs from a read in that no variable declaration
+                // push channel value and CHECK_WRITE
+                compile(compCase.operation.channel, ce);
+                instrs[wc++] = { tag: Opcodes.CHECK_WRITE };
+                // this pushes either true or false depending on if channel is ready to be write to
+                // if channel is not ready to be write to, should jump to the next case
+                let jof = { tag: Opcodes.JOF, addr: undefined };
+                instrs[wc++] = jof;
+                compile(compCase.operation, ce);
+                compile(compCase.body, ce);
+                // same strategy as switch, all these GOTOs will go to the end
+                jumps.push(wc);
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                // jump to the next select case if possible
+                jof.addr = wc;
+            } else if (compCase.tag === 'SelectDefaultCase') {
+                // default has no checks and is always the last case as per our parser rules
+                compile(compCase.body, ce);
+                // no need to throw GOTO cos it's the last anyways
+            } else {
+                throw new CompilerError('Unsupported select case in SelectStatement');
             }
         }
         for (let jumpInstr of jumps) {
@@ -453,7 +529,7 @@ const compileComp = {
     },
     LambdaDeclaration: (comp, ce) => {
         instrs[wc++] = { tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1 };
-        const gotoInstruction = { tag: Opcodes.GOTO, addr: undefined };
+        const gotoInstruction = { tag: Opcodes.GOTO, addr: 0 };
         instrs[wc++] = gotoInstruction;
 
         // TODO: probably want to incorporate type information here in the short future
@@ -620,7 +696,7 @@ const compileComp = {
         if (comp.test !== null) {
             compile(comp.test, ce);
         }
-        const jof = { tag: Opcodes.JOF, addr: undefined };
+        const jof = { tag: Opcodes.JOF, addr: 0 };
         instrs[wc++] = jof;
 
         if (comp.body !== null) {
@@ -762,7 +838,7 @@ const compileComp = {
 
         // Generate the method's code
         instrs[wc++] = { tag: Opcodes.LDF, arity: comp.params.length, addr: wc + 1 };
-        const gotoInstruction = { tag: Opcodes.GOTO, addr: undefined };
+        const gotoInstruction = { tag: Opcodes.GOTO, addr: 0 };
         instrs[wc++] = gotoInstruction;
 
         let paramNames: CompileTimeVariable[] = [];

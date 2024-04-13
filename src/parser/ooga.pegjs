@@ -148,6 +148,10 @@ Keyword
   / AnyToken
   / ChanToken
   / MakeToken
+  / SwitchToken
+  / CaseToken
+  / DefaultToken
+  / SelectToken
 
 
 Type
@@ -632,6 +636,7 @@ Statement
   / ForStatement
   / ForInitStatement
   / SwitchStatement
+  / SelectStatement
   / StructDeclaration
   / MethodDeclaration
   / CallExpression
@@ -1144,10 +1149,108 @@ ChannelReadExpression
 
 
 ChannelWriteExpression
-    = channel:Expression __ "<-" __ value:Expression EOS {
+    = channel:Expression __ "<-" __ value:Expression EOS? {
         return {
             tag: "ChannelWriteExpression",
             channel: channel,
             value: value
         };
         }
+
+// Select
+// These are select statements as per the Go spec
+// The cases can be a send or receive operation, or a default case
+// Example:
+// select {
+//     case i := <-c:
+//         fmt.Printf("Received %d\n", i)
+//     case c <- 0:
+//         fmt.Println("Sent 0")
+//     case <-quit:
+//         fmt.Println("Quit")
+//     default:
+//         fmt.Println("No communication")
+// }
+// Note that we also need to account for the fact that the read can be assigned to a variable (VariableDeclaration)
+// The cases have 3 possible forms:
+// 1. case <-channel:
+// 2. case variable := <-channel: or case var x = <-channel: or case var x int = <-channel: (All of these are covered by the VariableDeclaration rule)
+// 3. case channel <- value:
+
+ChannelOperation
+  = ChannelReadExpression
+    / ChannelWriteExpression
+
+
+SelectCaseBlock
+  = "{" __ clauses:(SelectClause)* __ def:SelectDefaultClause? __ "}" {
+    // Add a default case if none is present
+    return optionalList(clauses)
+        .concat(
+            def || {
+                tag: "SelectDefaultCase",
+                body: {tag: "BlockStatement", body: []}
+            }
+        );
+  }
+
+// This should be either
+// 1. var x = <-channel:
+// 2. var x int = <-channel:
+// 3. var x := <-channel:
+ChannelVariableStatement
+  = id:Identifier __ ":=" __ operation:ChannelReadExpression {
+    return {
+        tag: "VariableDeclaration",
+        id: id,
+        expression: operation,
+        type: "Unknown"
+    };
+  }
+  / VarToken __ id:Identifier __ type:(InitType)? __ "=" __ operation:ChannelReadExpression {
+    return {
+        tag: "VariableDeclaration",
+        id: id,
+        expression: operation,
+        type: type || "Unknown"
+    };
+  }
+
+SelectClause
+  = CaseToken __ varDecl:ChannelVariableStatement __ ":" __ body:(__ StatementList)? __ {
+    return {
+      tag: "SelectReadVariableCase",
+      operation: varDecl,
+      body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
+    };
+  }
+  / CaseToken __ chanop:ChannelReadExpression __ ":" __ body:(__ StatementList)? __ {
+    return {
+      tag: "SelectReadCase",
+      operation: chanop,
+      body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
+    };
+  }
+  / CaseToken __ chanop:ChannelWriteExpression __ ":" __ body:(__ StatementList)? __ {
+    return {
+      tag: "SelectWriteCase",
+      operation: chanop,
+      body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
+    };
+  }
+
+SelectDefaultClause
+  = DefaultToken __ ":" __ body:(__ StatementList)? __ {
+    return {
+      tag: "SelectDefaultCase",
+      body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
+    };
+  }
+
+SelectStatement
+  = SelectToken __ cases:SelectCaseBlock EOS {
+    return {
+      tag: "SelectStatement",
+      cases: cases
+    };
+  }
