@@ -645,6 +645,11 @@ function getBufferChannelCapacity(address: number): number {
     return getSize(address) - headerSize - 1;
 }
 
+export function isBufferChannelEmpty(address: number): boolean {
+    const currentSize = getBufferChannelLength(address);
+    return currentSize === 0;
+}
+
 export function isBufferChannelFull(address: number): boolean {
     const capacity = getBufferChannelCapacity(address);
     const currentSize = getBufferChannelLength(address);
@@ -695,6 +700,14 @@ export function allocateUnbufferedChannel(): number {
     // starts with 0 size
     heap.setUint32((address + headerSize) * wordSize, 0);
     return address;
+}
+
+export function isUnbufferedChannelEmpty(address: number): boolean {
+    return getUnBufferChannelLength(address) === 0;
+}
+
+export function isUnbufferedChannelFull(address: number): boolean {
+    return getUnBufferChannelLength(address) === 1;
 }
 
 export function getUnBufferChannelLength(address: number): number {

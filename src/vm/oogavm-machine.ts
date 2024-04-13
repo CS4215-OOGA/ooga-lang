@@ -35,14 +35,14 @@ import {
     getTagStringFromAddress,
     getUnBufferChannelLength,
     initializeStack,
-    isArray,
+    isArray, isBufferChannelEmpty,
     isBufferChannelFull,
     isBufferedChannel,
     isBuiltin,
     isCallFrame,
     isChannel,
     isClosure,
-    isUnassigned,
+    isUnassigned, isUnbufferedChannel, isUnbufferedChannelEmpty, isUnbufferedChannelFull,
     peekStack,
     peekStackN,
     popBufferedChannel,
@@ -898,6 +898,8 @@ const microcode = {
         }
     },
     CHECK_CHANNEL: instr => {
+        // This instruction is used after the WRITE_CHANNEL
+        // see the ChannelWriteExpression compilation for justification
         // expects a chan on OS
         let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
@@ -924,6 +926,47 @@ const microcode = {
             tempRoots.pop();
             blockThread();
         }
+    },
+    // The CHECK_WRITE and CHECK_READ instructions
+    // check if the write or read is blocking and push true if non-blocking
+    // These differ from CHECK_CHANNEL in that they do not block the
+    // current thread since they are meant to be used within the context
+    // of the SELECT statement
+    CHECK_WRITE: instr => {
+        // Expects a channel on top
+        let chan = [];
+        [OS[0], chan[0]] = popStack(OS[0]);
+        if (!isChannel(chan[0])) {
+            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+        }
+        // need to push onto temp roots because pushing T/F onto OS
+        tempRoots.push(chan);
+        if (isBufferedChannel(chan[0]) && isBufferChannelFull(chan[0])) {
+            pushTSValueOS(false);
+        } else if (isUnbufferedChannel(chan[0]) && isUnbufferedChannelFull(chan[0])) {
+            pushTSValueOS(false);
+        } else {
+            pushTSValueOS(true);
+        }
+        tempRoots.pop();
+    },
+    CHECK_READ: instr => {
+        // Expects a channel on top
+        let chan = [];
+        [OS[0], chan[0]] = popStack(OS[0]);
+        if (!isChannel(chan[0])) {
+            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+        }
+        // need to push onto temp roots because pushing T/F onto OS
+        tempRoots.push(chan);
+        if (isBufferedChannel(chan[0]) && isBufferChannelEmpty(chan[0])) {
+            pushTSValueOS(false);
+        } else if (isUnbufferedChannel(chan[0]) && isUnbufferedChannelEmpty(chan[0])) {
+            pushTSValueOS(false);
+        } else {
+            pushTSValueOS(true);
+        }
+        tempRoots.pop();
     },
 };
 

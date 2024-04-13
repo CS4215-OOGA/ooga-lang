@@ -1219,14 +1219,21 @@ ChannelVariableStatement
 SelectClause
   = CaseToken __ varDecl:ChannelVariableStatement __ ":" __ body:(__ StatementList)? __ {
     return {
-      tag: "SelectCase",
+      tag: "SelectReadVariableCase",
       operation: varDecl,
       body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
     };
   }
-  / CaseToken __ chanop:ChannelOperation __ ":" __ body:(__ StatementList)? __ {
+  / CaseToken __ chanop:ChannelReadExpression __ ":" __ body:(__ StatementList)? __ {
     return {
-      tag: "SelectCase",
+      tag: "SelectReadCase",
+      operation: chanop,
+      body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
+    };
+  }
+  / CaseToken __ chanop:ChannelWriteExpression __ ":" __ body:(__ StatementList)? __ {
+    return {
+      tag: "SelectWriteCase",
       operation: chanop,
       body: {tag: "BlockStatement", body: optionalList(extractOptional(body, 1))}
     };
