@@ -259,7 +259,7 @@ const compileComp = {
         let jumps = [];
         for (let i = 0; i < comp.cases.length; i++) {
             const compCase = comp.cases[i];
-            log("Compiling: " + unparse(compCase));
+            log('Compiling: ' + unparse(compCase));
 
             if (compCase.tag === 'SelectReadVariableCase') {
                 // This is a ChannelReadExpression that has a variable declaration
@@ -270,7 +270,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_READ };
                 // this pushes either true or false depending on if channel is ready to be read from
                 // if channel is not ready to be read from, should jump to the next case
-                let jof = { tag:Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: undefined };
                 instrs[wc++] = jof;
                 // now if we reach this instruction, channel could be read, so read from channel and assign to
                 // variable declaration if there was one, or pop
@@ -288,7 +288,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_READ };
                 // this pushes either true or false depending on if channel is ready to be read from
                 // if channel is not ready to be read from, should jump to the next case
-                let jof = { tag:Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: undefined };
                 instrs[wc++] = jof;
                 // now if we reach this instruction, channel could be read, so read from channel and assign to
                 // variable declaration if there was one, or pop
@@ -307,7 +307,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_WRITE };
                 // this pushes either true or false depending on if channel is ready to be write to
                 // if channel is not ready to be write to, should jump to the next case
-                let jof = { tag:Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: undefined };
                 instrs[wc++] = jof;
                 compile(compCase.operation, ce);
                 compile(compCase.body, ce);
@@ -323,7 +323,6 @@ const compileComp = {
             } else {
                 throw new CompilerError('Unsupported select case in SelectStatement');
             }
-
         }
         for (let jumpInstr of jumps) {
             instrs[jumpInstr].addr = wc;

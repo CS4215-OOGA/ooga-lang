@@ -35,14 +35,18 @@ import {
     getTagStringFromAddress,
     getUnBufferChannelLength,
     initializeStack,
-    isArray, isBufferChannelEmpty,
+    isArray,
+    isBufferChannelEmpty,
     isBufferChannelFull,
     isBufferedChannel,
     isBuiltin,
     isCallFrame,
     isChannel,
     isClosure,
-    isUnassigned, isUnbufferedChannel, isUnbufferedChannelEmpty, isUnbufferedChannelFull,
+    isUnassigned,
+    isUnbufferedChannel,
+    isUnbufferedChannelEmpty,
+    isUnbufferedChannelFull,
     peekStack,
     peekStackN,
     popBufferedChannel,
@@ -937,7 +941,9 @@ const microcode = {
         let chan = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
-            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+            throw new OogaError(
+                'Expected channel but got ' + getTagStringFromAddress(chan[0]) + ' instead.'
+            );
         }
         // need to push onto temp roots because pushing T/F onto OS
         tempRoots.push(chan);
@@ -955,7 +961,9 @@ const microcode = {
         let chan = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
-            throw new OogaError("Expected channel but got " + getTagStringFromAddress(chan[0]) + " instead.");
+            throw new OogaError(
+                'Expected channel but got ' + getTagStringFromAddress(chan[0]) + ' instead.'
+            );
         }
         // need to push onto temp roots because pushing T/F onto OS
         tempRoots.push(chan);

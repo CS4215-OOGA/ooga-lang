@@ -1527,9 +1527,9 @@ foo(5);
     defaultNumWords
 );
 
-
 // Test for select programs
-testProgram(`
+testProgram(
+    `
 var x chan int = make(chan int, 5);
 
 func foo() {
@@ -1552,10 +1552,14 @@ for i := 0; i < 4; i++ {
 
 // in the end, print 1 1 3 5
 10;
-`, 10, '1\n1\n3\n5\n', defaultNumWords);
+`,
+    10,
+    '1\n1\n3\n5\n',
+    defaultNumWords
+);
 
-
-testProgram(`
+testProgram(
+    `
 var x chan int = make(chan int, 5);
 
 func foo() {
@@ -1575,10 +1579,14 @@ for i := 0; i < 4; i++ {
 }
 
 10;
-`, 10, '1\n1\n', defaultNumWords);
+`,
+    10,
+    '1\n1\n',
+    defaultNumWords
+);
 
-
-testProgram(`
+testProgram(
+    `
 var x chan int = make(chan int, 5);
 
 func foo() {
@@ -1594,10 +1602,15 @@ for i := 0; i < 4; i++ {
     }
 }
 10;
-`, 10, '100\n100\n100\n100\n', defaultNumWords);
+`,
+    10,
+    '100\n100\n100\n100\n',
+    defaultNumWords
+);
 
 // test without valid select at first
-testProgram(`
+testProgram(
+    `
 var x chan int = make(chan int, 5);
 
 func foo() {
@@ -1616,11 +1629,15 @@ for i := 0; i < 4; i++ {
 
 // expected outcome, print: 100, 5, 100, 5 then break for loop
 10;
-`, 10, '100\n5\n100\n5\n', defaultNumWords);
-
+`,
+    10,
+    '100\n5\n100\n5\n',
+    defaultNumWords
+);
 
 // Test with no valid select at all until Done context times out
-testProgram(`
+testProgram(
+    `
 // Test using "Context"
 
 func timeout(done chan int) {
@@ -1645,4 +1662,8 @@ for {
 // I can't really print expected number of 1s because the timequanta is random
 // so i test for correctness by checking that eventually program ends
 10;
-`, 10, '', defaultNumWords);
+`,
+    10,
+    '',
+    defaultNumWords
+);
