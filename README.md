@@ -89,7 +89,19 @@ of programs.
 
 Ooga supports integers, floats, booleans, strings and custom Struct expressions.
 
-WORK IN PROGRESS: Slices and Channels
+Ooga also supports buffered, unbuffered channels as well as arrays and slices which are dynamically resizable arrays.
+
+Ooga slices follow Golang's slices behaviour in which a re-allocation of memory creates a new slice.
+
+Consider the following ooga snippet code.
+```go
+var x []int = make([]int, 5, 5); // allocates a slice of len 5 and capacity 5
+var y []int = append(x, 5); // this causes a reallocation of a new slice of capacity 10
+// x and y now point to slices of capacity 5 and 10 respectively
+// y has len = 6
+```
+
+This is a test case in our suite.
 
 ### Test Suite
 
