@@ -152,6 +152,7 @@ Keyword
   / CaseToken
   / DefaultToken
   / SelectToken
+  / AppendToken
 
 
 Type
@@ -275,6 +276,7 @@ SwitchToken     = "switch"     !IdentifierPart
 CaseToken       = "case"       !IdentifierPart
 DefaultToken    = "default"    !IdentifierPart
 SelectToken     = "select"     !IdentifierPart
+AppendToken     = "append"     !IdentifierPart
 
 
 SingleLineComment
@@ -390,6 +392,13 @@ CallExpression
             type: type,
             args: args || []
         };
+    }
+    / AppendToken __ "(" __ name:Identifier __ "," __ args:ArgumentList __ ")" {
+      return {
+        tag: "AppendExpression",
+        name: name,
+        args: args
+      }
     }
 
 MakeArguments
