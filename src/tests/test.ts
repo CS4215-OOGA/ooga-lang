@@ -1690,3 +1690,24 @@ print(y[5]); // shud be 10
 print(len(x)); // should be 5
 y[0]; // should be 0
 `, 0, '10\n5\n', defaultNumWords);
+
+// Testing default initialization
+testProgram(`
+var x []bool = make([]bool, 5, 5); // create a slice of len 5 and capacity 5
+
+for i := 0; i < len(x); i++ {
+    print(x[i]);
+}
+0;
+`, 0, 'false\nfalse\nfalse\nfalse\nfalse\n', defaultNumWords);
+
+
+testProgram(`
+var x []string = make([]string, 5, 5); // create a slice of len 5 and capacity 5
+x = append(x, "Jotham");
+
+for i := 0; i < len(x); i++ {
+    print(x[i]);
+}
+0;
+`, 0, '""\n""\n""\n""\n""\n"Jotham"\n', defaultNumWords);
