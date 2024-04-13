@@ -235,6 +235,8 @@ function timeoutThread() {
 // Handbook for developing new built-in functions
 // Builtins need to return heap addresses, if they dont return any
 // useful value, return either heap.True or heap.Undefined
+let yieldThreadState = false;
+
 export const builtinMappings = {
     print: () => {
         let value: any;
@@ -262,6 +264,16 @@ export const builtinMappings = {
         tempRoots.push(mutex);
         pushAddressOS(mutex);
         tempRoots.pop();
+    },
+    getThreadID: () => {
+        return TSValueToAddress(currentThreadId);
+    },
+    yieldThread: () => {
+        yieldThreadState = true;
+        return null;
+    },
+    oogaError: () => {
+        throw new OogaError("Attempt to unlock locked mutex");
     },
     lockMutex: (address: number) => {
         log('Inside lockMutex for ' + address);
@@ -1117,6 +1129,11 @@ function runInstruction() {
     const instr = instrs[PC++];
     log(instr);
     microcode[instr.tag](instr);
+    if (yieldThreadState) {
+        yieldThreadState = false;
+        blockThread();
+    }
+
     if (!isAtomicSection) {
         TimeQuanta--;
     }

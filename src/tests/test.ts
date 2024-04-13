@@ -1736,3 +1736,60 @@ testProgram(`
 var x []int = make([]int, 5, 10);
 x[6]; // still garbage data
 `, 'Array out of bounds error!', '', defaultNumWords);
+
+// Test the standard library mutex. It forces the thread that fails to lock to yield and pass on control
+// to the next thread. It also demonstrates that the WaitGroup works as intended.
+testProgram(`
+var x int = 0;
+wg := WaitGroup{10};
+
+func goo(i int, m Mutex) {
+    print(i + " just started");
+    m.Lock();
+    print(i + " is locking");
+    yieldThread(); // immediately give up again
+    print(i + " is incrementing");
+    x = x + 5;
+    m.Unlock();
+    wg.Done();
+}
+
+m := NewMutex();
+
+for i := 0; i < 10; i++ {
+    go goo(i, m);
+}
+
+wg.Wait();
+print(x);
+`, 50,
+    '"0 just started"\n' +
+    '"0 is locking"\n' +
+    '"1 just started"\n' +
+    '"0 is incrementing"\n' +
+    '"1 is locking"\n' +
+    '"2 just started"\n' +
+    '"1 is incrementing"\n' +
+    '"2 is locking"\n' +
+    '"3 just started"\n' +
+    '"2 is incrementing"\n' +
+    '"3 is locking"\n' +
+    '"4 just started"\n' +
+    '"3 is incrementing"\n' +
+    '"4 is locking"\n' +
+    '"5 just started"\n' +
+    '"4 is incrementing"\n' +
+    '"5 is locking"\n' +
+    '"6 just started"\n' +
+    '"5 is incrementing"\n' +
+    '"6 is locking"\n' +
+    '"7 just started"\n' +
+    '"6 is incrementing"\n' +
+    '"7 is locking"\n' +
+    '"8 just started"\n' +
+    '"7 is incrementing"\n' +
+    '"8 is locking"\n' +
+    '"9 just started"\n' +
+    '"8 is incrementing"\n' +
+    '"9 is locking"\n' +
+    '"9 is incrementing"\n50', defaultNumWords);
