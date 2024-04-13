@@ -682,6 +682,7 @@ const type_comp = {
         comp.type = t;
 
         if (is_type(t, ChanType)) {
+            assert(t instanceof ChanType, 'expected ChanType');
             if (comp.args.length > 1) {
                 throw new TypecheckError('Expected 1 argument to make(chan)');
             }
@@ -697,6 +698,7 @@ const type_comp = {
                 }
             }
         } else if (is_type(t, ArrayType)) {
+            assert(t instanceof ArrayType, 'expected ArrayType');
             // Ensure that type is not bound
             if ((t as ArrayType).is_array) {
                 throw new TypecheckError('Expected slice type');

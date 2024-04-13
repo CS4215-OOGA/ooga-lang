@@ -228,7 +228,7 @@ const compileComp = {
     },
     SwitchStatement: (comp, ce) => {
         // in ooga, breaks are implicit
-        const jumps = []; // stores all implicit breakpoint instrs
+        const jumps: number[] = []; // stores all implicit breakpoint instrs
         const goto_instr = { tag: Opcodes.GOTO, addr: undefined };
         for (let i = 0; i < comp.cases.length; i++) {
             const compCase = comp.cases[i];

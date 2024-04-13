@@ -22,7 +22,7 @@ export interface Scheduler {
     deleteCurrentThread(id: ThreadId): void;
     // Get which thread should be executed next, and for how long
     // null means there are no idle threads to run
-    runThread(): [ThreadId, number] | null;
+    runThread(): [ThreadId, number];
     // Tell scheduler which thread should be paused and placed back into the idle threads.
     pauseThread(id: ThreadId): void;
     // get the max time quanta, useful when a single thread only
@@ -66,7 +66,7 @@ export class RoundRobinScheduler implements Scheduler {
         this._idleThreads.push(id);
     }
 
-    runThread(): [ThreadId, number] | null {
+    runThread(): [ThreadId, number] {
         if (this._idleThreads.length === 0) {
             throw new RuntimeError('Expected a thread but nothing.');
         } else {

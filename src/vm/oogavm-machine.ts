@@ -435,13 +435,13 @@ const microcode = {
         // It expects the index at the top of the OS (which was an expression) and therefore
         // must be dereferenced
         // Followed by the array expression
-        let arrayIndexAddress = [];
+        let arrayIndexAddress: number[] = [];
         [OS[0], arrayIndexAddress[0]] = popStack(OS[0]);
         tempRoots.push(arrayIndexAddress);
         let arrayIndex;
         arrayIndex = addressToTSValue(arrayIndexAddress[0]);
         log('ArrayIndex: ' + arrayIndex);
-        let arrayAddress = [];
+        let arrayAddress: number[] = [];
         [OS[0], arrayAddress[0]] = popStack(OS[0]);
         log('ArrayAddr: ' + arrayAddress);
         tempRoots.push(arrayAddress);
@@ -757,7 +757,7 @@ const microcode = {
         let value;
         [OS[0], value] = popStack(OS[0]);
         value = addressToTSValue(value);
-        let bufferedChannel = [];
+        let bufferedChannel: number[] = [];
         bufferedChannel[0] = allocateBufferedChannel(value);
         tempRoots.push(bufferedChannel);
         pushAddressOS(bufferedChannel);
@@ -765,7 +765,7 @@ const microcode = {
     },
     READ_CHANNEL: instr => {
         // expect a channel on top
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         // push onto temp root cos we are allocating stuff here possibly
         tempRoots.push(chan);
@@ -788,7 +788,7 @@ const microcode = {
                 // realise that if nothing ever pushes onto the channel, this goes on forever
             } else {
                 // unblocking read from buffered channel is simply a pop
-                let value = [];
+                let value: number[] = [];
                 value[0] = popBufferedChannel(chan[0]);
                 tempRoots.push(value);
                 // now push value onto stack
@@ -806,7 +806,7 @@ const microcode = {
                 tempRoots.pop();
                 blockThread();
             } else {
-                let value = [];
+                let value: number[] = [];
                 value[0] = popUnbufferedChannel(chan[0]);
                 tempRoots.push(value);
                 pushAddressOS(value);
@@ -817,7 +817,7 @@ const microcode = {
     },
     WRITE_CHANNEL: instr => {
         // expect a channel on top
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
             throw new OogaError(
@@ -825,7 +825,7 @@ const microcode = {
             );
         }
         // followed by value to write
-        let value = [];
+        let value: number[] = [];
         [OS[0], value[0]] = popStack(OS[0]);
 
         // behaviour now depends on type of channel
@@ -896,7 +896,7 @@ const microcode = {
     },
     CHECK_CHANNEL: instr => {
         // expects a chan on OS
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
             throw new OogaError(
