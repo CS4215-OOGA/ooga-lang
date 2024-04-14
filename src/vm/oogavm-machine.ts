@@ -74,9 +74,8 @@ import {
     Undefined,
 } from './oogavm-heap.js';
 import { OogaError } from './oogavm-errors.js';
-import { stringify } from 'querystring';
 import { unparse } from '../utils/utils.js';
-import { appendHeap, appendStack, heaps, stacks } from '../server/runOogaLang.js';
+import { appendHeap, appendStack } from '../server/debug.js';
 
 const log = debug('ooga:vm');
 

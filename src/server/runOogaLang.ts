@@ -3,6 +3,7 @@ import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
 import { readFileSync } from 'fs';
 import { prepare_and_compile } from '../vm/oogavm-toolchain.js';
+import { getHeaps, getStacks, resetHeapsAndStacks } from './debug.js';
 
 const log = debug('ooga:runOogaLang');
 const standardSource = readFileSync('std/ooga-std.ooga', 'utf8');
@@ -27,8 +28,7 @@ export function runOogaLangCode(
     code: string
 ): Promise<{ capturedOutput: string; heaps: any[]; stacks: any[] }> {
     log(code);
-    heaps = [];
-    stacks = [];
+    resetHeapsAndStacks();
     return new Promise((resolve, reject) => {
         // Redirect console.log to capture output
         const originalConsoleLog = console.log;
@@ -48,8 +48,8 @@ export function runOogaLangCode(
             capturedOutput += 'Output: ' + value + '\n';
             // Restore console.log
             console.log = originalConsoleLog;
-            console.log(heaps);
-            console.log(stacks);
+            const heaps = getHeaps();
+            const stacks = getStacks();
             // Resolve the promise with the captured output
             resolve({ capturedOutput, heaps, stacks });
         } catch (error: any) {
