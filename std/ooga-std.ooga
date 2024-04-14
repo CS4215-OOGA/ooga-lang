@@ -27,4 +27,38 @@ func (wg *WaitGroup) Wait() {
     }
 }
 
+type Mutex struct {
+    currentThread int
+}
+
+func NewMutex() Mutex {
+    m := Mutex{-1};
+    return m;
+}
+
+func (m *Mutex) Lock() {
+    for {
+        startAtomic();
+        id := m.currentThread;
+        if (id == -1) {
+            break; // finally pick up lock
+        }
+        // else
+        endAtomic();
+        yieldThread(); // block and loop until can pick up lock
+    }
+    m.currentThread = getThreadID();
+    endAtomic();
+}
+
+func (m *Mutex) Unlock() {
+    startAtomic();
+    if m.currentThread == getThreadID() {
+        m.currentThread = -1;
+    } else {
+        oogaError(); // custom error since we don't currently support returning errors
+    }
+    endAtomic();
+}
+
 var fmt format = format{}
