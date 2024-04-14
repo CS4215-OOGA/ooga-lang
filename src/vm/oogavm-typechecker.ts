@@ -116,6 +116,9 @@ const global_type_frame = {
     unlockMutex: new FunctionType([mutexType], new NullType()),
     startAtomic: new FunctionType([], new NullType()),
     endAtomic: new FunctionType([], new NullType()),
+    yieldThread: new FunctionType([], new NullType()),
+    getThreadID: new FunctionType([], new IntegerType()),
+    oogaError: new FunctionType([], new NullType()),
 };
 
 const empty_type_environment = null;
