@@ -1,5 +1,5 @@
 import debug from 'debug';
-import { HeapError, HeapOutOfMemoryError, OogaError } from './oogavm-errors.js';
+import { HeapError, HeapOutOfMemoryError, OogaError, RuntimeError } from './oogavm-errors.js';
 import { getRoots, E, OS, RTS } from './oogavm-machine.js';
 import { head } from '../utils/utils';
 
@@ -28,6 +28,7 @@ export enum Tag {
     STRING,
     MUTEX,
     ARRAY,
+    SLICE,
     BUFFERED,
     UNBUFFERED,
 }
@@ -75,6 +76,8 @@ function getTagString(tag: Tag): string {
             return 'MUTEX';
         case Tag.ARRAY:
             return 'ARRAY';
+        case Tag.SLICE:
+            return 'SLICE';
         case Tag.BUFFERED:
             return 'BUFFERED';
         case Tag.UNBUFFERED:
@@ -461,6 +464,7 @@ function isStruct(address: number) {
 // *********************
 function allocateNumber(n: number): number {
     const numAddress = allocate(Tag.NUMBER, 3);
+    log('Allocating number ' + n + ' to address ' + numAddress);
     setWord(numAddress + headerSize, n);
     return numAddress;
 }
@@ -588,7 +592,8 @@ export function getArrayValue(address: number): any[] {
     let result: any[] = [];
     for (let i = 0; i < arrayLength; i++) {
         const arrayElementAddress = getWordOffset(address, i + headerSize);
-        result.push(arrayElementAddress);
+        const arrayElementValue = addressToTSValue(arrayElementAddress);
+        result.push(arrayElementValue);
     }
     return result;
 }
@@ -603,6 +608,106 @@ export function getArrayValueAtIndex(arrayAddress: number, idx: number): any {
         throw new OogaError('Array out of bounds error!');
     }
     return getWordOffset(arrayAddress, idx + headerSize);
+}
+
+// ********************************
+// Slice
+// ********************************
+// A slice is a resizable array.
+// 3rd word is for current number of elements inside.
+export function allocateSlice(len: number, initialCapacity: number): number {
+    if (len > initialCapacity) {
+        throw new RuntimeError('Cannot allocate slice with len more than capacity');
+    }
+    const address = allocate(Tag.SLICE, initialCapacity + headerSize + 1);
+    // starts with len
+    heap.setUint32((address + headerSize) * wordSize, len);
+    return address;
+}
+
+export function setSliceValue(sliceAddress: number, idx: number, value: number) {
+    // Check does not exceed capacity
+    const capacity = getSliceCapacity(sliceAddress);
+    log('Slice capacity is ' + capacity);
+    if (idx >= capacity) {
+        throw new OogaError(
+            'Indexing out of bounds. Indexed ' + idx + ' on a slice of capacity ' + capacity + '.'
+        );
+    }
+    setWord(sliceAddress + idx + headerSize + 1, value);
+    log('Set word at index ' + idx + ' of slice at ' + sliceAddress + ' to ' + value);
+}
+
+// Attempt to append to a slice at latest value.
+// If hit capacity, will reallocate a new slice of double the capacity
+// and return the address of the reallocated slice.
+// This aligns with how golang actually does slices.
+// Cos this can trigger GC, params are lists
+export function appendToSlice(sliceAddress: number[], value: number[]): number {
+    const sliceLength = getSliceLength(sliceAddress[0]);
+    const sliceCapacity = getSliceCapacity(sliceAddress[0]);
+    log('Slice length is ' + sliceLength);
+    log('Slice cap is ' + sliceCapacity);
+    if (sliceLength === sliceCapacity) {
+        log('Copying over slice');
+        let returnAddress = allocateSlice(sliceLength, sliceLength * 2);
+        // Copy over all elements
+        for (let i = 0; i < sliceLength; i++) {
+            const sliceElement = getSliceValueAtIndex(sliceAddress[0], i);
+            setSliceValue(returnAddress, i, sliceElement);
+        }
+        // finally append
+        setSliceValue(returnAddress, sliceLength, value[0]);
+        heap.setUint32((returnAddress + headerSize) * wordSize, sliceLength + 1);
+        return returnAddress;
+    }
+    log('Just allocating directly.');
+    // no allocation, just set latest value and update length
+    setSliceValue(sliceAddress[0], sliceLength, value[0]);
+    heap.setUint32((sliceAddress[0] + headerSize) * wordSize, sliceLength + 1);
+    return sliceAddress[0];
+}
+
+// Returns the addresses of the values in the array
+export function getSliceValue(address: number): any[] {
+    const sliceLength = getSliceLength(address);
+    let result: any[] = [];
+    for (let i = 0; i < sliceLength; i++) {
+        const arrayElementAddress = getWordOffset(address, i + headerSize + 1);
+        const arrayElementValue = addressToTSValue(arrayElementAddress);
+        result.push(arrayElementValue);
+    }
+    return result;
+}
+
+// returns the address of the element at said index
+export function getSliceValueAtIndex(sliceAddress: number, idx: number): any {
+    const sliceLength: number = getSliceLength(sliceAddress);
+    if (idx < 0) {
+        throw new OogaError('Negative indexing not allowed!');
+    }
+    if (idx >= sliceLength) {
+        throw new OogaError('Array out of bounds error!');
+    }
+    return getWordOffset(sliceAddress, idx + headerSize + 1);
+}
+
+export function isSlice(address: number): boolean {
+    return getTag(address) === Tag.SLICE;
+}
+
+export function getSliceCapacity(address: number): number {
+    if (getTag(address) !== Tag.SLICE) {
+        throw new OogaError('Called getArrayLength on non array type');
+    }
+    return getSize(address) - headerSize - 1;
+}
+
+export function getSliceLength(address: number): number {
+    if (getTag(address) !== Tag.SLICE) {
+        throw new OogaError('Called getArrayLength on non array type');
+    }
+    return heap.getUint32((address + headerSize) * wordSize);
 }
 
 // ********************************
@@ -828,6 +933,16 @@ export function debugHeap(): void {
                     log('Child ' + i + ': ' + getWord(curr + headerSize + 1 + i));
                 }
                 break;
+            case Tag.ARRAY:
+                for (let i = 0; i < getArrayLength(curr); i++) {
+                    log('Child ' + i + ': ' + getArrayValueAtIndex(curr, i));
+                }
+                break;
+            case Tag.SLICE:
+                for (let i = 0; i < getSliceLength(curr); i++) {
+                    log('Child ' + i + ': ' + getSliceValueAtIndex(curr, i));
+                }
+                break;
             default:
                 break;
         }
@@ -993,6 +1108,8 @@ export function addressToTSValue(address: number) {
         return getStringValue(address);
     } else if (isArray(address)) {
         return getArrayValue(address);
+    } else if (isSlice(address)) {
+        return getSliceValue(address);
     } else if (isBufferedChannel(address)) {
         return '<bufferedChannel>';
     } else if (isUnbufferedChannel(address)) {

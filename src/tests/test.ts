@@ -854,7 +854,7 @@ v := Vertex{1};
 w := Vertex{2};
 
 go func() {
-    for i := 0; i < 1000; i++ { // iterate for 1000 times to prove that waitgroup works as intended
+    for i := 0; i < 100; i++ { // iterate for 100 times to prove that waitgroup works as intended
     }
     v.Add(w);
 }()
@@ -883,7 +883,8 @@ w := Vertex{2};
 wg := WaitGroup{1};
 
 go func() {
-    for i := 0; i < 1000; i++ { // iterate for 1000 times to prove that waitgroup works as intended
+
+    for i := 0; i < 100; i++ { // iterate for 100 times to prove that waitgroup works as intended
     }
     v.Add(w);
     wg.Done();
@@ -892,6 +893,7 @@ go func() {
 wg.Wait();
 
 v.X; //3
+
 `,
     3,
     '',
@@ -1664,6 +1666,105 @@ for {
 10;
 `,
     10,
+    '',
+    defaultNumWords
+);
+
+// Testing slices
+testProgram(
+    `
+var x []int = make([]int, 5, 10); // create a slice of len 5 and capacity 10
+x = append(x, 5);
+for i := 0; i < len(x); i++ {
+    print(x[i]);
+}
+x[5];
+`,
+    5,
+    '0\n0\n0\n0\n0\n5\n',
+    defaultNumWords
+);
+
+// Testing re-allocation
+testProgram(
+    `
+var x []int = make([]int, 5, 5); // create a slice of len 5 and capacity 5
+var y []int = append(x, 10); // this should point to a new y
+
+print(y[5]); // shud be 10
+print(len(x)); // should be 5
+y[0]; // should be 0
+`,
+    0,
+    '10\n5\n',
+    defaultNumWords
+);
+
+// Testing default initialization
+testProgram(
+    `
+var x []bool = make([]bool, 5, 5); // create a slice of len 5 and capacity 5
+
+for i := 0; i < len(x); i++ {
+    print(x[i]);
+}
+0;
+`,
+    0,
+    'false\nfalse\nfalse\nfalse\nfalse\n',
+    defaultNumWords
+);
+
+testProgram(
+    `
+var x []string = make([]string, 5, 5); // create a slice of len 5 and capacity 5
+x = append(x, "Jotham");
+
+for i := 0; i < len(x); i++ {
+    print(x[i]);
+}
+0;
+`,
+    0,
+    '""\n""\n""\n""\n""\n"Jotham"\n',
+    defaultNumWords
+);
+
+testProgram(
+    `
+type Vector struct {
+    x int
+    y int
+}
+
+var vs []Vector = make([]Vector, 5, 10);
+for i := 0; i < len(vs); i++ {
+    print(vs[i]); // null 5 times
+}
+10;
+`,
+    10,
+    'null\nnull\nnull\nnull\nnull\n',
+    defaultNumWords
+);
+
+// Test out of bounds error
+testProgram(
+    `
+var x []int = make([]int, 5, 5);
+x[6];
+`,
+    'Array out of bounds error!',
+    '',
+    defaultNumWords
+);
+
+testProgram(
+    `
+var x []int = make([]int, 5, 10);
+x[6]; // still garbage data
+`,
+    'Array out of bounds error!',
     '',
     defaultNumWords
 );

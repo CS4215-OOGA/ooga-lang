@@ -14,8 +14,10 @@ import {
     allocateEnvironment,
     allocateFrame,
     allocateMutex,
+    allocateSlice,
     allocateStruct,
     allocateUnbufferedChannel,
+    appendToSlice,
     constructHeap,
     debugHeap,
     extendEnvironment,
@@ -33,6 +35,8 @@ import {
     getField,
     getHeapJSON,
     getPrevStackAddress,
+    getSliceLength,
+    getSliceValueAtIndex,
     getTagStringFromAddress,
     getUnBufferChannelLength,
     initializeStack,
@@ -44,6 +48,7 @@ import {
     isCallFrame,
     isChannel,
     isClosure,
+    isSlice,
     isUnassigned,
     isUnbufferedChannel,
     isUnbufferedChannelEmpty,
@@ -62,6 +67,7 @@ import {
     setEnvironmentValue,
     setField,
     setFrameValue,
+    setSliceValue,
     True,
     TSValueToAddress,
     Unassigned,
@@ -251,11 +257,14 @@ export const builtinMappings = {
         log('Len sys call');
         [OS[0], value] = popStack(OS[0]);
         // TODO: Expect an array only at the moment
-        if (!isArray(value)) {
+        if (isArray(value)) {
+            return TSValueToAddress(getArrayLength(value));
+        } else if (isSlice(value)) {
+            return TSValueToAddress(getSliceLength(value));
+        } else {
             const tag = getTagStringFromAddress(value);
             throw new OogaError('Expected value to be of type Array but got ' + tag);
         }
-        return TSValueToAddress(getArrayLength(value));
     },
     createMutex: () => {
         let mutex = [allocateMutex()];
@@ -455,7 +464,16 @@ const microcode = {
         [OS[0], arrayAddress[0]] = popStack(OS[0]);
         log('ArrayAddr: ' + arrayAddress);
         tempRoots.push(arrayAddress);
-        let arrayValue = getArrayValueAtIndex(arrayAddress[0], arrayIndex); // the address
+
+        // Can either be slice or array, cannot just use same method cos their byte arrangement is different
+        let arrayValue;
+        if (isArray(arrayAddress[0])) {
+            log('IS array');
+            arrayValue = getArrayValueAtIndex(arrayAddress[0], arrayIndex); // the address
+        } else if (isSlice(arrayAddress[0])) {
+            log('IS slice');
+            arrayValue = getSliceValueAtIndex(arrayAddress[0], arrayIndex);
+        }
         pushAddressOS([arrayValue]);
         tempRoots.pop();
         tempRoots.pop();
@@ -756,6 +774,43 @@ const microcode = {
     END_ATOMIC: instr => {
         isAtomicSection = false;
     },
+    CREATE_SLICE: instr => {
+        let capacity;
+        [OS[0], capacity] = popStack(OS[0]);
+        capacity = addressToTSValue(capacity);
+        let len;
+        [OS[0], len] = popStack(OS[0]);
+        len = addressToTSValue(len);
+
+        let sliceAddr = [];
+        tempRoots.push(sliceAddr);
+        sliceAddr[0] = allocateSlice(len, capacity);
+
+        // Allocate a default value depending on the elem_type
+        const elem_type = instr.elementType.name;
+        let defaultValue = [];
+        tempRoots.push(defaultValue);
+        log('Elem type is ' + elem_type);
+        if (elem_type === 'Integer') {
+            defaultValue[0] = TSValueToAddress(0);
+        } else if (elem_type === 'Boolean') {
+            defaultValue[0] = TSValueToAddress(false);
+        } else if (elem_type === 'String') {
+            defaultValue[0] = TSValueToAddress('');
+        } else {
+            // all structs and stuff will be default initialized to null
+            defaultValue[0] = TSValueToAddress(null);
+        }
+        // Allocate each element to default value
+        for (let i = 0; i < len; i++) {
+            setSliceValue(sliceAddr[0], i, defaultValue[0]);
+        }
+
+        pushAddressOS(sliceAddr);
+
+        tempRoots.pop();
+        tempRoots.pop();
+    },
     CREATE_UNBUFFERED: instr => {
         let unbufferedChannel = [allocateUnbufferedChannel()];
         tempRoots.push(unbufferedChannel);
@@ -1039,6 +1094,27 @@ const microcode = {
         appendHeap(heap);
         log('****************************');
     },
+    APPEND: instr => {
+        // expect slice on top
+        let sliceAddress = [];
+        tempRoots.push(sliceAddress);
+        [OS[0], sliceAddress[0]] = popStack(OS[0]);
+        // expect value on top
+        let value = [];
+        tempRoots.push(value);
+        [OS[0], value[0]] = popStack(OS[0]);
+        log(
+            'Trying to appending value ' +
+                addressToTSValue(value[0]) +
+                ' to slice at addr ' +
+                sliceAddress[0]
+        );
+        sliceAddress[0] = appendToSlice(sliceAddress, value);
+        log('Appending value ' + value[0] + ' to slice at addr ' + sliceAddress[0]);
+        pushAddressOS(sliceAddress);
+        tempRoots.pop();
+        tempRoots.pop();
+    },
 };
 
 // ********************************
@@ -1123,7 +1199,7 @@ function runInstruction() {
     log('OS: ' + OS[0]);
     log('E: ' + E[0]);
     log('PC: ' + PC);
-    // debugHeap();
+    debugHeap();
     // printOSStack();
     // printHeapUsage();
     // printStringPoolMapping();

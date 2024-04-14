@@ -895,8 +895,18 @@ const compileComp = {
             compile(comp.args[0], ce);
             instrs[wc++] = { tag: Opcodes.CREATE_BUFFERED };
         } else if (is_type(comp.type, ArrayType)) {
-            // Slice (currently not supporting dynamically resizable array)
-            // so this is just a default initialized array at the moment, that means
+            // Slice which is of initial len and capacity and can grow by appending
+            // The format is len, capacity
+            if (comp.args.length === 1) {
+                // If the user only provides a single value, capacity == len
+                // this means that len == capacity
+                compile(comp.args[0], ce); // len
+                compile(comp.args[0], ce); // capacity
+            } else {
+                compile(comp.args[0], ce); // len
+                compile(comp.args[1], ce); // capacity
+            }
+            instrs[wc++] = { tag: Opcodes.CREATE_SLICE, elementType: comp.type.elem_type };
         } else {
             throw new OogaError('Unsupported make type at the moment!');
         }
@@ -912,6 +922,11 @@ const compileComp = {
         // we will push a new Opcode called CHECK_CHANNEL
         instrs[wc++] = { tag: Opcodes.WRITE_CHANNEL };
         instrs[wc++] = { tag: Opcodes.CHECK_CHANNEL };
+    },
+    AppendExpression: (comp, ce) => {
+        compile(comp.args[0], ce);
+        compile(comp.name, ce);
+        instrs[wc++] = { tag: Opcodes.APPEND };
     },
     BreakpointStatement: (comp, ce) => {
         instrs[wc++] = { tag: Opcodes.BREAKPOINT };

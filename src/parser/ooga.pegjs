@@ -153,6 +153,7 @@ Keyword
   / DefaultToken
   / SelectToken
   / BreakpointToken
+  / AppendToken
 
 
 Type
@@ -277,6 +278,7 @@ CaseToken       = "case"       !IdentifierPart
 DefaultToken    = "default"    !IdentifierPart
 SelectToken     = "select"     !IdentifierPart
 BreakpointToken = "breakpoint" !IdentifierPart
+AppendToken     = "append"     !IdentifierPart
 
 
 SingleLineComment
@@ -392,6 +394,13 @@ CallExpression
             type: type,
             args: args || []
         };
+    }
+    / AppendToken __ "(" __ name:Identifier __ "," __ args:ArgumentList __ ")" {
+      return {
+        tag: "AppendExpression",
+        name: name,
+        args: args
+      }
     }
 
 MakeArguments
