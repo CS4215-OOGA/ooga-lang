@@ -1115,6 +1115,10 @@ const type_comp = {
         log('Exiting SelectDefaultCase, returning', t);
         return t;
     },
+    BreakpointStatement: (comp, te, struct_te) => {
+        comp.type = new NullType();
+        return comp.type;
+    },
 };
 
 /**

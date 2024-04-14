@@ -31,6 +31,7 @@ import {
     getClosurePC,
     getEnvironmentValue,
     getField,
+    getHeapJSON,
     getPrevStackAddress,
     getTagStringFromAddress,
     getUnBufferChannelLength,
@@ -68,6 +69,8 @@ import {
 } from './oogavm-heap.js';
 import { OogaError } from './oogavm-errors.js';
 import { stringify } from 'querystring';
+import { unparse } from '../utils/utils.js';
+import { appendHeap, appendStack, heaps, stacks } from '../server/runOogaLang.js';
 
 const log = debug('ooga:vm');
 
@@ -975,6 +978,66 @@ const microcode = {
             pushTSValueOS(true);
         }
         tempRoots.pop();
+    },
+    BREAKPOINT: instr => {
+        // Print heap visualization
+        log('Breakpoint');
+        // Print all the thread's RTS full stack
+        // i.e. all the items in the RTS like the debugHeap.
+        // print the thread number before the stack
+
+        class ThreadInfo {
+            rts: object[];
+            os: object[];
+        }
+
+        let threadsInfo: ThreadInfo[] = [];
+
+        for (let [threadId, thread] of threads.entries()) {
+            log('Thread ' + threadId);
+            let threadInfo: ThreadInfo = { os: [], rts: [] };
+            let currRTS = thread._RTS[0];
+            log('****************************');
+            while (currRTS != -1) {
+                // We store the currRTS address, the address stored in the currRTS and the raw value
+                log('RTS: ' + currRTS);
+                let curr = {};
+                let value: any = addressToTSValue(peekStack(currRTS));
+                curr['address'] = currRTS;
+                curr['value'] = value;
+                curr['raw'] = peekStack(currRTS);
+                threadInfo.rts.push(curr);
+                currRTS = getPrevStackAddress(currRTS);
+                log('Next RTS: ' + currRTS);
+            }
+            let currOS = thread._OS[0];
+            while (currOS != -1) {
+                // We store the currOS address, the address stored in the currOS and the raw value
+                log('OS: ' + currOS);
+                let curr = {};
+                let value: any = addressToTSValue(peekStack(currOS));
+                curr['address'] = currOS;
+                curr['value'] = value;
+                curr['raw'] = peekStack(currOS);
+                threadInfo.os.push(curr);
+                currOS = getPrevStackAddress(currOS);
+                log('Next OS: ' + currOS);
+                if (currOS < 1 && 0 < currOS) {
+                    throw new Error('Negative OS address');
+                }
+            }
+
+            threadsInfo.push(threadInfo);
+        }
+        log('Threads Info:');
+        log(unparse(threadsInfo));
+        appendStack(threadsInfo);
+
+        const heap = getHeapJSON();
+        log('Heap Info:');
+        log(unparse(heap));
+        appendHeap(heap);
+        log('****************************');
     },
 };
 

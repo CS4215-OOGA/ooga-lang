@@ -835,12 +835,137 @@ export function debugHeap(): void {
     }
 }
 
+export function getHeapJSON(): any {
+    // this is like debugHeap, but is an array of all the words that are in the heap
+    // each item in the array should contain the raw bits, the address, the value, the tag, the size, all of its children, and all of the additional information that is in the debugHeap function
+    // the children should be the addresses of the children
+    let curr = 0;
+    let heapJSON = [];
+
+    function float64ToBinaryString(float64: number): string {
+        const buffer = new ArrayBuffer(8); // 64 bits = 8 bytes
+        const float64Array = new Float64Array(buffer);
+        const dataView = new DataView(buffer);
+
+        float64Array[0] = float64;
+
+        let bitString = '';
+        for (let i = tagOffset; i < 8; i++) {
+            // Get each byte and convert to binary string
+            let byte = dataView.getUint8(i).toString(2);
+            // Pad each byte to make sure it's 8 bits long
+            byte = byte.padStart(8, '0');
+            bitString = byte + bitString; // prepend to create the big-endian binary string
+        }
+
+        return bitString;
+    }
+
+    while (curr < free) {
+        const size = getSize(curr);
+        let raw_bits: string[] = [];
+        for (let i = 0; i < size; i++) {
+            raw_bits.push(float64ToBinaryString(getWord(curr + i)));
+        }
+        let heapItem = {
+            address: curr,
+            raw_bits: raw_bits,
+            value: null,
+            tag: getTagString(getTag(curr)),
+            size: size,
+            children: [],
+            parents: [],
+        };
+        switch (getTag(curr)) {
+            case Tag.FALSE:
+            case Tag.TRUE:
+            case Tag.NULL:
+            case Tag.UNASSIGNED:
+            case Tag.UNDEFINED:
+                break;
+            case Tag.NUMBER:
+                heapItem['value'] = addressToTSValue(curr);
+                break;
+            case Tag.BLOCKFRAME:
+                heapItem['envAddress'] = getBlockFrameEnvironment(curr);
+                break;
+            case Tag.BUILTIN:
+                heapItem['id'] = getBuiltinID(curr);
+                break;
+            case Tag.STACK:
+                heapItem['previous'] = getPrevStackAddress(curr);
+                heapItem['entry'] = peekStack(curr);
+                break;
+            case Tag.ENVIRONMENT:
+                for (let i = 0; i < getSize(curr) - headerSize; i++) {
+                    heapItem['children'].push(getWordOffset(curr, i + headerSize));
+                }
+                break;
+            case Tag.STRUCT:
+                for (let i = 0; i < getSize(curr) - headerSize; i++) {
+                    heapItem['children'].push(getWordOffset(curr, i + headerSize));
+                }
+                break;
+            case Tag.CALLFRAME:
+                heapItem['pc'] = getCallFramePC(curr);
+                heapItem['envAddress'] = getCallFrameEnvironment(curr);
+                break;
+            case Tag.FRAME:
+                for (let i = 0; i < getSize(curr) - headerSize; i++) {
+                    heapItem['children'].push(getWordOffset(curr, i + headerSize));
+                }
+                break;
+            case Tag.CLOSURE:
+                heapItem['arity'] = getClosureArity(curr);
+                heapItem['pc'] = getClosurePC(curr);
+                heapItem['envAddress'] = getClosureEnvironment(curr);
+                break;
+            case Tag.STRING:
+                heapItem['value'] = getStringValue(curr);
+                break;
+            case Tag.UNBUFFERED:
+                if (getUnBufferChannelLength(curr) === 0) {
+                    heapItem['value'] = 'Empty unbuffered channel';
+                } else {
+                    heapItem['value'] = getWord(curr + headerSize + 1);
+                }
+                break;
+            case Tag.BUFFERED:
+                heapItem['capacity'] = getSize(curr) - headerSize;
+                for (let i = 0; i < getBufferChannelLength(curr); i++) {
+                    heapItem['children'].push(getWord(curr + headerSize + 1 + i));
+                }
+                break;
+            default:
+                break;
+        }
+
+        heapJSON.push(heapItem);
+        curr = curr + getSize(curr);
+    }
+
+    // Set the parents
+    for (let i = 0; i < heapJSON.length; i++) {
+        let heapItem = heapJSON[i];
+        for (let j = 0; j < heapItem['children'].length; j++) {
+            let childAddress = heapItem['children'][j];
+            for (let k = 0; k < heapJSON.length; k++) {
+                if (heapJSON[k]['address'] === childAddress) {
+                    heapJSON[k]['parents'].push(heapItem['address']);
+                }
+            }
+        }
+    }
+
+    return heapJSON;
+}
+
 // **************************
 // Conversions
 // **************************
 
 export function addressToTSValue(address: number) {
-    log('addressToTSVAlue' + address);
+    // log('addressToTSVAlue' + address);
     if (address === -1) {
         return null;
     }

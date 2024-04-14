@@ -38,6 +38,7 @@ const enum OpCodes {
     CHECK_CHANNEL = 'CHECK_CHANNEL',
     CHECK_WRITE = 'CHECK_WRITE',
     CHECK_READ = 'CHECK_READ',
+    BREAKPOINT = 'BREAKPOINT',
 }
 
 export default OpCodes;

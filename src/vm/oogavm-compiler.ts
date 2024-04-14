@@ -913,6 +913,9 @@ const compileComp = {
         instrs[wc++] = { tag: Opcodes.WRITE_CHANNEL };
         instrs[wc++] = { tag: Opcodes.CHECK_CHANNEL };
     },
+    BreakpointStatement: (comp, ce) => {
+        instrs[wc++] = { tag: Opcodes.BREAKPOINT };
+    },
 };
 
 // NOTE: We are a left precedence
