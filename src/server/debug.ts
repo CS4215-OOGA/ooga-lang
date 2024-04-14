@@ -1,11 +1,11 @@
-let heaps = [];
-let stacks = [];
+let heaps: any[][] = [];
+let stacks: any[][] = [];
 
-export const appendHeap = heap => {
+export const appendHeap = (heap: any[]) => {
     heaps.push(heap);
 };
 
-export const appendStack = stack => {
+export const appendStack = (stack: any[]) => {
     stacks.push(stack);
 };
 

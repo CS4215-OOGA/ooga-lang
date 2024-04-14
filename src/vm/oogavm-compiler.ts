@@ -256,7 +256,7 @@ const compileComp = {
         // iterate through the cases one by one
         // there is no real "randomness"
         // we complete the select case on a single successful case so we need to jump to the end
-        let jumps = [];
+        let jumps: number[] = [];
         for (let i = 0; i < comp.cases.length; i++) {
             const compCase = comp.cases[i];
             log('Compiling: ' + unparse(compCase));
@@ -270,7 +270,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_READ };
                 // this pushes either true or false depending on if channel is ready to be read from
                 // if channel is not ready to be read from, should jump to the next case
-                let jof = { tag: Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: 0 };
                 instrs[wc++] = jof;
                 // now if we reach this instruction, channel could be read, so read from channel and assign to
                 // variable declaration if there was one, or pop
@@ -279,7 +279,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.EXIT_SCOPE };
                 // same strategy as switch, all these GOTOs will go to the end
                 jumps.push(wc);
-                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0 };
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectReadCase') {
@@ -288,7 +288,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_READ };
                 // this pushes either true or false depending on if channel is ready to be read from
                 // if channel is not ready to be read from, should jump to the next case
-                let jof = { tag: Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: 0 };
                 instrs[wc++] = jof;
                 // now if we reach this instruction, channel could be read, so read from channel and assign to
                 // variable declaration if there was one, or pop
@@ -297,7 +297,7 @@ const compileComp = {
                 compile(compCase.body, ce);
                 // same strategy as switch, all these GOTOs will go to the end
                 jumps.push(wc);
-                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0 };
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectWriteCase') {
@@ -307,13 +307,13 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_WRITE };
                 // this pushes either true or false depending on if channel is ready to be write to
                 // if channel is not ready to be write to, should jump to the next case
-                let jof = { tag: Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: 0 };
                 instrs[wc++] = jof;
                 compile(compCase.operation, ce);
                 compile(compCase.body, ce);
                 // same strategy as switch, all these GOTOs will go to the end
                 jumps.push(wc);
-                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0 };
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectDefaultCase') {

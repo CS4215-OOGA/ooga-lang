@@ -954,8 +954,18 @@ export function getHeapJSON(): any {
     // this is like debugHeap, but is an array of all the words that are in the heap
     // each item in the array should contain the raw bits, the address, the value, the tag, the size, all of its children, and all of the additional information that is in the debugHeap function
     // the children should be the addresses of the children
+    class HeapItem {
+        address: number;
+        raw_bits: string[];
+        value: any;
+        tag: string;
+        size: number;
+        children: number[];
+        parents: number[];
+    }
+
     let curr = 0;
-    let heapJSON = [];
+    let heapJSON: HeapItem[] = [];
 
     function float64ToBinaryString(float64: number): string {
         const buffer = new ArrayBuffer(8); // 64 bits = 8 bytes
@@ -982,7 +992,7 @@ export function getHeapJSON(): any {
         for (let i = 0; i < size; i++) {
             raw_bits.push(float64ToBinaryString(getWord(curr + i)));
         }
-        let heapItem = {
+        let heapItem: HeapItem = {
             address: curr,
             raw_bits: raw_bits,
             value: null,

@@ -781,13 +781,13 @@ const microcode = {
         [OS[0], len] = popStack(OS[0]);
         len = addressToTSValue(len);
 
-        let sliceAddr = [];
+        let sliceAddr: number[] = [];
         tempRoots.push(sliceAddr);
         sliceAddr[0] = allocateSlice(len, capacity);
 
         // Allocate a default value depending on the elem_type
         const elem_type = instr.elementType.name;
-        let defaultValue = [];
+        let defaultValue: number[] = [];
         tempRoots.push(defaultValue);
         log('Elem type is ' + elem_type);
         if (elem_type === 'Integer') {
@@ -995,7 +995,7 @@ const microcode = {
     // of the SELECT statement
     CHECK_WRITE: instr => {
         // Expects a channel on top
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
             throw new OogaError(
@@ -1015,7 +1015,7 @@ const microcode = {
     },
     CHECK_READ: instr => {
         // Expects a channel on top
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
             throw new OogaError(
@@ -1095,11 +1095,11 @@ const microcode = {
     },
     APPEND: instr => {
         // expect slice on top
-        let sliceAddress = [];
+        let sliceAddress: number[] = [];
         tempRoots.push(sliceAddress);
         [OS[0], sliceAddress[0]] = popStack(OS[0]);
         // expect value on top
-        let value = [];
+        let value: number[] = [];
         tempRoots.push(value);
         [OS[0], value[0]] = popStack(OS[0]);
         log(
