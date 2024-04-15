@@ -1,7 +1,18 @@
 import Opcodes from './opcodes.js';
 import { builtinMappings, initializeBuiltinTable } from './oogavm-machine.js';
 import debug from 'debug';
-import { ArrayType, ChanType, is_type, StructType, Type } from './oogavm-types.js';
+import {
+    ArrayType,
+    BooleanType,
+    ChanType,
+    FloatType,
+    IntegerType,
+    is_type,
+    NullType,
+    StringType,
+    StructType,
+    Type,
+} from './oogavm-types.js';
 import assert from 'assert';
 import { CompilerError, OogaError } from './oogavm-errors.js';
 import { unparse } from '../utils/utils.js';
@@ -173,6 +184,69 @@ function scanForLocalsSingle(comp): CompileTimeVariable[] {
     }
 }
 
+function defaultInitializeStruct(ce: CompileTimeEnvironment, type: StructType) {
+    let instr = {
+        tag: 'StructInitializer',
+        fields: [],
+        named: false,
+        type: type,
+    };
+    for (let field of type.fields) {
+        let defaultValue;
+        let tag = field.type.name;
+        let type = { name: field.type.name };
+        if (is_type(field.type, IntegerType)) {
+            defaultValue = 0;
+        } else if (is_type(field.type, FloatType)) {
+            defaultValue = 0;
+        } else if (is_type(field.type, BooleanType)) {
+            defaultValue = false;
+        } else if (is_type(field.type, StringType)) {
+            defaultValue = '';
+        } else {
+            defaultValue = null;
+            tag = 'Null';
+            type = { name: 'Null' };
+        }
+        instr.fields.push({
+            tag: tag,
+            value: defaultValue,
+            type: type,
+        });
+    }
+    log('Created fake instr');
+    log(instr);
+    compile(instr, ce);
+}
+
+// Helper function to default initialize a type
+function defaultInitialize(ce: CompileTimeEnvironment, type: Type) {
+    log('Default initialize');
+    log(type);
+    if (is_type(type, IntegerType)) {
+        log('Default integer');
+        instrs[wc++] = { tag: Opcodes.LDCI, val: 0 };
+    } else if (is_type(type, FloatType)) {
+        log('Default Float');
+        instrs[wc++] = { tag: Opcodes.LDCI, val: 0 };
+    } else if (is_type(type, BooleanType)) {
+        instrs[wc++] = { tag: Opcodes.LDBI, val: false };
+    } else if (is_type(type, StringType)) {
+        instrs[wc++] = { tag: Opcodes.LDCS, val: '' };
+    } else if (is_type(type, StructType)) {
+        // If this is a struct, convert the null expression into a StructInitializer compile instruction
+        // with default values
+        let sType = type as StructType;
+        defaultInitializeStruct(ce, sType);
+    } else if (is_type(type, ArrayType)) {
+        instrs[wc++] = { tag: Opcodes.LDN };
+    } else if (is_type(type, ChanType)) {
+        instrs[wc++] = { tag: Opcodes.LDN };
+    } else {
+        throw new CompilerError('Unsupported type for default initialization');
+    }
+}
+
 // ******************
 // Compilation
 // ******************
@@ -208,7 +282,7 @@ const compileComp = {
         instrs[wc++] = { tag: Opcodes.LDBI, val: comp.value };
     },
     Null: (comp, ce) => {
-        instrs[wc++] = { tag: Opcodes.LDCI, val: comp.value };
+        instrs[wc++] = { tag: Opcodes.LDN };
     },
     String: (comp, ce) => {
         instrs[wc++] = { tag: Opcodes.LDCS, val: comp.value };
@@ -366,8 +440,14 @@ const compileComp = {
     },
     VariableDeclaration: (comp, ce) => {
         // Process the expression as before
+        log('Variable Declaration for ');
+        log(comp);
         if (comp.expression !== null) {
             compile(comp.expression, ce);
+        } else {
+            // do default initialization here
+            // If the expression is null, the type is guaranteed not to be null by parser
+            defaultInitialize(ce, comp.type);
         }
         instrs[wc++] = {
             tag: Opcodes.ASSIGN,
@@ -474,6 +554,13 @@ const compileComp = {
         compile(comp.id, ce);
         log('UpdateExpression: comp ', unparse(comp));
         instrs[wc++] = { tag: Opcodes.UNARY, operator: comp.operator };
+        // Check if left hand side is a const
+        const variable = getCompileTimeVariable(ce, comp.id.name);
+
+        if (variable && variable.is_const) {
+            throw new CompilerError('Cannot reassign constant ' + comp.id.name);
+        }
+
         if (comp.id.tag === 'Name') {
             instrs[wc++] = {
                 tag: Opcodes.ASSIGN,

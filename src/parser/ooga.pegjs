@@ -673,6 +673,14 @@ SequenceStatement
       };
     }
 
+TypeWithoutInit
+  = type:(StructIdentifier / InitType)? {
+      return {
+        type: type || null,
+        init: null
+      };
+  }
+
 TypeWithInit
     = type:(StructIdentifier / InitType)? init:(__ (StructInitializer / Initialiser)) {
         return {
@@ -687,6 +695,14 @@ VariableStatement
             tag: "VariableDeclaration",
             id: id,
             expression: typeInit.init ? extractOptional(typeInit.init, 1) : null,
+            type: typeInit.type || "Unknown"
+        }
+    }
+    / VarToken __ id:Identifier __ typeInit:(TypeWithoutInit)? EOS {
+        return {
+            tag: "VariableDeclaration",
+            id: id,
+            expression: null,
             type: typeInit.type || "Unknown"
         }
     }

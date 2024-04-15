@@ -169,6 +169,15 @@ export function equal_type(ts1: Type, ts2: Type, cache = new Set<string>()): boo
         return result;
     }
 
+    // Handle either nil
+    if (ts1 instanceof StructType && ts2 instanceof NullType) {
+        return true;
+    }
+
+    if (ts1 instanceof NullType && ts2 instanceof StructType) {
+        return true;
+    }
+
     if (ts1 instanceof StructType && ts2 instanceof StructType) {
         log('Comparing struct types', ts1, ts2);
         if (ts1.structName !== ts2.structName) {

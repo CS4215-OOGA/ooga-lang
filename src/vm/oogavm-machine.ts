@@ -50,9 +50,11 @@ import {
     isClosure,
     isSlice,
     isUnassigned,
+    isNull,
     isUnbufferedChannel,
     isUnbufferedChannelEmpty,
     isUnbufferedChannelFull,
+    Null,
     peekStack,
     peekStackN,
     popBufferedChannel,
@@ -243,11 +245,18 @@ function timeoutThread() {
 // Handbook for developing new built-in functions
 // Builtins need to return heap addresses, if they dont return any
 // useful value, return either heap.True or heap.Undefined
+let yieldThreadState = false;
+
 export const builtinMappings = {
     print: () => {
         let value: any;
         log('print sys call');
         [OS[0], value] = popStack(OS[0]);
+        // need to handle the string representation of nil differently
+        if (isNull(value)) {
+            console.log('nil');
+            return value;
+        }
         console.log(addressToTSValue(value));
         return value;
     },
@@ -265,11 +274,15 @@ export const builtinMappings = {
             throw new OogaError('Expected value to be of type Array but got ' + tag);
         }
     },
-    createMutex: () => {
-        let mutex = [allocateMutex()];
-        tempRoots.push(mutex);
-        pushAddressOS(mutex);
-        tempRoots.pop();
+    getThreadID: () => {
+        return TSValueToAddress(currentThreadId);
+    },
+    yieldThread: () => {
+        yieldThreadState = true;
+        return null;
+    },
+    oogaError: () => {
+        throw new OogaError('Attempt to unlock locked mutex');
     },
     lockMutex: (address: number) => {
         log('Inside lockMutex for ' + address);
@@ -434,6 +447,9 @@ const microcode = {
     },
     LDCS: instr => {
         pushTSValueOS(instr.val);
+    },
+    LDN: instr => {
+        pushAddressOS([Null]);
     },
     LDARR: instr => {
         // This instruction loads an array literal
@@ -1191,6 +1207,11 @@ function runInstruction() {
     const instr = instrs[PC++];
     log(instr);
     microcode[instr.tag](instr);
+    if (yieldThreadState) {
+        yieldThreadState = false;
+        blockThread();
+    }
+
     if (!isAtomicSection) {
         TimeQuanta--;
     }
