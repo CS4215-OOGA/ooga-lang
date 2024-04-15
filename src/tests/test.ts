@@ -1744,7 +1744,7 @@ for i := 0; i < len(vs); i++ {
 10;
 `,
     10,
-    'null\nnull\nnull\nnull\nnull\n',
+    '"nil"\n"nil"\n"nil"\n"nil"\n"nil"\n',
     defaultNumWords
 );
 
