@@ -24,6 +24,7 @@ func (wg *WaitGroup) Done() {
 
 func (wg *WaitGroup) Wait() {
     for wg.counter > 0 {
+        yieldThread(); // yield to avoid wasteful loop
     }
 }
 
@@ -45,7 +46,7 @@ func (m *Mutex) Lock() {
         }
         // else
         endAtomic();
-        yieldThread(); // block and loop until can pick up lock
+        blockThread(); // block and loop until can pick up lock
     }
     m.currentThread = getThreadID();
     endAtomic();
