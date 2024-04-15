@@ -119,7 +119,10 @@ TypeWithOptionalParens
 
 InitTypeList
     = head:InitType tail:(__ "," __ InitType)* {
-        return buildList({type:head}, tail, 3);
+        // for each item, we need to wrap it in an object with the tag "type"
+        return buildList(head, tail, 3).map(function(item) {
+            return {type: item};
+        });
         }
 
 StructIdentifier
