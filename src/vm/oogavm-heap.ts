@@ -221,7 +221,7 @@ function isBoolean(address: number): boolean {
     return isTrue(address) || isFalse(address);
 }
 
-function isNull(address: number): boolean {
+export function isNull(address: number): boolean {
     return getTag(address) === Tag.NULL;
 }
 
@@ -975,19 +975,20 @@ export function addressToTSValue(address: number) {
 }
 
 export function TSValueToAddress(value: any) {
-    if (typeof value === 'string') {
-        return allocateString(value);
-    } else if (typeof value === 'boolean') {
-        return value ? True : False;
-    } else if (typeof value === 'number') {
-        return allocateNumber(value);
-    } else if (typeof value === 'undefined') {
+    if (typeof value === 'undefined') {
         return Undefined;
     } else if (value === null) {
         // it already went past the undefined check, so this will only
         // return true for null
         // https://stackoverflow.com/questions/28975896/is-there-a-way-to-check-for-both-null-and-undefined
         return Null;
+    }
+    if (typeof value === 'string') {
+        return allocateString(value);
+    } else if (typeof value === 'boolean') {
+        return value ? True : False;
+    } else if (typeof value === 'number') {
+        return allocateNumber(value);
     } else {
         throw new Error('not implemented yet, value: ' + JSON.stringify(value, null, 2));
     }

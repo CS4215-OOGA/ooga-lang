@@ -1723,7 +1723,7 @@ for i := 0; i < len(vs); i++ {
     print(vs[i]); // null 5 times
 }
 10;
-`, 10, 'null\nnull\nnull\nnull\nnull\n', defaultNumWords);
+`, 10, '"nil"\n"nil"\n"nil"\n"nil"\n"nil"\n', defaultNumWords);
 
 
 // Test out of bounds error
@@ -1793,3 +1793,37 @@ print(x);
     '"8 is incrementing"\n' +
     '"9 is locking"\n' +
     '"9 is incrementing"\n50', defaultNumWords);
+
+
+// test default initialization
+testProgram(`
+type Vector struct {
+    x int
+    y int
+    z Vector
+}
+
+var x int; // defaults to 0
+print(x); // 0
+
+var y bool;
+print(y); // false
+
+var z string;
+print(z); // ""
+
+var a Vector;
+var b Vector = Vector{1, 2, Vector{3, 4, nil} };
+
+print(a.x); // 0
+print(a.y); // 0
+print(a.z); // "nil"
+
+print(b.x); // 1
+print(b.y); // 2
+print(b.z); // "<struct>"
+
+print(nil); // "nil"
+print(a.z == nil); // true
+5;
+`, 5, '0\nfalse\n""\n0\n0\n"nil"\n1\n2\n"<struct>"\n"nil"\ntrue', defaultNumWords);

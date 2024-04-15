@@ -44,9 +44,10 @@ import {
     isChannel,
     isClosure, isSlice,
     isUnassigned,
+    isNull,
     isUnbufferedChannel,
     isUnbufferedChannelEmpty,
-    isUnbufferedChannelFull,
+    isUnbufferedChannelFull, Null,
     peekStack,
     peekStackN,
     popBufferedChannel,
@@ -242,6 +243,11 @@ export const builtinMappings = {
         let value: any;
         log('print sys call');
         [OS[0], value] = popStack(OS[0]);
+        // need to handle the string representation of nil differently
+        if (isNull(value)) {
+            console.log("nil");
+            return value;
+        }
         console.log(addressToTSValue(value));
         return value;
     },
@@ -432,6 +438,9 @@ const microcode = {
     },
     LDCS: instr => {
         pushTSValueOS(instr.val);
+    },
+    LDN: instr => {
+        pushAddressOS([Null]);
     },
     LDARR: instr => {
         // This instruction loads an array literal
