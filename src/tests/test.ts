@@ -1867,3 +1867,21 @@ print(a.z == nil); // true
     '0\nfalse\n""\n0\n0\n"nil"\n1\n2\n"<struct>"\n"nil"\ntrue',
     defaultNumWords
 );
+
+// Test cases for higher order functions
+testProgram(
+    `
+func foo(f func(int) int) int {
+    return f(5);
+}
+
+func goo(x int) int {
+    return x + 5;
+}
+
+foo(goo);
+`,
+    10,
+    '',
+    defaultNumWords
+);

@@ -236,6 +236,12 @@ function getType(t, struct_te): Type {
     } else if (t.type.tag === 'Channel') {
         t.type = new ChanType(getType(t.type.elementType, struct_te));
         return t.type;
+    } else if (t.type.tag === 'FunctionType') {
+        t.type = new FunctionType(
+            t.type.args.map(a => getType(a, struct_te)),
+            getType(t.type.ret, struct_te)
+        );
+        return t.type;
     }
 
     throw new TypecheckError('Unknown type: ' + t.type);
@@ -1154,8 +1160,8 @@ const type_comp = {
  * @returns {any} - The result of type checking the component.
  */
 const type = (comp, te, struct_te): Type => {
-    // log('Type');
-    // log(unparse(comp));
+    log('Type');
+    log(unparse(comp));
     return type_comp[comp.tag](comp, te, struct_te);
 };
 
