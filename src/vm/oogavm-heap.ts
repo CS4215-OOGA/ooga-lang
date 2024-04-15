@@ -1186,17 +1186,20 @@ function mark(addr) {
         case Tag.STRUCT:
             const numChildren = getSize(addr) - headerSize;
             for (let i = 0; i < numChildren; i++) {
-                mark(getWord(addr + i + 1));
+                // no size variable in 3rd word
+                mark(getWord(addr + i + headerSize));
             }
             break;
         case Tag.UNBUFFERED:
             for (let i = 0; i < getUnBufferChannelLength(addr); i++) {
                 // will only loop once
+                // 1 for size
                 mark(getWord(addr + headerSize + 1 + i));
             }
             break;
         case Tag.BUFFERED:
             for (let i = 0; i < getBufferChannelLength(addr); i++) {
+                // 1 for size
                 mark(getWord(addr + headerSize + 1 + i));
             }
             break;
