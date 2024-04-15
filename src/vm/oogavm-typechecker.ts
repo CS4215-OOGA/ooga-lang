@@ -236,6 +236,12 @@ function getType(t, struct_te): Type {
     } else if (t.type.tag === 'Channel') {
         t.type = new ChanType(getType(t.type.elementType, struct_te));
         return t.type;
+    } else if (t.type.tag === 'FunctionType') {
+        t.type = new FunctionType(
+            t.type.args.map(a => getType(a, struct_te)),
+            getType(t.type.ret, struct_te)
+        );
+        return t.type;
     }
 
     throw new TypecheckError('Unknown type: ' + t.type);

@@ -1867,3 +1867,78 @@ print(a.z == nil); // true
     '0\nfalse\n""\n0\n0\n"nil"\n1\n2\n"<struct>"\n"nil"\ntrue',
     defaultNumWords
 );
+
+// Test cases for higher order functions
+testProgram(
+    `
+func foo(f func(int) int) int {
+    return f(5);
+}
+
+func goo(x int) int {
+    return x + 5;
+}
+
+foo(goo);
+`,
+    10,
+    '',
+    defaultNumWords
+);
+
+testProgram(
+    `
+func sum(x int, y int) int {
+    return x + y
+}
+func partialSum(x int) func(int) int {
+    return func(y int) int {
+        return sum(x, y)
+    }
+}
+
+var i int = partialSum(1)(2)
+    `,
+    3,
+    '',
+    defaultNumWords
+);
+
+testProgram(
+    `
+func sum(x int, y int) int {
+    return x + y
+}
+func partialSum(x int) func(int) int {
+    return func(y int) int {
+        return sum(x, y)
+    }
+}
+
+var i int = partialSum(1)(2)
+var j int = partialSum(3)(4)
+i + j
+    `,
+    10,
+    '',
+    defaultNumWords
+);
+
+testProgram(
+    `
+func sum(x int, y int) int {
+    return x + y
+}
+func partialSum(x int) func(int) int {
+    return func(y int) int {
+        return sum(x, y)
+    }
+}
+
+var i func(int) int = partialSum(10)
+var j int = i(2)
+`,
+    12,
+    '',
+    defaultNumWords
+);
