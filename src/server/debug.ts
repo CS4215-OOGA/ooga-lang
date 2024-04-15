@@ -1,5 +1,5 @@
-let heaps: any[][] = [];
-let stacks: any[][] = [];
+let heaps: any[][];
+let stacks: any[][];
 
 export const appendHeap = (heap: any[]) => {
     heaps.push(heap);

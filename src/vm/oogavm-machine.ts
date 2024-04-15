@@ -1035,7 +1035,7 @@ const microcode = {
     },
     BREAKPOINT: instr => {
         // Print heap visualization
-        log('Breakpoint');
+        // log('Breakpoint');
         // Print all the thread's RTS full stack
         // i.e. all the items in the RTS like the debugHeap.
         // print the thread number before the stack
@@ -1048,13 +1048,13 @@ const microcode = {
         let threadsInfo: ThreadInfo[] = [];
 
         for (let [threadId, thread] of threads.entries()) {
-            log('Thread ' + threadId);
+            // log('Thread ' + threadId);
             let threadInfo: ThreadInfo = { os: [], rts: [] };
             let currRTS = thread._RTS[0];
-            log('****************************');
+            // log('****************************');
             while (currRTS != -1) {
                 // We store the currRTS address, the address stored in the currRTS and the raw value
-                log('RTS: ' + currRTS);
+                // log('RTS: ' + currRTS);
                 let curr = {};
                 let value: any = addressToTSValue(peekStack(currRTS));
                 curr['address'] = currRTS;
@@ -1062,12 +1062,12 @@ const microcode = {
                 curr['raw'] = peekStack(currRTS);
                 threadInfo.rts.push(curr);
                 currRTS = getPrevStackAddress(currRTS);
-                log('Next RTS: ' + currRTS);
+                // log('Next RTS: ' + currRTS);
             }
             let currOS = thread._OS[0];
             while (currOS != -1) {
                 // We store the currOS address, the address stored in the currOS and the raw value
-                log('OS: ' + currOS);
+                // log('OS: ' + currOS);
                 let curr = {};
                 let value: any = addressToTSValue(peekStack(currOS));
                 curr['address'] = currOS;
@@ -1075,7 +1075,7 @@ const microcode = {
                 curr['raw'] = peekStack(currOS);
                 threadInfo.os.push(curr);
                 currOS = getPrevStackAddress(currOS);
-                log('Next OS: ' + currOS);
+                // log('Next OS: ' + currOS);
                 if (currOS < 1 && 0 < currOS) {
                     throw new Error('Negative OS address');
                 }
@@ -1083,15 +1083,15 @@ const microcode = {
 
             threadsInfo.push(threadInfo);
         }
-        log('Threads Info:');
-        log(unparse(threadsInfo));
-        appendStack(threadsInfo);
+        // log('Threads Info:');
+        // log(unparse(threadsInfo));
+        appendStack({ stacks: threadsInfo, currentThread: currentThreadId });
 
         const heap = getHeapJSON();
-        log('Heap Info:');
-        log(unparse(heap));
+        // log('Heap Info:');
+        // log(unparse(heap));
         appendHeap(heap);
-        log('****************************');
+        // log('****************************');
     },
     APPEND: instr => {
         // expect slice on top
@@ -1198,7 +1198,7 @@ function runInstruction() {
     log('OS: ' + OS[0]);
     log('E: ' + E[0]);
     log('PC: ' + PC);
-    debugHeap();
+    // debugHeap();
     // printOSStack();
     // printHeapUsage();
     // printStringPoolMapping();

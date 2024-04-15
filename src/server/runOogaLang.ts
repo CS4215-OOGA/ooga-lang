@@ -8,17 +8,6 @@ import { getHeaps, getStacks, resetHeapsAndStacks } from './debug.js';
 const log = debug('ooga:runOogaLang');
 const standardSource = readFileSync('std/ooga-std.ooga', 'utf8');
 
-let heaps: any[] = [];
-let stacks: any[] = [];
-
-export const appendHeap = (heap: any) => {
-    heaps.push(heap);
-};
-
-export const appendStack = (stack: any) => {
-    stacks.push(stack);
-};
-
 /**
  * Executes the given ooga-lang code and captures the output.
  * @param {string} code The ooga-lang code to execute.
@@ -27,6 +16,8 @@ export const appendStack = (stack: any) => {
 export function runOogaLangCode(
     code: string
 ): Promise<{ capturedOutput: string; heaps: any[]; stacks: any[] }> {
+    // debug.disable();
+    // debug.enable('ooga:runOogaLang');
     log(code);
     resetHeapsAndStacks();
     return new Promise((resolve, reject) => {
@@ -46,18 +37,19 @@ export function runOogaLangCode(
             processByteCode(bytecode);
             let value = run();
             capturedOutput += 'Output: ' + value + '\n';
-            // Restore console.log
-            console.log = originalConsoleLog;
+
             const heaps = getHeaps();
             const stacks = getStacks();
             // Resolve the promise with the captured output
             resolve({ capturedOutput, heaps, stacks });
         } catch (error: any) {
-            // Restore console.log before rejecting
-            console.log = originalConsoleLog;
             log(error);
             // Reject the promise with the error message
             reject(`Error: ${error.message}\n${capturedOutput}`);
+        } finally {
+            // Restore console.log
+            console.log = originalConsoleLog;
+            debug.enable('*');
         }
     });
 }
