@@ -101,6 +101,26 @@ InitType
     // Channel types
     / ChanType
     / StructIdentifier
+    /FunctionType
+
+FunctionType
+  = FunctionToken __ "(" __ args:(InitTypeList __)? ")" __ type:TypeWithOptionalParens {
+      return {
+        tag: "FunctionType",
+        args: optionalList(extractOptional(args, 0)),
+        ret: {type: type || "Null"}
+      };
+    }
+
+TypeWithOptionalParens
+  = "(" __ type:InitType? __ ")" { return type; }  // Correctly handles the case with parentheses
+  / type:InitType { return type; }                  // Handles the case without parentheses
+
+
+InitTypeList
+    = head:InitType tail:(__ "," __ InitType)* {
+        return buildList({type:head}, tail, 3);
+        }
 
 StructIdentifier
   = Identifier {
@@ -368,6 +388,12 @@ CallExpression
             index: index
           };
         }
+      / __ args:Arguments { // Handle additional arguments
+          return {
+            operation: "call",
+            arguments: args
+          };
+        }
     )*
     {
       return tail.reduce(function(result, element) {
@@ -382,6 +408,12 @@ CallExpression
             tag: "ArraySliceIndex",
             arrayExpression: result,
             index: element.index
+          };
+        } else if (element.operation === "call") {
+          return {
+            tag: "CallExpression",
+            callee: result,
+            arguments: element.arguments
           };
         }
       }, head);
