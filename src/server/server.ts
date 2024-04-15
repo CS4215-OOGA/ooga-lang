@@ -26,8 +26,8 @@ app.post(
     async (req: express.Request<{}, {}, RunRequest>, res: express.Response<RunResponse>) => {
         try {
             const { code } = req.body;
-            const output = await runOogaLangCode(code); // This will run the code and catch errors internally
-            res.json({ success: true, output });
+            const { capturedOutput, heaps, stacks } = await runOogaLangCode(code); // This will run the code and catch errors internally
+            res.json({ success: true, output: capturedOutput, heaps, stacks });
         } catch (error) {
             res.json({ success: false, error: error.message });
         }

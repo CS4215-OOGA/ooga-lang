@@ -7,7 +7,8 @@ import {
     ChanType,
     FloatType,
     IntegerType,
-    is_type, NullType,
+    is_type,
+    NullType,
     StringType,
     StructType,
     Type,
@@ -185,10 +186,10 @@ function scanForLocalsSingle(comp): CompileTimeVariable[] {
 
 function defaultInitializeStruct(ce: CompileTimeEnvironment, type: StructType) {
     let instr = {
-        tag: "StructInitializer",
+        tag: 'StructInitializer',
         fields: [],
         named: false,
-        type: type
+        type: type,
     };
     for (let field of type.fields) {
         let defaultValue;
@@ -201,48 +202,48 @@ function defaultInitializeStruct(ce: CompileTimeEnvironment, type: StructType) {
         } else if (is_type(field.type, BooleanType)) {
             defaultValue = false;
         } else if (is_type(field.type, StringType)) {
-            defaultValue = "";
+            defaultValue = '';
         } else {
             defaultValue = null;
-            tag = "Null";
-            type = { name: "Null" };
+            tag = 'Null';
+            type = { name: 'Null' };
         }
         instr.fields.push({
             tag: tag,
             value: defaultValue,
-            type: type
-        })
+            type: type,
+        });
     }
-    log("Created fake instr");
+    log('Created fake instr');
     log(instr);
     compile(instr, ce);
 }
 
 // Helper function to default initialize a type
-function defaultInitialize(ce :CompileTimeEnvironment, type: Type) {
-    log("Default initialize");
+function defaultInitialize(ce: CompileTimeEnvironment, type: Type) {
+    log('Default initialize');
     log(type);
     if (is_type(type, IntegerType)) {
-        log("Default integer");
-        instrs[wc++] = { tag: Opcodes.LDCI, val: 0};
+        log('Default integer');
+        instrs[wc++] = { tag: Opcodes.LDCI, val: 0 };
     } else if (is_type(type, FloatType)) {
-        log("Default Float");
-        instrs[wc++] = { tag: Opcodes.LDCI, val: 0};
+        log('Default Float');
+        instrs[wc++] = { tag: Opcodes.LDCI, val: 0 };
     } else if (is_type(type, BooleanType)) {
-        instrs[wc++] = { tag: Opcodes.LDBI, val: false};
+        instrs[wc++] = { tag: Opcodes.LDBI, val: false };
     } else if (is_type(type, StringType)) {
-        instrs[wc++] = { tag: Opcodes.LDCS, val: ""};
+        instrs[wc++] = { tag: Opcodes.LDCS, val: '' };
     } else if (is_type(type, StructType)) {
         // If this is a struct, convert the null expression into a StructInitializer compile instruction
         // with default values
         let sType = type as StructType;
         defaultInitializeStruct(ce, sType);
     } else if (is_type(type, ArrayType)) {
-        instrs[wc++] = { tag:Opcodes.LDN };
+        instrs[wc++] = { tag: Opcodes.LDN };
     } else if (is_type(type, ChanType)) {
-        instrs[wc++] = { tag:Opcodes.LDN };
+        instrs[wc++] = { tag: Opcodes.LDN };
     } else {
-        throw new CompilerError("Unsupported type for default initialization");
+        throw new CompilerError('Unsupported type for default initialization');
     }
 }
 
@@ -329,7 +330,7 @@ const compileComp = {
         // iterate through the cases one by one
         // there is no real "randomness"
         // we complete the select case on a single successful case so we need to jump to the end
-        let jumps = [];
+        let jumps: number[] = [];
         for (let i = 0; i < comp.cases.length; i++) {
             const compCase = comp.cases[i];
             log('Compiling: ' + unparse(compCase));
@@ -343,7 +344,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_READ };
                 // this pushes either true or false depending on if channel is ready to be read from
                 // if channel is not ready to be read from, should jump to the next case
-                let jof = { tag: Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: 0 };
                 instrs[wc++] = jof;
                 // now if we reach this instruction, channel could be read, so read from channel and assign to
                 // variable declaration if there was one, or pop
@@ -352,7 +353,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.EXIT_SCOPE };
                 // same strategy as switch, all these GOTOs will go to the end
                 jumps.push(wc);
-                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0 };
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectReadCase') {
@@ -361,7 +362,7 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_READ };
                 // this pushes either true or false depending on if channel is ready to be read from
                 // if channel is not ready to be read from, should jump to the next case
-                let jof = { tag: Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: 0 };
                 instrs[wc++] = jof;
                 // now if we reach this instruction, channel could be read, so read from channel and assign to
                 // variable declaration if there was one, or pop
@@ -370,7 +371,7 @@ const compileComp = {
                 compile(compCase.body, ce);
                 // same strategy as switch, all these GOTOs will go to the end
                 jumps.push(wc);
-                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0 };
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectWriteCase') {
@@ -380,13 +381,13 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.CHECK_WRITE };
                 // this pushes either true or false depending on if channel is ready to be write to
                 // if channel is not ready to be write to, should jump to the next case
-                let jof = { tag: Opcodes.JOF, addr: undefined };
+                let jof = { tag: Opcodes.JOF, addr: 0 };
                 instrs[wc++] = jof;
                 compile(compCase.operation, ce);
                 compile(compCase.body, ce);
                 // same strategy as switch, all these GOTOs will go to the end
                 jumps.push(wc);
-                instrs[wc++] = { tag: Opcodes.GOTO, addr: undefined };
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0 };
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectDefaultCase') {
@@ -439,11 +440,12 @@ const compileComp = {
     },
     VariableDeclaration: (comp, ce) => {
         // Process the expression as before
-        log("Variable Declaration for ");
+        log('Variable Declaration for ');
         log(comp);
         if (comp.expression !== null) {
             compile(comp.expression, ce);
-        } else { // do default initialization here
+        } else {
+            // do default initialization here
             // If the expression is null, the type is guaranteed not to be null by parser
             defaultInitialize(ce, comp.type);
         }
@@ -985,11 +987,11 @@ const compileComp = {
             if (comp.args.length === 1) {
                 // If the user only provides a single value, capacity == len
                 // this means that len == capacity
-                compile(comp.args[0], ce);  // len
-                compile(comp.args[0], ce);  // capacity
+                compile(comp.args[0], ce); // len
+                compile(comp.args[0], ce); // capacity
             } else {
-                compile(comp.args[0], ce);  // len
-                compile(comp.args[1], ce);  // capacity
+                compile(comp.args[0], ce); // len
+                compile(comp.args[1], ce); // capacity
             }
             instrs[wc++] = { tag: Opcodes.CREATE_SLICE, elementType: comp.type.elem_type };
         } else {
@@ -1012,7 +1014,10 @@ const compileComp = {
         compile(comp.args[0], ce);
         compile(comp.name, ce);
         instrs[wc++] = { tag: Opcodes.APPEND };
-    }
+    },
+    BreakpointStatement: (comp, ce) => {
+        instrs[wc++] = { tag: Opcodes.BREAKPOINT };
+    },
 };
 
 // NOTE: We are a left precedence

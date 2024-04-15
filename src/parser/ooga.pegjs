@@ -152,6 +152,7 @@ Keyword
   / CaseToken
   / DefaultToken
   / SelectToken
+  / BreakpointToken
   / AppendToken
 
 
@@ -276,6 +277,7 @@ SwitchToken     = "switch"     !IdentifierPart
 CaseToken       = "case"       !IdentifierPart
 DefaultToken    = "default"    !IdentifierPart
 SelectToken     = "select"     !IdentifierPart
+BreakpointToken = "breakpoint" !IdentifierPart
 AppendToken     = "append"     !IdentifierPart
 
 
@@ -650,6 +652,7 @@ Statement
   / MethodDeclaration
   / CallExpression
   / ChannelWriteExpression
+  / BreakpointStatement
 
 BlockStatement
   = "{" __ body:(StatementList __)? "}" {
@@ -1277,5 +1280,14 @@ SelectStatement
     return {
       tag: "SelectStatement",
       cases: cases
+    };
+  }
+
+// Breakpoints
+
+BreakpointStatement
+  = BreakpointToken EOS {
+    return {
+      tag: "BreakpointStatement"
     };
   }

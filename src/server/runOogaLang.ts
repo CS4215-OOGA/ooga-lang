@@ -3,6 +3,7 @@ import { run } from '../vm/oogavm-machine.js';
 import debug from 'debug';
 import { readFileSync } from 'fs';
 import { prepare_and_compile } from '../vm/oogavm-toolchain.js';
+import { getHeaps, getStacks, resetHeapsAndStacks } from './debug.js';
 
 const log = debug('ooga:runOogaLang');
 const standardSource = readFileSync('std/ooga-std.ooga', 'utf8');
@@ -12,9 +13,13 @@ const standardSource = readFileSync('std/ooga-std.ooga', 'utf8');
  * @param {string} code The ooga-lang code to execute.
  * @returns {Promise<string>} The captured output (including any errors).
  */
-export function runOogaLangCode(code: string): Promise<string> {
+export function runOogaLangCode(
+    code: string
+): Promise<{ capturedOutput: string; heaps: any[]; stacks: any[] }> {
+    // debug.disable();
+    // debug.enable('ooga:runOogaLang');
     log(code);
-    debug.disable();
+    resetHeapsAndStacks();
     return new Promise((resolve, reject) => {
         // Redirect console.log to capture output
         const originalConsoleLog = console.log;
@@ -32,16 +37,19 @@ export function runOogaLangCode(code: string): Promise<string> {
             processByteCode(bytecode);
             let value = run();
             capturedOutput += 'Output: ' + value + '\n';
-            // Restore console.log
-            console.log = originalConsoleLog;
+
+            const heaps = getHeaps();
+            const stacks = getStacks();
             // Resolve the promise with the captured output
-            resolve(capturedOutput);
+            resolve({ capturedOutput, heaps, stacks });
         } catch (error: any) {
-            // Restore console.log before rejecting
-            console.log = originalConsoleLog;
             log(error);
             // Reject the promise with the error message
             reject(`Error: ${error.message}\n${capturedOutput}`);
+        } finally {
+            // Restore console.log
+            console.log = originalConsoleLog;
+            debug.enable('*');
         }
     });
 }

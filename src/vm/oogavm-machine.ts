@@ -13,9 +13,11 @@ import {
     allocateClosure,
     allocateEnvironment,
     allocateFrame,
+    allocateMutex,
     allocateSlice,
     allocateStruct,
-    allocateUnbufferedChannel, appendToSlice,
+    allocateUnbufferedChannel,
+    appendToSlice,
     constructHeap,
     debugHeap,
     extendEnvironment,
@@ -31,7 +33,10 @@ import {
     getClosurePC,
     getEnvironmentValue,
     getField,
-    getPrevStackAddress, getSliceLength, getSliceValueAtIndex,
+    getHeapJSON,
+    getPrevStackAddress,
+    getSliceLength,
+    getSliceValueAtIndex,
     getTagStringFromAddress,
     getUnBufferChannelLength,
     initializeStack,
@@ -42,12 +47,14 @@ import {
     isBuiltin,
     isCallFrame,
     isChannel,
-    isClosure, isSlice,
+    isClosure,
+    isSlice,
     isUnassigned,
     isNull,
     isUnbufferedChannel,
     isUnbufferedChannelEmpty,
-    isUnbufferedChannelFull, Null,
+    isUnbufferedChannelFull,
+    Null,
     peekStack,
     peekStackN,
     popBufferedChannel,
@@ -61,14 +68,16 @@ import {
     setArrayValue,
     setEnvironmentValue,
     setField,
-    setFrameValue, setSliceValue,
+    setFrameValue,
+    setSliceValue,
     True,
     TSValueToAddress,
     Unassigned,
     Undefined,
 } from './oogavm-heap.js';
 import { OogaError } from './oogavm-errors.js';
-import { stringify } from 'querystring';
+import { unparse } from '../utils/utils.js';
+import { appendHeap, appendStack } from '../server/debug.js';
 
 const log = debug('ooga:vm');
 
@@ -245,7 +254,7 @@ export const builtinMappings = {
         [OS[0], value] = popStack(OS[0]);
         // need to handle the string representation of nil differently
         if (isNull(value)) {
-            console.log("nil");
+            console.log('nil');
             return value;
         }
         console.log(addressToTSValue(value));
@@ -273,7 +282,7 @@ export const builtinMappings = {
         return null;
     },
     oogaError: () => {
-        throw new OogaError("Attempt to unlock locked mutex");
+        throw new OogaError('Attempt to unlock locked mutex');
     },
     lockMutex: (address: number) => {
         log('Inside lockMutex for ' + address);
@@ -474,10 +483,10 @@ const microcode = {
         // Can either be slice or array, cannot just use same method cos their byte arrangement is different
         let arrayValue;
         if (isArray(arrayAddress[0])) {
-            log("IS array");
+            log('IS array');
             arrayValue = getArrayValueAtIndex(arrayAddress[0], arrayIndex); // the address
         } else if (isSlice(arrayAddress[0])) {
-            log("IS slice");
+            log('IS slice');
             arrayValue = getSliceValueAtIndex(arrayAddress[0], arrayIndex);
         }
         pushAddressOS([arrayValue]);
@@ -788,22 +797,23 @@ const microcode = {
         [OS[0], len] = popStack(OS[0]);
         len = addressToTSValue(len);
 
-        let sliceAddr = [];
+        let sliceAddr: number[] = [];
         tempRoots.push(sliceAddr);
         sliceAddr[0] = allocateSlice(len, capacity);
 
         // Allocate a default value depending on the elem_type
         const elem_type = instr.elementType.name;
-        let defaultValue = [];
+        let defaultValue: number[] = [];
         tempRoots.push(defaultValue);
-        log("Elem type is " + elem_type);
+        log('Elem type is ' + elem_type);
         if (elem_type === 'Integer') {
             defaultValue[0] = TSValueToAddress(0);
         } else if (elem_type === 'Boolean') {
             defaultValue[0] = TSValueToAddress(false);
         } else if (elem_type === 'String') {
             defaultValue[0] = TSValueToAddress('');
-        } else { // all structs and stuff will be default initialized to null
+        } else {
+            // all structs and stuff will be default initialized to null
             defaultValue[0] = TSValueToAddress(null);
         }
         // Allocate each element to default value
@@ -1001,7 +1011,7 @@ const microcode = {
     // of the SELECT statement
     CHECK_WRITE: instr => {
         // Expects a channel on top
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
             throw new OogaError(
@@ -1021,7 +1031,7 @@ const microcode = {
     },
     CHECK_READ: instr => {
         // Expects a channel on top
-        let chan = [];
+        let chan: number[] = [];
         [OS[0], chan[0]] = popStack(OS[0]);
         if (!isChannel(chan[0])) {
             throw new OogaError(
@@ -1039,22 +1049,87 @@ const microcode = {
         }
         tempRoots.pop();
     },
+    BREAKPOINT: instr => {
+        // Print heap visualization
+        // log('Breakpoint');
+        // Print all the thread's RTS full stack
+        // i.e. all the items in the RTS like the debugHeap.
+        // print the thread number before the stack
+
+        class ThreadInfo {
+            rts: object[];
+            os: object[];
+        }
+
+        let threadsInfo: ThreadInfo[] = [];
+
+        for (let [threadId, thread] of threads.entries()) {
+            // log('Thread ' + threadId);
+            let threadInfo: ThreadInfo = { os: [], rts: [] };
+            let currRTS = thread._RTS[0];
+            // log('****************************');
+            while (currRTS != -1) {
+                // We store the currRTS address, the address stored in the currRTS and the raw value
+                // log('RTS: ' + currRTS);
+                let curr = {};
+                let value: any = addressToTSValue(peekStack(currRTS));
+                curr['address'] = currRTS;
+                curr['value'] = value;
+                curr['raw'] = peekStack(currRTS);
+                threadInfo.rts.push(curr);
+                currRTS = getPrevStackAddress(currRTS);
+                // log('Next RTS: ' + currRTS);
+            }
+            let currOS = thread._OS[0];
+            while (currOS != -1) {
+                // We store the currOS address, the address stored in the currOS and the raw value
+                // log('OS: ' + currOS);
+                let curr = {};
+                let value: any = addressToTSValue(peekStack(currOS));
+                curr['address'] = currOS;
+                curr['value'] = value;
+                curr['raw'] = peekStack(currOS);
+                threadInfo.os.push(curr);
+                currOS = getPrevStackAddress(currOS);
+                // log('Next OS: ' + currOS);
+                if (currOS < 1 && 0 < currOS) {
+                    throw new Error('Negative OS address');
+                }
+            }
+
+            threadsInfo.push(threadInfo);
+        }
+        // log('Threads Info:');
+        // log(unparse(threadsInfo));
+        appendStack({ stacks: threadsInfo, currentThread: currentThreadId });
+
+        const heap = getHeapJSON();
+        // log('Heap Info:');
+        // log(unparse(heap));
+        appendHeap(heap);
+        // log('****************************');
+    },
     APPEND: instr => {
         // expect slice on top
-        let sliceAddress = [];
+        let sliceAddress: number[] = [];
         tempRoots.push(sliceAddress);
         [OS[0], sliceAddress[0]] = popStack(OS[0]);
         // expect value on top
-        let value = [];
+        let value: number[] = [];
         tempRoots.push(value);
         [OS[0], value[0]] = popStack(OS[0]);
-        log("Trying to appending value " + addressToTSValue(value[0]) + " to slice at addr " + sliceAddress[0]);
+        log(
+            'Trying to appending value ' +
+                addressToTSValue(value[0]) +
+                ' to slice at addr ' +
+                sliceAddress[0]
+        );
         sliceAddress[0] = appendToSlice(sliceAddress, value);
-        log("Appending value " + value[0] + " to slice at addr " + sliceAddress[0]);
+        log('Appending value ' + value[0] + ' to slice at addr ' + sliceAddress[0]);
         pushAddressOS(sliceAddress);
         tempRoots.pop();
         tempRoots.pop();
-    }
+    },
 };
 
 // ********************************
@@ -1144,7 +1219,7 @@ function runInstruction() {
     log('OS: ' + OS[0]);
     log('E: ' + E[0]);
     log('PC: ' + PC);
-    debugHeap();
+    // debugHeap();
     // printOSStack();
     // printHeapUsage();
     // printStringPoolMapping();

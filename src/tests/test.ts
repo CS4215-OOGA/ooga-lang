@@ -1670,39 +1670,53 @@ for {
     defaultNumWords
 );
 
-
 // Testing slices
-testProgram(`
+testProgram(
+    `
 var x []int = make([]int, 5, 10); // create a slice of len 5 and capacity 10
 x = append(x, 5);
 for i := 0; i < len(x); i++ {
     print(x[i]);
 }
 x[5];
-`, 5, '0\n0\n0\n0\n0\n5\n', defaultNumWords);
+`,
+    5,
+    '0\n0\n0\n0\n0\n5\n',
+    defaultNumWords
+);
 
 // Testing re-allocation
-testProgram(`
+testProgram(
+    `
 var x []int = make([]int, 5, 5); // create a slice of len 5 and capacity 5
 var y []int = append(x, 10); // this should point to a new y
 
 print(y[5]); // shud be 10
 print(len(x)); // should be 5
 y[0]; // should be 0
-`, 0, '10\n5\n', defaultNumWords);
+`,
+    0,
+    '10\n5\n',
+    defaultNumWords
+);
 
 // Testing default initialization
-testProgram(`
+testProgram(
+    `
 var x []bool = make([]bool, 5, 5); // create a slice of len 5 and capacity 5
 
 for i := 0; i < len(x); i++ {
     print(x[i]);
 }
 0;
-`, 0, 'false\nfalse\nfalse\nfalse\nfalse\n', defaultNumWords);
+`,
+    0,
+    'false\nfalse\nfalse\nfalse\nfalse\n',
+    defaultNumWords
+);
 
-
-testProgram(`
+testProgram(
+    `
 var x []string = make([]string, 5, 5); // create a slice of len 5 and capacity 5
 x = append(x, "Jotham");
 
@@ -1710,9 +1724,14 @@ for i := 0; i < len(x); i++ {
     print(x[i]);
 }
 0;
-`, 0, '""\n""\n""\n""\n""\n"Jotham"\n', defaultNumWords);
+`,
+    0,
+    '""\n""\n""\n""\n""\n"Jotham"\n',
+    defaultNumWords
+);
 
-testProgram(`
+testProgram(
+    `
 type Vector struct {
     x int
     y int
@@ -1723,23 +1742,37 @@ for i := 0; i < len(vs); i++ {
     print(vs[i]); // null 5 times
 }
 10;
-`, 10, '"nil"\n"nil"\n"nil"\n"nil"\n"nil"\n', defaultNumWords);
-
+`,
+    10,
+    '"nil"\n"nil"\n"nil"\n"nil"\n"nil"\n',
+    defaultNumWords
+);
 
 // Test out of bounds error
-testProgram(`
+testProgram(
+    `
 var x []int = make([]int, 5, 5);
 x[6];
-`, 'Array out of bounds error!', '', defaultNumWords);
+`,
+    'Array out of bounds error!',
+    '',
+    defaultNumWords
+);
 
-testProgram(`
+testProgram(
+    `
 var x []int = make([]int, 5, 10);
 x[6]; // still garbage data
-`, 'Array out of bounds error!', '', defaultNumWords);
+`,
+    'Array out of bounds error!',
+    '',
+    defaultNumWords
+);
 
 // Test the standard library mutex. It forces the thread that fails to lock to yield and pass on control
 // to the next thread. It also demonstrates that the WaitGroup works as intended.
-testProgram(`
+testProgram(
+    `
 var x int = 0;
 wg := WaitGroup{10};
 
@@ -1762,41 +1795,44 @@ for i := 0; i < 10; i++ {
 
 wg.Wait();
 print(x);
-`, 50,
+`,
+    50,
     '"0 just started"\n' +
-    '"0 is locking"\n' +
-    '"1 just started"\n' +
-    '"0 is incrementing"\n' +
-    '"1 is locking"\n' +
-    '"2 just started"\n' +
-    '"1 is incrementing"\n' +
-    '"2 is locking"\n' +
-    '"3 just started"\n' +
-    '"2 is incrementing"\n' +
-    '"3 is locking"\n' +
-    '"4 just started"\n' +
-    '"3 is incrementing"\n' +
-    '"4 is locking"\n' +
-    '"5 just started"\n' +
-    '"4 is incrementing"\n' +
-    '"5 is locking"\n' +
-    '"6 just started"\n' +
-    '"5 is incrementing"\n' +
-    '"6 is locking"\n' +
-    '"7 just started"\n' +
-    '"6 is incrementing"\n' +
-    '"7 is locking"\n' +
-    '"8 just started"\n' +
-    '"7 is incrementing"\n' +
-    '"8 is locking"\n' +
-    '"9 just started"\n' +
-    '"8 is incrementing"\n' +
-    '"9 is locking"\n' +
-    '"9 is incrementing"\n50', defaultNumWords);
-
+        '"0 is locking"\n' +
+        '"1 just started"\n' +
+        '"0 is incrementing"\n' +
+        '"1 is locking"\n' +
+        '"2 just started"\n' +
+        '"1 is incrementing"\n' +
+        '"2 is locking"\n' +
+        '"3 just started"\n' +
+        '"2 is incrementing"\n' +
+        '"3 is locking"\n' +
+        '"4 just started"\n' +
+        '"3 is incrementing"\n' +
+        '"4 is locking"\n' +
+        '"5 just started"\n' +
+        '"4 is incrementing"\n' +
+        '"5 is locking"\n' +
+        '"6 just started"\n' +
+        '"5 is incrementing"\n' +
+        '"6 is locking"\n' +
+        '"7 just started"\n' +
+        '"6 is incrementing"\n' +
+        '"7 is locking"\n' +
+        '"8 just started"\n' +
+        '"7 is incrementing"\n' +
+        '"8 is locking"\n' +
+        '"9 just started"\n' +
+        '"8 is incrementing"\n' +
+        '"9 is locking"\n' +
+        '"9 is incrementing"\n50',
+    defaultNumWords
+);
 
 // test default initialization
-testProgram(`
+testProgram(
+    `
 type Vector struct {
     x int
     y int
@@ -1826,4 +1862,8 @@ print(b.z); // "<struct>"
 print(nil); // "nil"
 print(a.z == nil); // true
 5;
-`, 5, '0\nfalse\n""\n0\n0\n"nil"\n1\n2\n"<struct>"\n"nil"\ntrue', defaultNumWords);
+`,
+    5,
+    '0\nfalse\n""\n0\n0\n"nil"\n1\n2\n"<struct>"\n"nil"\ntrue',
+    defaultNumWords
+);

@@ -725,8 +725,6 @@ const type_comp = {
                     throw new TypecheckError('Expected integer argument m to make([]T, n, m)');
                 }
             }
-
-
         } else {
             throw new TypecheckError('Make call expects channel or slice type');
         }
@@ -738,17 +736,20 @@ const type_comp = {
         log('Append Expression');
         log(unparse(comp));
         let ts = type(comp.name, te, struct_te);
-        log("ts is " + ts);
+        log('ts is ' + ts);
         if (is_type(ts, ArrayType) && !(ts as ArrayType).is_array) {
             if (comp.args.length !== 1) {
-                throw new CompilerError('Expected 1 argument to append but got ' + comp.args.length + ' args.');
+                throw new CompilerError(
+                    'Expected 1 argument to append but got ' + comp.args.length + ' args.'
+                );
             }
             const elem_type = (ts as ArrayType).elem_type;
             const arg_type = type(comp.args[0], te, struct_te);
             if (!equal_type(elem_type, arg_type)) {
-                throw new TypecheckError('Expected to append ' + elem_type + ' but got ' + arg_type + ' instead.');
+                throw new TypecheckError(
+                    'Expected to append ' + elem_type + ' but got ' + arg_type + ' instead.'
+                );
             }
-
         } else {
             throw new TypecheckError('Expected slice type but got ' + ts);
         }
@@ -1139,6 +1140,10 @@ const type_comp = {
         const t = type(comp.body, te, struct_te);
         log('Exiting SelectDefaultCase, returning', t);
         return t;
+    },
+    BreakpointStatement: (comp, te, struct_te) => {
+        comp.type = new NullType();
+        return comp.type;
     },
 };
 
