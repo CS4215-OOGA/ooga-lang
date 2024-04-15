@@ -703,11 +703,6 @@ const compileComp = {
             instrs[wc++] = { tag: Opcodes.RESET };
         }
     },
-    GoroutineDeclaration: (comp, ce) => {
-        compile(comp.expression, ce);
-        instrs[wc++] = { tag: Opcodes.NEW_THREAD };
-        instrs[wc++] = { tag: Opcodes.DONE };
-    },
     CallGoroutine: (comp, ce) => {
         if (comp.expression.callee.tag === 'MemberExpression') {
             log('Method call');
