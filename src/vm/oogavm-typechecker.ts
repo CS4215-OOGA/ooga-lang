@@ -1160,8 +1160,8 @@ const type_comp = {
  * @returns {any} - The result of type checking the component.
  */
 const type = (comp, te, struct_te): Type => {
-    log('Type');
-    log(unparse(comp));
+    // log('Type');
+    // log(unparse(comp));
     return type_comp[comp.tag](comp, te, struct_te);
 };
 
