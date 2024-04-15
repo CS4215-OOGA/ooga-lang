@@ -245,6 +245,9 @@ function timeoutThread() {
 // Handbook for developing new built-in functions
 // Builtins need to return heap addresses, if they dont return any
 // useful value, return either heap.True or heap.Undefined
+
+// Used to either block the thread or voluntarily yield thread without signalling blocked
+let blockedThreadState = false;
 let yieldThreadState = false;
 
 export const builtinMappings = {
@@ -276,6 +279,10 @@ export const builtinMappings = {
     },
     getThreadID: () => {
         return TSValueToAddress(currentThreadId);
+    },
+    blockThread: () => {
+        blockedThreadState = true;
+        return null;
     },
     yieldThread: () => {
         yieldThreadState = true;
@@ -1207,9 +1214,15 @@ function runInstruction() {
     const instr = instrs[PC++];
     log(instr);
     microcode[instr.tag](instr);
+
+    if (blockedThreadState) {
+        blockedThreadState = false;
+        blockThread();
+    }
+
     if (yieldThreadState) {
         yieldThreadState = false;
-        blockThread();
+        timeoutThread();
     }
 
     if (!isAtomicSection) {

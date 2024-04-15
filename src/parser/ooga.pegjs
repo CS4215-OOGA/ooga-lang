@@ -1005,7 +1005,6 @@ FunctionDeclaration
       };
     }
 
-// Arnav: Not sure what this is for!!
 FunctionExpression
   = FunctionToken __ id:(Identifier __)?
     "(" __ params:(FormalParameterList __)? ")" __

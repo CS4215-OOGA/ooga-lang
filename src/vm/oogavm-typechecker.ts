@@ -117,6 +117,7 @@ const global_type_frame = {
     startAtomic: new FunctionType([], new NullType()),
     endAtomic: new FunctionType([], new NullType()),
     yieldThread: new FunctionType([], new NullType()),
+    blockThread: new FunctionType([], new NullType()),
     getThreadID: new FunctionType([], new IntegerType()),
     oogaError: new FunctionType([], new NullType()),
 };
