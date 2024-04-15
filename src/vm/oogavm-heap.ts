@@ -24,9 +24,7 @@ export enum Tag {
     STACK,
     BUILTIN,
     STRUCT,
-    STRUCT_FIELD,
     STRING,
-    MUTEX,
     ARRAY,
     SLICE,
     BUFFERED,
@@ -72,8 +70,6 @@ function getTagString(tag: Tag): string {
             return 'STRING';
         case Tag.STRUCT:
             return 'STRUCT';
-        case Tag.MUTEX:
-            return 'MUTEX';
         case Tag.ARRAY:
             return 'ARRAY';
         case Tag.SLICE:
@@ -547,20 +543,6 @@ function getStringValue(address: number): string {
 
 function isString(address: number): boolean {
     return getTag(address) === Tag.STRING;
-}
-
-// ********************************
-// Mutex
-// ********************************
-// 1st word: tag and size
-// 2nd word: forwarding address
-export function allocateMutex() {
-    const mutexAddress = allocate(Tag.MUTEX, headerSize);
-    return mutexAddress;
-}
-
-export function isMutex(address: number): boolean {
-    return getTag(address) === Tag.MUTEX;
 }
 
 // ********************************

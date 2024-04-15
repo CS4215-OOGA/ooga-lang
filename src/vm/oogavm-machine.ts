@@ -13,7 +13,7 @@ import {
     allocateClosure,
     allocateEnvironment,
     allocateFrame,
-    allocateMutex, allocateSlice,
+    allocateSlice,
     allocateStruct,
     allocateUnbufferedChannel, appendToSlice,
     constructHeap,
@@ -258,12 +258,6 @@ export const builtinMappings = {
             const tag = getTagStringFromAddress(value);
             throw new OogaError('Expected value to be of type Array but got ' + tag);
         }
-    },
-    createMutex: () => {
-        let mutex = [allocateMutex()];
-        tempRoots.push(mutex);
-        pushAddressOS(mutex);
-        tempRoots.pop();
     },
     getThreadID: () => {
         return TSValueToAddress(currentThreadId);
