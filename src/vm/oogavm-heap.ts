@@ -1180,10 +1180,11 @@ function mark(addr) {
                 mark(parent);
             }
             break;
+        case Tag.ARRAY:
         case Tag.FRAME:
         case Tag.ENVIRONMENT:
         case Tag.STRUCT:
-            const numChildren = getSize(addr) - 1;
+            const numChildren = getSize(addr) - headerSize;
             for (let i = 0; i < numChildren; i++) {
                 mark(getWord(addr + i + 1));
             }
@@ -1197,6 +1198,11 @@ function mark(addr) {
         case Tag.BUFFERED:
             for (let i = 0; i < getBufferChannelLength(addr); i++) {
                 mark(getWord(addr + headerSize + 1 + i));
+            }
+            break;
+        case Tag.SLICE:
+            for (let i = 0; i < getSliceLength(addr); i++) {
+                mark(getSliceValueAtIndex(addr, i));
             }
             break;
         default:
@@ -1318,6 +1324,13 @@ function updateReferences() {
                         const originalChildAddr = getWord(curr + i + headerSize + 1);
                         const forwardedAddr = getForwardingAddress(originalChildAddr);
                         setWord(curr + i + headerSize + 1, forwardedAddr);
+                    }
+                    break;
+                case Tag.SLICE:
+                    for (let i = 0; i < getSliceLength(curr); i++) {
+                        const originalChildAddr = getSliceValueAtIndex(curr, i);
+                        const forwardedAddr = getForwardingAddress(originalChildAddr);
+                        setSliceValue(curr, i, forwardedAddr);
                     }
                     break;
                 default:
