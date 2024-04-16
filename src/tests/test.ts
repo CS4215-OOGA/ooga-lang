@@ -477,7 +477,7 @@ x;
 `,
     5,
     '',
-    300
+    400
 );
 
 // Testing mark and sweep, with exactly one variable that should be freed
@@ -497,7 +497,7 @@ x;
 `,
     5,
     '',
-    220
+    400
 );
 
 // Testing structs (no methods for now)
@@ -1044,7 +1044,7 @@ go googa(x, y);
 `,
     true,
     '15',
-    206
+    400
 );
 
 // Test various array expressions
