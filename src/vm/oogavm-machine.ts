@@ -1064,6 +1064,9 @@ const microcode = {
         }
         tempRoots.pop();
     },
+    BLOCK_THREAD: instr => {
+        blockThread();
+    },
     BREAKPOINT: instr => {
         // Print heap visualization
         // log('Breakpoint');

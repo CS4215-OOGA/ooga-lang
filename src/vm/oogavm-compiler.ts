@@ -331,6 +331,8 @@ const compileComp = {
         // there is no real "randomness"
         // we complete the select case on a single successful case so we need to jump to the end
         let jumps: number[] = [];
+        let start: number = wc;
+        let hasDefault: boolean = false;
         for (let i = 0; i < comp.cases.length; i++) {
             const compCase = comp.cases[i];
             log('Compiling: ' + unparse(compCase));
@@ -391,12 +393,20 @@ const compileComp = {
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectDefaultCase') {
-                // default has no checks and is always the last case as per our parser rules
+                console.log("Default case");
+                hasDefault = true;
                 compile(compCase.body, ce);
-                // no need to throw GOTO cos it's the last anyways
+                jumps.push(wc);
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0};
             } else {
                 throw new CompilerError('Unsupported select case in SelectStatement');
             }
+        }
+        // If none of the cases were handled and there is no default, this is when we reach this compile section
+        // we will push a BLOCK_THREAD instruction followed by a GOTO to the start of the case
+        if (!hasDefault) {
+            instrs[wc++] = { tag: Opcodes.BLOCK_THREAD };
+            instrs[wc++] = { tag: Opcodes.GOTO, addr: start };
         }
         for (let jumpInstr of jumps) {
             instrs[jumpInstr].addr = wc;

@@ -1217,7 +1217,7 @@ ChannelWriteExpression
             channel: channel,
             value: value
         };
-        }
+    }
 
 // Select
 // These are select statements as per the Go spec
@@ -1243,18 +1243,14 @@ ChannelOperation
   = ChannelReadExpression
     / ChannelWriteExpression
 
-
 SelectCaseBlock
-  = "{" __ clauses:(SelectClause)* __ def:SelectDefaultClause? __ "}" {
-    // Add a default case if none is present
-    return optionalList(clauses)
-        .concat(
-            def || {
-                tag: "SelectDefaultCase",
-                body: {tag: "BlockStatement", body: []}
-            }
-        );
-  }
+    = "{" __ clauses:(SelectClause)* __ def:SelectDefaultClause? __ "}" {
+        if (def) {
+            return optionalList(clauses).concat(def);
+        } else {
+            return optionalList(clauses);
+        }
+    }
 
 // This should be either
 // 1. var x = <-channel:
