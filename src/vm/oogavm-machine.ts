@@ -75,7 +75,7 @@ import {
     Unassigned,
     Undefined,
 } from './oogavm-heap.js';
-import { OogaError } from './oogavm-errors.js';
+import { OogaError, RuntimeError } from './oogavm-errors.js';
 import { unparse } from '../utils/utils.js';
 import { appendHeap, appendStack } from '../server/debug.js';
 
@@ -353,6 +353,9 @@ function apply_binop(sym: string, left: any, right: any) {
         case '*':
             return left * right;
         case '/':
+            if (right === 0) {
+                throw new RuntimeError("Division by 0 error!");
+            }
             return left / right;
         default:
             // FIXME: Propagate error properly to the VM
