@@ -1979,3 +1979,46 @@ func foo() int {
 
 5 / foo();
 `, 'Division by 0 error!', '', defaultNumWords);
+
+// Test that select blocks if no cases match
+testProgram(`
+x := make(chan int); // unbuffered
+
+select {
+case <-x:
+    print("This won't happen");
+}
+10;
+`, 'Stuck forever!', '', defaultNumWords);
+
+testProgram(`
+x := make(chan int); // unbuffered
+
+go func() {
+    select {
+    case <-x:
+        print("This won't happen");
+    }
+}();
+
+for i := 0; i < 100; i++ {
+}
+10;
+`, 10, '', defaultNumWords);
+
+testProgram(`
+x := make(chan int); // unbuffered
+
+go func() {
+    select {
+    case <-x:
+        print("This won't happen");
+    default:
+        print("Print once");
+    }
+}();
+
+for i := 0; i < 100; i++ {
+}
+10;
+`, 10, '"Print once"', defaultNumWords);
