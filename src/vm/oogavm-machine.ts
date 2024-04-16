@@ -267,7 +267,6 @@ export const builtinMappings = {
         let value: any;
         log('Len sys call');
         [OS[0], value] = popStack(OS[0]);
-        // TODO: Expect an array only at the moment
         if (isArray(value)) {
             return TSValueToAddress(getArrayLength(value));
         } else if (isSlice(value)) {
@@ -788,7 +787,12 @@ const microcode = {
         arrayIdx = addressToTSValue(arrayIdx);
         let arrayAddress;
         [OS[0], arrayAddress] = popStack(OS[0]);
-        setArrayValue(arrayAddress, arrayIdx, value);
+        // Handle array and slice differently cos of format
+        if (isArray(arrayAddress)) {
+            setArrayValue(arrayAddress, arrayIdx, value);
+        } else if (isSlice(arrayAddress)) {
+            setSliceValue(arrayAddress, arrayIdx, value);
+        }
     },
     START_ATOMIC: instr => {
         isAtomicSection = true;
@@ -1261,7 +1265,6 @@ export function run(numWords = 1000000) {
     log('After STD initialization: ');
     printHeapUsage();
     log('Return value: ' + returnValue);
-    // console.log('Return value: ' + returnValue);
     return returnValue;
 }
 

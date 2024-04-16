@@ -540,7 +540,6 @@ const compileComp = {
         log('Name: ' + comp.name);
         instrs[wc++] = {
             tag: Opcodes.LD,
-            sym: comp.name,
             pos: compileTimeEnvironmentPosition(ce, comp.name),
         };
         log('Exiting Name');

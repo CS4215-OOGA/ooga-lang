@@ -680,7 +680,7 @@ export function isSlice(address: number): boolean {
 
 export function getSliceCapacity(address: number): number {
     if (getTag(address) !== Tag.SLICE) {
-        throw new OogaError('Called getArrayLength on non array type');
+        throw new OogaError('Called getArrayLength on non slice type');
     }
     return getSize(address) - headerSize - 1;
 }

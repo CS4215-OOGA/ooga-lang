@@ -1942,3 +1942,15 @@ var j int = i(2)
     '',
     defaultNumWords
 );
+
+// Testing slice assignment
+testProgram(`
+arr := make([]int, 5, 10);
+
+for i := 0; i < len(arr); i++ {
+    print(arr[i]);
+    arr[i] = i;
+    print(arr[i]);
+}
+arr[4];
+`, 4, '0\n0\n0\n1\n0\n2\n0\n3\n0\n4\n', defaultNumWords);
