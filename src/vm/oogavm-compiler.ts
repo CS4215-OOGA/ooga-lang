@@ -343,6 +343,8 @@ const compileComp = {
                 instrs[wc++] = { tag: Opcodes.ENTER_SCOPE, num: declarations.length };
                 ce = compileTimeEnvironmentExtend(declarations, ce);
                 compile(compCase.operation.expression.channel, ce);
+                // start atomic needed to ensure that no illegal read from channel if context switched
+                instrs[wc++] = { tag: Opcodes.START_ATOMIC };
                 instrs[wc++] = { tag: Opcodes.CHECK_READ };
                 // this pushes either true or false depending on if channel is ready to be read from
                 // if channel is not ready to be read from, should jump to the next case
@@ -351,6 +353,7 @@ const compileComp = {
                 // now if we reach this instruction, channel could be read, so read from channel and assign to
                 // variable declaration if there was one, or pop
                 compile(compCase.operation, ce); // this handles assignment
+                instrs[wc++] = { tag: Opcodes.END_ATOMIC };
                 compile(compCase.body, ce);
                 instrs[wc++] = { tag: Opcodes.EXIT_SCOPE };
                 // same strategy as switch, all these GOTOs will go to the end
@@ -361,6 +364,7 @@ const compileComp = {
             } else if (compCase.tag === 'SelectReadCase') {
                 // This is a ChannelReadExpression that does not have a variable declaration
                 compile(compCase.operation.channel, ce);
+                instrs[wc++] = { tag: Opcodes.START_ATOMIC };
                 instrs[wc++] = { tag: Opcodes.CHECK_READ };
                 // this pushes either true or false depending on if channel is ready to be read from
                 // if channel is not ready to be read from, should jump to the next case
@@ -370,6 +374,7 @@ const compileComp = {
                 // variable declaration if there was one, or pop
                 compile(compCase.operation, ce); // this will read value and then pop
                 instrs[wc++] = { tag: Opcodes.POP };
+                instrs[wc++] = { tag: Opcodes.END_ATOMIC };
                 compile(compCase.body, ce);
                 // same strategy as switch, all these GOTOs will go to the end
                 jumps.push(wc);
@@ -380,12 +385,14 @@ const compileComp = {
                 // a write expression differs from a read in that no variable declaration
                 // push channel value and CHECK_WRITE
                 compile(compCase.operation.channel, ce);
+                instrs[wc++] = { tag: Opcodes.START_ATOMIC };
                 instrs[wc++] = { tag: Opcodes.CHECK_WRITE };
                 // this pushes either true or false depending on if channel is ready to be write to
                 // if channel is not ready to be write to, should jump to the next case
                 let jof = { tag: Opcodes.JOF, addr: 0 };
                 instrs[wc++] = jof;
                 compile(compCase.operation, ce);
+                instrs[wc++] = { tag: Opcodes.END_ATOMIC };
                 compile(compCase.body, ce);
                 // same strategy as switch, all these GOTOs will go to the end
                 jumps.push(wc);
@@ -396,12 +403,14 @@ const compileComp = {
                 console.log("Default case");
                 hasDefault = true;
                 compile(compCase.body, ce);
+                instrs[wc++] = { tag: Opcodes.END_ATOMIC };
                 jumps.push(wc);
                 instrs[wc++] = { tag: Opcodes.GOTO, addr: 0};
             } else {
                 throw new CompilerError('Unsupported select case in SelectStatement');
             }
         }
+        instrs[wc++] = { tag: Opcodes.END_ATOMIC };
         // If none of the cases were handled and there is no default, this is when we reach this compile section
         // we will push a BLOCK_THREAD instruction followed by a GOTO to the start of the case
         if (!hasDefault) {
