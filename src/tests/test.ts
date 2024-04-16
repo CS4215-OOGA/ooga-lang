@@ -1954,3 +1954,19 @@ for i := 0; i < len(arr); i++ {
 }
 arr[4];
 `, 4, '0\n0\n0\n1\n0\n2\n0\n3\n0\n4\n', defaultNumWords);
+
+
+testProgram(`
+arr := make([]int, 5, 10);
+l := len(arr);
+for i := 0; i < l; i++ {
+    arr = append(arr, i + l);
+    arr[i] = i;
+}
+
+// arr shud now be [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+for i := 0; i < len(arr); i++ {
+    print(arr[i]);
+}
+0;
+`, 0, '0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n', defaultNumWords);
