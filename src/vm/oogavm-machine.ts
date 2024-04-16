@@ -307,9 +307,10 @@ export const builtinMappings = {
         isAtomicSection = false;
         return True;
     },
-    // "make": () => {
-    //   // TODO: Support channels as priority number 1
-    // }
+    getTime: () => {
+        // Get unix time in millis
+        return TSValueToAddress(Date.now());
+    }
 };
 
 class Builtin {
@@ -1245,7 +1246,6 @@ function runInstruction() {
     // printStringPoolMapping();
 }
 
-// TODO: Switch to low level memory representation
 export function run(numWords = 1000000) {
     initialize(numWords);
     while (running) {
@@ -1267,6 +1267,8 @@ export function run(numWords = 1000000) {
     log('Program value is ' + returnValue);
     log('After STD initialization: ');
     printHeapUsage();
+    console.log("Return value is " + returnValue);
+    debugHeap();
     log('Return value: ' + returnValue);
     return returnValue;
 }

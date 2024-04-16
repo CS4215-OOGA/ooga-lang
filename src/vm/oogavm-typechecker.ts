@@ -120,6 +120,7 @@ const global_type_frame = {
     blockThread: new FunctionType([], new NullType()),
     getThreadID: new FunctionType([], new IntegerType()),
     oogaError: new FunctionType([], new NullType()),
+    getTime: new FunctionType([], new IntegerType()),
 };
 
 const empty_type_environment = null;

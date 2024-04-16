@@ -63,3 +63,19 @@ func (m *Mutex) Unlock() {
 }
 
 var fmt format = format{}
+
+
+type Time struct {
+}
+
+// Duration to sleep for in milliseconds
+func (t *Time) Sleep(duration int) {
+    startTime := getTime();
+    for {
+        if getTime() - startTime >= duration {
+            break;
+        }
+    }
+}
+
+var time Time = Time{};
