@@ -1970,3 +1970,12 @@ for i := 0; i < len(arr); i++ {
 }
 0;
 `, 0, '0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n', defaultNumWords);
+
+// Test for division by zero
+testProgram(`
+func foo() int {
+    return 0;
+}
+
+5 / foo();
+`, 'Division by 0 error!', '', defaultNumWords);
