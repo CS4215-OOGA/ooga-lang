@@ -1082,7 +1082,6 @@ const microcode = {
         for (let [threadId, thread] of threads.entries()) {
             // Ignore the currentThread because it is old
             if (currentThreadId === threadId) {
-                console.log("SKIPPING CURRENT THREAD ID");
                 continue;
             }
             // log('Thread ' + threadId);
