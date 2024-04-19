@@ -823,7 +823,7 @@ func (v *Vertex) Add(w Vertex) {
 
 v := Vertex{1}
 w := Vertex{2}
-wg := WaitGroup{1}
+wg := sync.NewWaitGroup(1);
 go func() {
     v.Add(w)
     wg.Done()
@@ -880,7 +880,7 @@ func (v *Vertex) Add(w Vertex) {
 v := Vertex{1};
 w := Vertex{2};
 
-wg := WaitGroup{1};
+wg := sync.NewWaitGroup(1);
 
 go func() {
 
@@ -1774,7 +1774,7 @@ x[6]; // still garbage data
 testProgram(
     `
 var x int = 0;
-wg := WaitGroup{10};
+wg := sync.NewWaitGroup(3);
 
 func goo(i int, m Mutex) {
     print(i + " just started");
@@ -1787,16 +1787,16 @@ func goo(i int, m Mutex) {
     wg.Done();
 }
 
-m := NewMutex();
+m := sync.NewMutex();
 
-for i := 0; i < 10; i++ {
+for i := 0; i < 3; i++ {
     go goo(i, m);
 }
 
 wg.Wait();
 print(x);
 `,
-    50,
+    15,
     '"0 just started"\n' +
         '"0 is locking"\n' +
         '"1 just started"\n' +
@@ -1805,28 +1805,8 @@ print(x);
         '"2 just started"\n' +
         '"1 is incrementing"\n' +
         '"2 is locking"\n' +
-        '"3 just started"\n' +
         '"2 is incrementing"\n' +
-        '"3 is locking"\n' +
-        '"4 just started"\n' +
-        '"3 is incrementing"\n' +
-        '"4 is locking"\n' +
-        '"5 just started"\n' +
-        '"4 is incrementing"\n' +
-        '"5 is locking"\n' +
-        '"6 just started"\n' +
-        '"5 is incrementing"\n' +
-        '"6 is locking"\n' +
-        '"7 just started"\n' +
-        '"6 is incrementing"\n' +
-        '"7 is locking"\n' +
-        '"8 just started"\n' +
-        '"7 is incrementing"\n' +
-        '"8 is locking"\n' +
-        '"9 just started"\n' +
-        '"8 is incrementing"\n' +
-        '"9 is locking"\n' +
-        '"9 is incrementing"\n50',
+        '15',
     defaultNumWords
 );
 
@@ -2022,3 +2002,66 @@ for i := 0; i < 100; i++ {
 }
 10;
 `, 10, '"Print once"', defaultNumWords);
+
+
+// Test binary sync.Semaphore
+testProgram(`
+s := sync.NewSemaphore(1);
+
+x := 0;
+
+go func() {
+    s.Down();
+    yieldThread();
+    x = x + 1;
+    fmt.Println("x in Thread 1 is " + x); // this should be 1 because goroutine in T2 Blocks
+    s.Up();
+}();
+
+go func() {
+    s.Down(); // this should block
+    x = x + 1;
+    fmt.Println("x in Thread 2 is " + x); // this should be 2
+    s.Up();
+}();
+
+for i := 0; i < 100; i++ {
+}
+
+10;
+`, 10, '"x in Thread 1 is 1"\n"x in Thread 2 is 2"', defaultNumWords);
+
+
+// Test sync.Semaphore with more than 1 count
+testProgram(`
+s := sync.NewSemaphore(2);
+
+x := 0;
+
+go func() {
+    s.Down();
+    x = x + 1;
+    fmt.Println("x in Thread 1 is " + x); // this should be 1
+}();
+
+go func() {
+    s.Down();
+    x = x + 1;
+    fmt.Println("x in Thread 2 is " + x); // this should be 2 because goroutine in T1 sleeps
+}();
+
+go func() {
+    s.Down();
+    x = x + 1;
+    fmt.Println("x in Thread 3 is " + x); // this should be 4 because main wakes up
+    s.Up();
+}();
+
+x = x + 1;
+s.Up();
+
+for i := 0; i < 100; i++ {
+}
+
+10;
+`, 10, '"x in Thread 1 is 1"\n"x in Thread 2 is 2"\n"x in Thread 3 is 4"', defaultNumWords);

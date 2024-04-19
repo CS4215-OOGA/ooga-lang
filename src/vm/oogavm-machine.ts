@@ -281,11 +281,11 @@ export const builtinMappings = {
     },
     blockThread: () => {
         blockedThreadState = true;
-        return null;
+        return True;
     },
     yieldThread: () => {
         yieldThreadState = true;
-        return null;
+        return True;
     },
     oogaError: () => {
         throw new OogaError('Attempt to unlock locked mutex');
