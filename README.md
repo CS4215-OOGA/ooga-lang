@@ -15,10 +15,7 @@ Ooga is a concurrent virtual machine and interpreter for a subset of the Go prog
   - [Running Tests](#running-tests)
 - [Dev Workflow](#dev-workflow)
 - [Usage](#usage)
-- [Test Suite](#test-suite)
 - [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Features
 
@@ -86,44 +83,54 @@ The toolchain is designed to be modular, with a clean separation between each ph
 ### Installation
 
 1. Clone the repository:
-   ```
-   git clone https://github.com/CS4215-OOGA/ooga-lang.git
-   ```
+```bash
+git clone https://github.com/CS4215-OOGA/ooga-lang.git
+```
 
 2. Install dependencies:
-   ```
-   cd ooga-lang
-   yarn install
-   ```
+```bash
+cd ooga-lang
+yarn install
+```
 
 ### Running the Toolchain
 
 1. Generate the parser from the Peggy grammar file:
-   ```bash
-   yarn peggy
-   ```
-   This command generates `src/parser/ooga.js` from `src/parser/ooga.pegjs`.
+```bash
+yarn peggy
+```
+
+This command generates `src/parser/ooga.js` from `src/parser/ooga.pegjs`.
 
 2. Compile the TypeScript source code:
-   ```bash
-   yarn build
-   ```
-   This command compiles all TypeScript files in the `src` directory into JavaScript in the `dist` directory.
+```bash
+yarn build
+```
+
+This command compiles all TypeScript files in the `src` directory into JavaScript in the `dist` directory.
 
 3. Start the server:
-   ```bash
-   yarn server
-   ```
-   This command starts the server at http://localhost:3001.
+```bash
+yarn server
+```
+
+This command starts the server at http://localhost:3001.
 
 The Ooga playground frontend (in the [ooga-frontend](https://github.com/CS4215-OOGA/ooga-frontend) repo) communicates with this server to execute Ooga code and retrieve debugging information.
 
 ### Running Tests
 
-Ooga comes with an extensive test suite that covers all language features. To run the tests:
-   ```bash
-   yarn tooga
-   ```
+
+The Ooga test suite is located in `src/tests/test.ts`. It contains a series of integration tests that cover all language features and edge cases.
+
+To run the test suite:
+```bash
+yarn tooga
+```
+
+The test suite will compile and run each test case, checking the output against the expected result. The stdout of each test case is also captured and compared to the expected output. Any discrepancies will cause the test to fail.
+
+Actions are set up to run the test suite on every commit pushed to this repository to ensure that the codebase remains correct.
 
 ## Dev Workflow
 
@@ -168,18 +175,6 @@ Use `breakpoint;` statements in your code to set breakpoints.
 
 In debug mode, you can inspect the state of each goroutine's operand stack and stack frames, as well as the heap state at each breakpoint.
 
-## Test Suite
-
-The Ooga test suite is located in `src/tests/test.ts`. It contains a series of integration tests that cover all language features and edge cases.
-
-To run the test suite:
-```bash
-yarn tooga
-```
-
-The test suite will compile and run each test case, checking the output against the expected result. The stdout of each test case is also captured and compared to the expected output. Any discrepancies will cause the test to fail.
-
-Actions are set up to run the test suite on every commit pushed to this repository to ensure that the codebase remains correct.
 
 ## Project Structure
 
