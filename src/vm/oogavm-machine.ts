@@ -1079,7 +1079,9 @@ const microcode = {
         }
 
         let threadsInfo: ThreadInfo[] = [];
-        for (let [threadId, thread] of threads.entries()) {
+        // sort the threads by threadId in ascending order
+        let sortedThreads = new Map([...threads.entries()].sort());
+        for (let [threadId, thread] of sortedThreads) {
             // Ignore the currentThread because it is old
             if (currentThreadId === threadId) {
                 continue;
