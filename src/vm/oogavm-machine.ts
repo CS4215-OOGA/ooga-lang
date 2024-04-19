@@ -1229,8 +1229,6 @@ function updateRoots(roots, mapping) {
 }
 
 function initialize(numWords = 1000000) {
-    // TODO: Figure out an appropriate number of words
-    // There is definitely some bug with the memory management!
     constructHeap(numWords, updateRoots);
     PC = 0;
     OS[0] = initializeStack();
