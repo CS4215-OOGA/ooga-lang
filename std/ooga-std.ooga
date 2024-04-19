@@ -10,8 +10,16 @@ func (f *format) Println(x any) {
 }
 
 // Concurrency
+
+type Sync struct {}
+
 type WaitGroup struct {
     counter int
+}
+
+func (s *Sync) NewWaitGroup(counter int) WaitGroup {
+    wg := WaitGroup{counter};
+    return wg;
 }
 
 func (wg *WaitGroup) Add(delta int) {
@@ -25,6 +33,7 @@ func (wg *WaitGroup) Done() {
 func (wg *WaitGroup) Wait() {
     for wg.counter > 0 {
         yieldThread(); // yield to avoid wasteful loop
+        "YIELD";
     }
 }
 
@@ -32,7 +41,7 @@ type Mutex struct {
     currentThread int
 }
 
-func NewMutex() Mutex {
+func (s *Sync) NewMutex() Mutex {
     m := Mutex{-1};
     return m;
 }
@@ -62,6 +71,34 @@ func (m *Mutex) Unlock() {
     endAtomic();
 }
 
+type Semaphore struct {
+    count int
+}
+
+func (s *Sync) NewSemaphore(count int) Semaphore {
+    s := Semaphore{count};
+    return s;
+}
+
+func (s *Semaphore) Down() {
+    for {
+        startAtomic();
+        if (s.count > 0) {
+            s.count = s.count - 1;
+            break;
+        }
+        endAtomic();
+        blockThread();
+    }
+    endAtomic();
+}
+
+func (s *Semaphore) Up() {
+    startAtomic();
+    s.count = s.count + 1;
+    endAtomic();
+}
+
 var fmt format = format{}
 
 
@@ -79,3 +116,5 @@ func (t *Time) Sleep(duration int) {
 }
 
 var time Time = Time{};
+
+var sync Sync = Sync{};
