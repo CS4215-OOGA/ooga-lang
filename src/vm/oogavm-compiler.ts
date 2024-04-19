@@ -400,12 +400,12 @@ const compileComp = {
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectDefaultCase') {
-                console.log("Default case");
+                console.log('Default case');
                 hasDefault = true;
                 compile(compCase.body, ce);
                 instrs[wc++] = { tag: Opcodes.END_ATOMIC };
                 jumps.push(wc);
-                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0};
+                instrs[wc++] = { tag: Opcodes.GOTO, addr: 0 };
             } else {
                 throw new CompilerError('Unsupported select case in SelectStatement');
             }

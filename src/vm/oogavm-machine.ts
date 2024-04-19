@@ -310,7 +310,7 @@ export const builtinMappings = {
     getTime: () => {
         // Get unix time in millis
         return TSValueToAddress(Date.now());
-    }
+    },
 };
 
 class Builtin {
@@ -355,7 +355,7 @@ function apply_binop(sym: string, left: any, right: any) {
             return left * right;
         case '/':
             if (right === 0) {
-                throw new RuntimeError("Division by 0 error!");
+                throw new RuntimeError('Division by 0 error!');
             }
             return left / right;
         default:

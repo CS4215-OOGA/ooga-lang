@@ -43,10 +43,6 @@ function is_string(x) {
     return typeof x === 'string';
 }
 
-const unparse_types = t => {
-    return JSON.stringify(t, null, 2);
-};
-
 const unary_arith_type = [
     new FunctionType([new IntegerType()], new IntegerType()),
     new FunctionType([new FloatType()], new FloatType()),
@@ -129,7 +125,7 @@ let global_struct_environment = pair({}, empty_type_environment);
 
 const lookup_type = (x, e): Type => {
     if (e === null) {
-        throw new TypecheckError('unbound name: ' + x);
+        throw new TypecheckError('Variable not declared in scope: ' + x);
     }
     if (head(e).hasOwnProperty(x)) {
         return head(e)[x];
@@ -248,6 +244,38 @@ function getType(t, struct_te): Type {
 
     throw new TypecheckError('Unknown type: ' + t.type);
 }
+
+function unparse_types(t) {
+    log('UnparseTypes: ', t);
+    // These are the go types
+    if (is_type(t, IntegerType)) {
+        return 'int';
+    } else if (is_type(t, FloatType)) {
+        return 'float64';
+    } else if (is_type(t, BooleanType)) {
+        return 'bool';
+    } else if (is_type(t, StringType)) {
+        return 'string';
+    } else if (is_type(t, NullType)) {
+        return 'nil';
+    } else if (is_type(t, AnyType)) {
+        return 'any';
+    } else if (is_type(t, FunctionType)) {
+        return 'func(' + t.args.map(a => unparse_types(a)).join(', ') + ') ' + unparse_types(t.ret);
+    } else if (is_type(t, StructType)) {
+        return t.name;
+    } else if (is_type(t, ArrayType)) {
+        return '[]' + unparse_types(t.elem_type);
+    } else if (is_type(t, ChanType)) {
+        return 'chan ' + unparse_types(t.elem_type);
+    } else if (is_type(t, ReturnType)) {
+        return 'return ' + unparse_types(t.type);
+    } else if (is_type(t, MethodType)) {
+        return 'method ' + t.name + '(' + t.args.map(a => unparse_types(a)).join(', ') + ')';
+    } else {
+        throw new TypecheckError('Unknown type: ' + t);
+    }
+}
 /**
  * Represents a collection of type checking functions for different AST node types.
  * Each property of this object corresponds to a specific AST node type, and its value is a type checking function for that node type.
@@ -257,7 +285,7 @@ function getType(t, struct_te): Type {
 const type_comp = {
     Integer: (comp, te, struct_te) => {
         if (!is_integer(comp.value)) {
-            throw new TypecheckError('expected integer, got ' + comp.value);
+            throw new TypecheckError('Expected int value, got ' + comp.value);
         }
 
         comp.type = new IntegerType();
@@ -265,7 +293,7 @@ const type_comp = {
     },
     Float: (comp, te, struct_te) => {
         if (!is_float(comp.value)) {
-            throw new TypecheckError('expected float, got ' + comp.value);
+            throw new TypecheckError('Expected float value, got ' + comp.value);
         }
 
         comp.type = new FloatType();
@@ -273,7 +301,7 @@ const type_comp = {
     },
     Boolean: (comp, te, struct_te) => {
         if (!is_boolean(comp.value)) {
-            throw new TypecheckError('expected boolean, got ' + comp.value);
+            throw new TypecheckError('Expected boolean value, got ' + comp.value);
         }
 
         comp.type = new BooleanType();
@@ -281,7 +309,7 @@ const type_comp = {
     },
     String: (comp, te, struct_te) => {
         if (!is_string(comp.value)) {
-            throw new TypecheckError('expected string, got ' + comp.value);
+            throw new TypecheckError('Expected string value, got ' + comp.value);
         }
 
         comp.type = new StringType();
@@ -289,7 +317,7 @@ const type_comp = {
     },
     Null: (comp, te, struct_te) => {
         if (!is_null(comp.value)) {
-            throw new TypecheckError('expected null, got ' + comp.value);
+            throw new TypecheckError('Expected null value, got ' + comp.value);
         }
 
         comp.type = new NullType();
@@ -459,7 +487,7 @@ const type_comp = {
         const t0 = type(comp.test, te, struct_te);
         // log('IfStatement: t0', t0);
         if (!is_type(t0, BooleanType))
-            throw new TypecheckError('expected predicate type: Boolean, got ' + t0);
+            throw new TypecheckError('Expected predicate type: Boolean, got ' + unparse_types(t0));
         const t1 = type(comp.consequent, te, struct_te);
         // log('IfStatement: t1', t1);
         const t2 = type(comp.alternate, te, struct_te);
@@ -503,6 +531,7 @@ const type_comp = {
         log('SwitchCase');
         log(unparse(comp));
         const t0 = comp.test ? type(comp.test, te, struct_te) : new NullType();
+        // We don't have to check the type of t0, it can be any type - this can be checked in the runtime
         const t1 = type(comp.consequent, te, struct_te);
 
         log('Exiting SwitchCase, returning', t1);
@@ -537,7 +566,7 @@ const type_comp = {
 
         if (!equal_type(ret_type.type, expected_ret)) {
             throw new TypecheckError(
-                'type error in function declaration; declared return type: ' +
+                'Type error in function declaration; declared return type: ' +
                     unparse_types(expected_ret) +
                     ', actual return type: ' +
                     unparse_types(ret_type.type)
@@ -824,7 +853,7 @@ const type_comp = {
         if (in_func) {
             if (!equal_type(ret_type, expected_ret)) {
                 throw new TypecheckError(
-                    'type error in return statement; ' +
+                    'Type error in return statement; ' +
                         'expected return type: ' +
                         unparse_types(expected_ret) +
                         ', ' +

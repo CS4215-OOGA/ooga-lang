@@ -1499,11 +1499,7 @@ func foo(x int) int {
 
 foo(5);
 `,
-    'type error in return statement; expected return type: {\n' +
-        '  "name": "Integer"\n' +
-        '}, actual return type: {\n' +
-        '  "name": "Boolean"\n' +
-        '}',
+    'Type error in return statement; expected return type: int, actual return type: bool',
     '',
     defaultNumWords
 );
@@ -1520,11 +1516,7 @@ func foo(x int) int {
 
 foo(5);
 `,
-    'type error in function declaration; declared return type: {\n' +
-        '  "name": "Integer"\n' +
-        '}, actual return type: {\n' +
-        '  "name": "Null"\n' +
-        '}',
+    'Type error in function declaration; declared return type: int, actual return type: nil',
     '',
     defaultNumWords
 );
@@ -1924,7 +1916,8 @@ var j int = i(2)
 );
 
 // Testing slice assignment
-testProgram(`
+testProgram(
+    `
 arr := make([]int, 5, 10);
 
 for i := 0; i < len(arr); i++ {
@@ -1933,10 +1926,14 @@ for i := 0; i < len(arr); i++ {
     print(arr[i]);
 }
 arr[4];
-`, 4, '0\n0\n0\n1\n0\n2\n0\n3\n0\n4\n', defaultNumWords);
+`,
+    4,
+    '0\n0\n0\n1\n0\n2\n0\n3\n0\n4\n',
+    defaultNumWords
+);
 
-
-testProgram(`
+testProgram(
+    `
 arr := make([]int, 5, 10);
 l := len(arr);
 for i := 0; i < l; i++ {
@@ -1949,19 +1946,29 @@ for i := 0; i < len(arr); i++ {
     print(arr[i]);
 }
 0;
-`, 0, '0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n', defaultNumWords);
+`,
+    0,
+    '0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n',
+    defaultNumWords
+);
 
 // Test for division by zero
-testProgram(`
+testProgram(
+    `
 func foo() int {
     return 0;
 }
 
 5 / foo();
-`, 'Division by 0 error!', '', defaultNumWords);
+`,
+    'Division by 0 error!',
+    '',
+    defaultNumWords
+);
 
 // Test that select blocks if no cases match
-testProgram(`
+testProgram(
+    `
 x := make(chan int); // unbuffered
 
 select {
@@ -1969,9 +1976,14 @@ case <-x:
     print("This won't happen");
 }
 10;
-`, 'Stuck forever!', '', defaultNumWords);
+`,
+    'Stuck forever!',
+    '',
+    defaultNumWords
+);
 
-testProgram(`
+testProgram(
+    `
 x := make(chan int); // unbuffered
 
 go func() {
@@ -1984,9 +1996,14 @@ go func() {
 for i := 0; i < 100; i++ {
 }
 10;
-`, 10, '', defaultNumWords);
+`,
+    10,
+    '',
+    defaultNumWords
+);
 
-testProgram(`
+testProgram(
+    `
 x := make(chan int); // unbuffered
 
 go func() {
@@ -2001,11 +2018,15 @@ go func() {
 for i := 0; i < 100; i++ {
 }
 10;
-`, 10, '"Print once"', defaultNumWords);
-
+`,
+    10,
+    '"Print once"',
+    defaultNumWords
+);
 
 // Test binary sync.Semaphore
-testProgram(`
+testProgram(
+    `
 s := sync.NewSemaphore(1);
 
 x := 0;
@@ -2029,11 +2050,15 @@ for i := 0; i < 100; i++ {
 }
 
 10;
-`, 10, '"x in Thread 1 is 1"\n"x in Thread 2 is 2"', defaultNumWords);
-
+`,
+    10,
+    '"x in Thread 1 is 1"\n"x in Thread 2 is 2"',
+    defaultNumWords
+);
 
 // Test sync.Semaphore with more than 1 count
-testProgram(`
+testProgram(
+    `
 s := sync.NewSemaphore(2);
 
 x := 0;
@@ -2064,4 +2089,8 @@ for i := 0; i < 100; i++ {
 }
 
 10;
-`, 10, '"x in Thread 1 is 1"\n"x in Thread 2 is 2"\n"x in Thread 3 is 4"', defaultNumWords);
+`,
+    10,
+    '"x in Thread 1 is 1"\n"x in Thread 2 is 2"\n"x in Thread 3 is 4"',
+    defaultNumWords
+);

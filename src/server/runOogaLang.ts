@@ -16,8 +16,8 @@ const standardSource = readFileSync('std/ooga-std.ooga', 'utf8');
 export function runOogaLangCode(
     code: string
 ): Promise<{ capturedOutput: string; heaps: any[]; stacks: any[] }> {
-    // debug.disable();
-    // debug.enable('ooga:runOogaLang');
+    debug.disable();
+    debug.enable('ooga:runOogaLang');
     log(code);
     resetHeapsAndStacks();
     return new Promise((resolve, reject) => {

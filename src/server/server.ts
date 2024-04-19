@@ -29,7 +29,7 @@ app.post(
             const { capturedOutput, heaps, stacks } = await runOogaLangCode(code); // This will run the code and catch errors internally
             res.json({ success: true, output: capturedOutput, heaps, stacks });
         } catch (error) {
-            res.json({ success: false, error: error.message });
+            res.json({ success: false, error: error });
         }
     }
 );
