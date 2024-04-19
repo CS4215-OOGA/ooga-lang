@@ -1307,8 +1307,8 @@ export function run(numWords = 1000000) {
     const returnValue = addressToTSValue(peekStack(OS[0]));
     log('Program value is ' + returnValue);
     log('After STD initialization: ');
-    printHeapUsage();
-    debugHeap();
+    // printHeapUsage();
+    // debugHeap();
     log('Return value: ' + returnValue);
     return returnValue;
 }

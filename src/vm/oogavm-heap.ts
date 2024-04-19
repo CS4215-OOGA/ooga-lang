@@ -1043,6 +1043,18 @@ export function getHeapJSON(): any {
                     heapItem['children'].push(getWord(curr + headerSize + 1 + i));
                 }
                 break;
+            case Tag.ARRAY:
+                heapItem['capacity'] = getArrayLength(curr);
+                for (let i = 0; i < getArrayLength(curr); i++) {
+                    heapItem['children'].push(getArrayValueAtIndex(curr, i));
+                }
+                break;
+            case Tag.SLICE:
+                heapItem['capacity'] = getSliceCapacity(curr);
+                for (let i = 0; i < getSliceLength(curr); i++) {
+                    heapItem['children'].push(getSliceValueAtIndex(curr, i));
+                }
+                break;
             default:
                 break;
         }

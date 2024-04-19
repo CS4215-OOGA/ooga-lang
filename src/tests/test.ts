@@ -1026,7 +1026,7 @@ print(x + " " + y);
 `,
     'Jotham Wong',
     '"Jotham Wong"',
-    200
+    300
 );
 
 // Test GC with NEW_THREAD instruction to make sure everything works
@@ -1991,6 +1991,7 @@ go func() {
     case <-x:
         print("This won't happen");
     }
+    print("This also will not show");
 }();
 
 for i := 0; i < 100; i++ {

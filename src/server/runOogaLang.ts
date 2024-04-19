@@ -36,6 +36,7 @@ export function runOogaLangCode(
             const bytecode = prepare_and_compile(standardSource, code);
             processByteCode(bytecode);
             let value = run();
+            // let value = run(300);
             capturedOutput += 'Output: ' + value + '\n';
 
             const heaps = getHeaps();
