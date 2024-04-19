@@ -206,7 +206,7 @@ function allocateLiteralValues() {
     Unassigned = allocate(Tag.UNASSIGNED, 2);
     Undefined = allocate(Tag.UNDEFINED, 2);
     emptyString = allocateString('');
-    literals = [False, True, Null, Unassigned, Undefined];
+    literals = [False, True, Null, Unassigned, Undefined, emptyString];
 }
 
 function isTrue(address: number): boolean {

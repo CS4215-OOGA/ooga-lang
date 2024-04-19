@@ -13,7 +13,6 @@ import {
     allocateClosure,
     allocateEnvironment,
     allocateFrame,
-    allocateMutex,
     allocateSlice,
     allocateStruct,
     allocateUnbufferedChannel,
@@ -619,7 +618,7 @@ const microcode = {
             setFrameValue(newFrame[0], i, value);
         }
         safePushRTSCallFrame();
-        let _; // wow can't do _ in typescript =.=
+        let _;
         [OS[0], _] = popStack(OS[0]); // pop fun
         const closureEnv = [getClosureEnvironment(fun[0])];
         tempRoots.push(closureEnv);
@@ -1080,8 +1079,12 @@ const microcode = {
         }
 
         let threadsInfo: ThreadInfo[] = [];
-
         for (let [threadId, thread] of threads.entries()) {
+            // Ignore the currentThread because it is old
+            if (currentThreadId === threadId) {
+                console.log("SKIPPING CURRENT THREAD ID");
+                continue;
+            }
             // log('Thread ' + threadId);
             let threadInfo: ThreadInfo = { os: [], rts: [] };
             let currRTS = thread._RTS[0];
@@ -1117,6 +1120,40 @@ const microcode = {
 
             threadsInfo.push(threadInfo);
         }
+        // Push current thread information
+        let threadInfo: ThreadInfo = { os: [], rts: [] };
+        // log('****************************');
+        let currRTS = RTS[0];
+        while (currRTS != -1) {
+            // We store the currRTS address, the address stored in the currRTS and the raw value
+            // log('RTS: ' + currRTS);
+            let curr = {};
+            let value: any = addressToTSValue(peekStack(currRTS));
+            curr['address'] = currRTS;
+            curr['value'] = value;
+            curr['raw'] = peekStack(currRTS);
+            threadInfo.rts.push(curr);
+            currRTS = getPrevStackAddress(currRTS);
+            // log('Next RTS: ' + currRTS);
+        }
+        let currOS = OS[0];
+        while (currOS != -1) {
+            // We store the currOS address, the address stored in the currOS and the raw value
+            // log('OS: ' + currOS);
+            let curr = {};
+            let value: any = addressToTSValue(peekStack(currOS));
+            curr['address'] = currOS;
+            curr['value'] = value;
+            curr['raw'] = peekStack(currOS);
+            threadInfo.os.push(curr);
+            currOS = getPrevStackAddress(currOS);
+            // log('Next OS: ' + currOS);
+            if (currOS < 1 && 0 < currOS) {
+                throw new Error('Negative OS address');
+            }
+        }
+
+        threadsInfo.push(threadInfo);
         // log('Threads Info:');
         // log(unparse(threadsInfo));
         appendStack({ stacks: threadsInfo, currentThread: currentThreadId });
@@ -1125,6 +1162,8 @@ const microcode = {
         // log('Heap Info:');
         // log(unparse(heap));
         appendHeap(heap);
+        // need to push onto OS
+        pushTSValueOS(true);
         // log('****************************');
     },
     APPEND: instr => {
