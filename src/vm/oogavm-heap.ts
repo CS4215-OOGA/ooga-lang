@@ -1002,6 +1002,8 @@ export function getHeapJSON(): any {
             case Tag.STACK:
                 heapItem['previous'] = getPrevStackAddress(curr);
                 heapItem['entry'] = peekStack(curr);
+                heapItem['value'] = peekStack(curr);
+                heapItem['children'] = [getPrevStackAddress(curr), peekStack(curr)];
                 break;
             case Tag.ENVIRONMENT:
                 for (let i = 0; i < getSize(curr) - headerSize; i++) {
