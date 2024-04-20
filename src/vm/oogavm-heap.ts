@@ -550,6 +550,9 @@ function isString(address: number): boolean {
 // ********************************
 
 export function allocateArray(numValues: number): number {
+    if (numValues <= 0) {
+        throw new RuntimeError('Cannot allocate array with non-positive length!');
+    }
     return allocate(Tag.ARRAY, numValues + headerSize);
 }
 
@@ -598,6 +601,9 @@ export function getArrayValueAtIndex(arrayAddress: number, idx: number): any {
 // A slice is a resizable array.
 // 3rd word is for current number of elements inside.
 export function allocateSlice(len: number, initialCapacity: number): number {
+    if (len <= 0) {
+        throw new RuntimeError('Cannot allocate slice with non-positive length!');
+    }
     if (len > initialCapacity) {
         throw new RuntimeError('Cannot allocate slice with len more than capacity');
     }
@@ -718,6 +724,9 @@ export function getSliceLength(address: number): number {
 // then have to worry about node pointer manipulation at the moment
 
 export function allocateBufferedChannel(capacity: number): number {
+    if (capacity <= 0) {
+        throw new RuntimeError('Cannot allocate buffered channel with non-positive capacity!');
+    }
     const address = allocate(Tag.BUFFERED, capacity + headerSize + 1);
     // starts with 0 size
     heap.setUint32((address + headerSize) * wordSize, 0);

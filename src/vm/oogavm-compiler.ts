@@ -1041,14 +1041,6 @@ function compile(component, ce) {
     return compileComp[component.tag](component, ce);
 }
 
-// FIXME: The problem with the current impl is that our PC does not start
-//        at the first line, but really the main function (and the init function)
-//        So we need a way for the machine to know where it must start
-//        The termination condition for the program should also be when main ends
-//        So, we should compile the entire thing, find where main ends and put DONE there.
-//        To handle the main function entry point, perhaps the first line of the bytecode
-//        can be reserved to indicating the start location for the PC.
-//        But this seems like a band-aid fix.
 export function compile_program(program) {
     initializeBuiltinTable();
     wc = 0;

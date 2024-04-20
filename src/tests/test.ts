@@ -2073,7 +2073,7 @@ go func() {
 go func() {
     s.Down();
     x = x + 1;
-    fmt.Println("x in Thread 2 is " + x); // this should be 2 because goroutine in T1 sleeps
+    fmt.Println("x in Thread 2 is " + x); // this should be 2
 }();
 
 go func() {
