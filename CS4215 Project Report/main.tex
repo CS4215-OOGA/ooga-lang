@@ -2131,7 +2131,7 @@ wg.Wait();
 print(x);
 \end{minted}
 
-In this classical example, we'd expect the final value of x to be 2000. Running the same program multiple times will demonstrate that this does not happen, due to the lack of synchronization over writing to shared memory, confirming that Ooga is able to replicate race conditions.
+In this classical example, we'd expect the final value of x to be 2000. Running the same program multiple times will demonstrate that this does not happen, due to the lack of synchronization over writing to shared memory, confirming that Ooga is able to replicate race conditions. The intelligent reader may use any such synchronization constructs such as mutexes, semaphores or even channels to produce a program that results in a final value of 2000 for x.
 
 \begin{figure}
     \centering
