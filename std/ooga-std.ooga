@@ -23,17 +23,25 @@ func (s *Sync) NewWaitGroup(counter int) WaitGroup {
 }
 
 func (wg *WaitGroup) Add(delta int) {
+    startAtomic();
     wg.counter += delta
+    endAtomic();
 }
 
 func (wg *WaitGroup) Done() {
+    // update expressions are atomic
     wg.counter--
 }
 
 func (wg *WaitGroup) Wait() {
-    for wg.counter > 0 {
+    for {
+        startAtomic();
+        if wg.counter <= 0 {
+            endAtomic();
+            break;
+        }
+        endAtomic();
         yieldThread(); // yield to avoid wasteful loop
-        "YIELD";
     }
 }
 
