@@ -400,7 +400,7 @@ const compileComp = {
                 // jump to the next select case if possible
                 jof.addr = wc;
             } else if (compCase.tag === 'SelectDefaultCase') {
-                console.log('Default case');
+                // log('Default case');
                 hasDefault = true;
                 compile(compCase.body, ce);
                 instrs[wc++] = { tag: Opcodes.END_ATOMIC };

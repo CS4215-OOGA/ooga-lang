@@ -1,155 +1,243 @@
-# Ooga
+# Ooga Lang
 
-Ooga is a VM-based sub-language of Go developed using TypeScript.
-It includes the Ooga toolchain and a web-based playground website using Microsoft's Monaco
-editor for execution of code.
+Ooga is a concurrent virtual machine and interpreter for a subset of the Go programming language. It is implemented in TypeScript and includes a parser, compiler, typechecker, and virtual machine.
 
-## Quick Start
+## Table of Contents
+- [Features](#features)
+  - [Language Features](#language-features)
+  - [Virtual Machine Features](#virtual-machine-features)
+  - [Standard Library](#standard-library)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Running the Toolchain](#running-the-toolchain)
+  - [Running Tests](#running-tests)
+- [Dev Workflow](#dev-workflow)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
 
-Set up instructions here.
+## Features
 
-## Features 
+### Language Features
+- Sequential programming constructs:
+  - Variable and constant declarations (with type inference)
+  - Function declarations (including higher order functions)
+  - Block scoping
+  - Conditionals (if/else statements)
+  - Expressions
+  - For loops
+  - Switch statements
+- Concurrent programming constructs:
+  - Goroutines
+  - WaitGroups
+  - Channels (buffered and unbuffered)
+  - Select statements
+- User-defined types:
+  - Structs
+  - Methods
+- Compound types:
+  - Arrays (fixed size)
+  - Slices (dynamically resizable arrays)
+- Strongly statically typed with a typechecker for compile-time type safety
+- Designed to be familiar to Go programmers while being a simplified subset
 
-### Pass by reference
+### Virtual Machine Features
+- Stack-based bytecode virtual machine
+- Lisp 2 mark-compact garbage collection with variable sized nodes (no arbitrary limit on number of declarations)
+- Round Robin thread scheduler for concurrency (allows simulation of race conditions)
+- Low-level memory model fully accessible from the language
+- Visualization of runtime state:
+  - Operand stack and stack frames for each goroutine
+  - Heap state at each breakpoint
+- Debugger with breakpoints
 
-All objects in Ooga are copied by reference. Ooga programmers don't like reasoning in a functional paradigm, so
-everything is MUTABLE!
+### Standard Library
+- Concurrency utilities:
+  - Mutexes
+  - Semaphores
+  - WaitGroups
+- fmt package for string formatting and printing
+- time package with sleep function
 
-### Sequential Programming Constructs
+## Architecture
 
-- Expressions
-- Conditionals
-- For loops
-- Block Scoping
-- Function Declarations
-- Variable Declarations
-- Constant Declarations
-- Structs
+The Ooga toolchain consists of the following components:
 
-### Concurrent Programming Constructs
+1. **Parser**: A Peggy-based parser that parses Ooga source code and generates an abstract syntax tree (AST).
 
-- Goroutines
-- WaitGroups
-- Channels
+2. **Typechecker**: Performs static type checking on the AST, ensuring the program is well-typed before compilation. Also annotates the AST with type information.
 
-Behind the scenes, Ooga uses a Round Robin scheduler to provide "concurrency" and allows for users
-to construct race conditions.
+3. **Compiler**: Compiles the type-annotated AST into instructions for the Ooga virtual machine.
 
-#### Channels
+4. **Virtual Machine**: A stack-based VM that executes the compiled bytecode. Includes a garbage collector and a scheduler for concurrency.
 
-Ooga supports buffered and unbuffered channels.
+The toolchain is designed to be modular, with a clean separation between each phase of program processing.
 
-Writing to unbuffered channels block until a corresponding read from the same unbuffered channel.
-Writing to a buffered channel blocks if the buffered channel is full while reading from a buffered channel blocks
-if the buffered channel is empty.
+## Getting Started
 
-### Garbage Collection
+### Prerequisites
+- Node.js (v14 or newer)
+- Yarn package manager
 
-Ooga uses the LISP 2 Garbage Collection algorithm and supports an unlimited number of declarations (up 
-to available memory), with no arbitrary node size restriction. Programs such as
+### Installation
 
-```go
-func OOGA() int {
-    var a int = 1;
-    var b int = 2;
-    var c int = 3;
-    var d int = 4;
-    var e int = 5;
-    var f int = 6;
-    var g int = 7;
-    var h int = 8;
-    var i int = 9;
-    var j int = 10;
-    var k int = 11;
-    var l int = 12;
-    var m int = 13;
-    var n int = 14;
-    var o int = 15;
-    var p int = 16;
-    var q int = 17;
-    var r int = 18;
-    var s int = 19;
-    var t int = 20;
-    var u int = 21;
-    var v int = 22;
-    var w int = 23;
-    var x int = 24;
-    var y int = 25;
-    var z int = 26;
-    return a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w +x + y + z;
-}
+1. Clone the repository:
+```bash
+git clone https://github.com/CS4215-OOGA/ooga-lang.git
 ```
 
-### Type Checker
-
-Ooga is a strongly statically typed language that comes with a type checker for ensuring the type safety
-of programs.
-
-### Types
-
-Ooga supports integers, floats, booleans, strings and custom Struct expressions.
-
-Ooga also supports buffered, unbuffered channels as well as arrays and slices which are dynamically resizable arrays.
-
-Ooga slices follow Golang's slices behaviour in which a re-allocation of memory creates a new slice.
-
-Consider the following ooga snippet code.
-```go
-var x []int = make([]int, 5, 5); // allocates a slice of len 5 and capacity 5
-var y []int = append(x, 5); // this causes a reallocation of a new slice of capacity 10
-// x and y now point to slices of capacity 5 and 10 respectively
-// y has len = 6
+2. Install dependencies:
+```bash
+cd ooga-lang
+yarn install
 ```
 
-This is a test case in our suite.
+### Running the Toolchain
 
-### Test Suite
+1. Generate the parser from the Peggy grammar file:
+```bash
+yarn peggy
+```
 
-Ooga comes with a comprehensive test suite that tests all included features. Run `yarn tooga` to see the tests.
+This command generates `src/parser/ooga.js` from `src/parser/ooga.pegjs`.
 
-### Memory Visualization
+2. Compile the TypeScript source code:
+```bash
+yarn build
+```
 
-Ooga uses a low-level memory model and comes with three built-in functions that lets you visualize
-the contents of the heap-based memory model.
+This command compiles all TypeScript files in the `src` directory into JavaScript in the `dist` directory.
 
-The Operating Stack, Runtime Stack and the Environment can be visualized using their corresponding
-helper functions.
+3. Start the server:
+```bash
+yarn server
+```
 
+This command starts the server at http://localhost:3001.
 
-## Plan
+The Ooga playground frontend (in the [ooga-frontend](https://github.com/CS4215-OOGA/ooga-frontend) repo) communicates with this server to execute Ooga code and retrieve debugging information.
 
-Implementing Type checking
-Need to read lecture slides
-Grammar already supports it, just need to add type information
-
-Memory management, follow idealized VM
-
-To handle concurrency, there should be a notion of a 'thread' and its registers, aka the 
-OS, PC, E separately.
-
-We would use the oogavm-scheduler to do a round robin scheduling of the threads as per js-slang
-
-To do the visualization, we'd need the ability to set breakpoints (how?) and for the heap to be
-accessible (interpretably) to the frontend monaco.
+### Running Tests
 
 
-## Dev instructions
+The Ooga test suite is located in `src/tests/test.ts`. It contains a series of integration tests that cover all language features and edge cases.
 
-Everytime you change the grammar, run `yarn peggy`. This will update the `ooga.js` parser.
-Everytime you make changes, run `yarn build`. This compiles typescript to js in `dist` folder.
-When you want to compile the test file, run `yarn compile`. It will be outputted to `booga.bm`.
-When you want to run the file on the VM, run `yarn run`.
-More info can be found on the `package.json` file but this should be sufficient for now.
+To run the test suite:
+```bash
+yarn tooga
+```
 
-A convenient function that does compile and run is `yarn booga`.
+The test suite will compile and run each test case, checking the output against the expected result. The stdout of each test case is also captured and compared to the expected output. Any discrepancies will cause the test to fail.
 
-## Structure
+Actions are set up to run the test suite on every commit pushed to this repository to ensure that the codebase remains correct.
 
-`oogavm-assembler`: tbh idk why i put this file, got inspired by martin
-`oogavm-compiler`: in charge of compiling `*.ooga` files to `*.bm` files.
-`oogavm-errors`: ooga errors to distinguish user error from typescript errors.
-`oogavm-heap`: low level memory implementation.
-`oogavm-machine`: run the `*.bm` file.
-`oogavm-scheduler`: process scheduler.
-`oogavm-typechecker`: ooga's typechecker.
-`opcodes`: enumeration of machine opcodes.
+## Dev Workflow
+
+When working on the Ooga language, follow these steps:
+
+1. If you make changes to the grammar (`src/parser/ooga.pegjs`), regenerate the parser:
+   ```bash
+   yarn peggy
+   ```
+
+2. If you make changes to any TypeScript files, recompile the project:
+   ```bash
+   yarn build
+   ```
+
+3. Write your Ooga code in a file named `booga.ooga`.
+
+4. To compile `booga.ooga` to bytecode:
+   ```bash
+   yarn compile
+   ```
+   This command outputs the compiled bytecode to `booga.bm`.
+
+5. To run `booga.bm` in the virtual machine:
+   ```bash
+   yarn run
+   ```
+
+For convenience, you can use `yarn booga` to compile and run `booga.ooga` in one step.
+
+Refer to the `package.json` file for more details on the available scripts.
+
+## Usage
+
+Once the server is running, you can use the Ooga language playground by running the [ooga-frontend](https://github.com/CS4215-OOGA/ooga-frontend) on http://localhost:3000.
+
+Write your Ooga code in the editor. Use the "Run" button to execute the code, and the "Debug" button to view the stacks and heap at each breakpoint.
+
+The playground will display the output and any error messages.
+
+Use `breakpoint;` statements in your code to set breakpoints.
+
+In debug mode, you can inspect the state of each goroutine's operand stack and stack frames, as well as the heap state at each breakpoint.
+
+
+## Project Structure
+
+The Ooga project is structured as follows:
+
+```
+ooga-lang/
+│
+├── src/
+│   ├── vm/
+│   │   ├── oogavm-compiler.ts
+│   │   ├── oogavm-errors.ts
+│   │   ├── oogavm-heap.ts
+│   │   ├── oogavm-machine.ts
+│   │   ├── oogavm-scheduler.ts
+│   │   ├── oogavm-typechecker.ts
+│   │   ├── oogavm-types.ts
+│   │   └── opcodes.ts
+│   │
+│   ├── parser/
+│   │   ├── ooga.pegjs
+│   │   └── ooga.js
+│   │
+│   ├── tests/
+│   │   └── test.ts
+│   │
+│   ├── server/
+│   │   ├── server.ts
+│   │   ├── runOogaLang.ts
+│   │   └── debug.ts
+│   │
+│   └── utils/
+│       └── utils.ts
+│
+├── package.json
+└── README.md
+```
+
+The key directories and files are:
+
+- `src/vm/`: Contains the implementation of the Ooga virtual machine and runtime.
+  - `oogavm-compiler.ts`: Compiles the AST into bytecode.
+  - `oogavm-errors.ts`: Defines custom error types used throughout the project.
+  - `oogavm-heap.ts`: Implements the low-level heap and memory management.
+  - `oogavm-machine.ts`: Defines the bytecode virtual machine and its operation.
+  - `oogavm-scheduler.ts`: Implements the thread scheduler for concurrency.
+  - `oogavm-typechecker.ts`: Performs static type checking on the AST.
+  - `oogavm-types.ts`: Defines the types used in the Ooga language and type-related utility functions.
+  - `opcodes.ts`: Enumerates the bytecode instruction opcodes.
+
+- `src/parser/`: Contains the Ooga parser.
+  - `ooga.pegjs`: Defines the Peggy grammar for the Ooga language.
+  - `ooga.js`: The generated parser module (do not edit directly).
+
+- `src/tests/`: Contains the test suite for the Ooga toolchain.
+  - `test.ts`: Defines the integration tests for the entire toolchain.
+
+- `src/server/`: Contains the server code for the Ooga playground frontend.
+  - `server.ts`: Implements the Express server.
+  - `runOogaLang.ts`: Runs user-provided Ooga code and collects debug information.
+  - `debug.ts`: Defines the endpoints for retrieving debug information.
+
+- `src/utils/`: Contains utility functions used throughout the project.
+  - `utils.ts`: Defines various utility functions.
+
+- `package.json`: Defines the project's dependencies and scripts.
